@@ -1,0 +1,14 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch();
+const page = await browser.newPage();
+await page.goto('http://127.0.0.1:4180/publications/?topic=machine-learning', { waitUntil: 'networkidle' });
+const shown = await page.locator('.pub:visible').count();
+const status = await page.textContent('[data-result-count]');
+await page.fill('[data-search]', 'Shapiro');
+await page.click('[data-filter="topic"] [data-value="all"]');
+const shapiro = await page.locator('.pub:visible').count();
+await page.click('[data-filter="type"] [data-value="thesis"]');
+await page.fill('[data-search]', '');
+const theses = await page.locator('.pub:visible').count();
+console.log({ machineLearning: shown, status, shapiro, theses, url: page.url() });
+await browser.close();

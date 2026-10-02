@@ -1,0 +1,143 @@
+---
+import Base from '../layouts/Base.astro';
+import Plate from '../components/Plate.astro';
+import VideoCard from '../components/VideoCard.astro';
+import Icon from '../components/Icon.astro';
+import {
+  bilimEkstra, bilimEkstraThemes, channels, clips, conversations, formatViews, formatViewsFloor,
+  lessons, lessonTopics, outreachSnapshot, outreachTotals,
+} from '../data/outreach';
+import { media } from '../data/talks';
+import { longDate } from '../lib/format';
+import type { Lang } from '../i18n';
+import { pagesCopy } from '../i18n/copy/pages';
+import { ui } from '../i18n/ui';
+import '../styles/pages.css';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = pagesCopy[lang].outreach;
+const u = ui[lang];
+const totals = outreachTotals();
+const themes = bilimEkstraThemes.map((theme) => ({ ...theme, videos: bilimEkstra.filter((video) => video.theme === theme.id) }));
+const topics = lessonTopics.map((topic) => ({ ...topic, videos: lessons.filter((video) => video.topic === topic.id) })).filter((t) => t.videos.length);
+const seriesViews = bilimEkstra.reduce((sum, video) => sum + video.views, 0);
+const lead = c.lead(totals.firstAired.slice(0, 4));
+---
+<Base lang={lang} title={c.metaTitle} description={c.description(totals.programmes, totals.bilimEkstra)}>
+  <div class="page">
+    <header class="page-hero" style="--hero-tint: var(--coral)">
+      <div class="page-hero__inner">
+        <div class="page-hero__text">
+          <p class="kicker">{c.kicker}</p>
+          <h1>{c.title[0]}<em>{c.title[1]}</em></h1>
+          <p class="lead">{lead[0]}<a href={channels.tekeTekBilim.url}>{lead[1]}</a>{lead[2]}<span lang="tr">{lead[3]}</span>{lead[4]}</p>
+          {c.trNote && <p class="tr-note" lang="tr">{c.trNote}</p>}
+          <dl class="outreach-stats">
+            <div><dt>{c.stats.programmes}</dt><dd>{totals.programmes}</dd></div>
+            <div><dt>{c.stats.views}</dt><dd>{formatViewsFloor(totals.tekeTekBilimViews, lang)}+</dd></div>
+            <div><dt><span lang="tr">Bilim Ekstra</span> {c.stats.episodes}</dt><dd>{totals.bilimEkstra}</dd></div>
+          </dl>
+          <div class="channel-links">
+            <a href={channels.bilimEkstraPlaylist.url} target="_blank" rel="noopener"><Icon name="play" />{c.playlist}<span class="visually-hidden">{u.newTab}</span></a>
+            <a href={channels.own.url} target="_blank" rel="me noopener"><Icon name="play" />YouTube <span class="handle">{channels.own.handle}</span><span class="visually-hidden">{u.newTab}</span></a>
+            <a href={channels.instagram.url} target="_blank" rel="me noopener"><Icon name="instagram" />Instagram <span class="handle">{channels.instagram.handle}</span><span class="visually-hidden">{u.newTab}</span></a>
+            <a href={channels.x.url} target="_blank" rel="me noopener"><Icon name="x" />X <span class="handle">{channels.x.handle}</span><span class="visually-hidden">{u.newTab}</span></a>
+          </div>
+        </div>
+        <div class="page-hero__art" aria-hidden="true"><Plate name="waves" eager /></div>
+      </div>
+    </header>
+
+    <section class="section" aria-labelledby="conversations-title">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <p class="kicker" lang="tr">{c.longKicker}</p>
+            <h2 id="conversations-title">{c.longTitle[0]}<em>{c.longTitle[1]}</em></h2>
+          </div>
+          <p class="muted small">{c.longMeta(conversations.length, formatViews(totals.conversationViews, lang))}</p>
+        </div>
+        <div class="feature-grid">
+          {conversations.map((video, i) => <VideoCard video={video} variant={i === 0 ? 'banner' : 'feature'} lang={lang} />)}
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="clips-title">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <p class="kicker">{c.clipsKicker}</p>
+            <h2 id="clips-title">{c.clipsTitle[0]}<em>{c.clipsTitle[1]}</em></h2>
+          </div>
+          <p class="muted small">{c.clipsMeta}</p>
+        </div>
+        <div class="clip-grid">
+          {clips.map((video) => <VideoCard video={video} variant="clip" lang={lang} />)}
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="series-title">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <p class="kicker"><span lang="tr">Prof. Dr. Emre Onur Kahya ile Bilim Ekstra</span></p>
+            <h2 id="series-title">{c.seriesTitle[0]}<em lang="tr">{c.seriesTitle[1]}</em>{c.seriesTitle[2]}</h2>
+          </div>
+          <p class="muted small">{c.seriesMeta(bilimEkstra.length, formatViews(seriesViews, lang))}<a href={channels.bilimEkstraPlaylist.url}>{c.seriesPlaylist}</a></p>
+        </div>
+        <div class="theme-grid">
+          {themes.map((theme) => (
+            <section class="theme-block" aria-labelledby={`theme-${theme.id}`}>
+              <h3 id={`theme-${theme.id}`}><span>{lang === 'tr' ? theme.titleTr : theme.title}{lang === 'en' && <span class="tr" lang="tr">{theme.titleTr}</span>}</span><span class="count">{theme.videos.length}</span></h3>
+              {theme.videos.map((video) => <VideoCard video={video} variant="row" headingLevel="h4" lang={lang} />)}
+            </section>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="lessons-title">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <p class="kicker">YouTube · {channels.own.handle}</p>
+            <h2 id="lessons-title">{c.lessonsTitle[0]}<em>{c.lessonsTitle[1]}</em></h2>
+          </div>
+          <p class="muted small">{c.lessonsMeta(totals.lessonCount)}<a href={channels.own.playlists}>{c.playlists}</a></p>
+        </div>
+        <div class="lesson-grid">
+          {topics.map((topic) => (
+            <section class="theme-block" aria-labelledby={`lesson-${topic.id}`}>
+              <h3 id={`lesson-${topic.id}`}><span>{lang === 'tr' ? topic.titleTr : topic.title}</span><span class="count">{topic.videos.length}</span></h3>
+              {topic.videos.map((video) => <VideoCard video={video} variant="row" headingLevel="h4" programme="YouTube" lang={lang} />)}
+            </section>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="press-title">
+      <div class="wrap press">
+        <div>
+          <p class="kicker">{c.pressKicker}</p>
+          <h2 id="press-title">{c.pressTitle[0]}<em>{c.pressTitle[1]}</em></h2>
+          <p class="muted press__text">{c.pressText}</p>
+        </div>
+        <ul class="press__list" role="list">
+          {media.map((item) => (
+            <li>
+              <span class="press__outlet" lang="en">{item.outlet}</span>
+              {item.url ? <a class="press__title" href={item.url} lang="en">{item.title}</a> : <span class="press__title" lang="en">{item.title}</span>}
+              <span class="press__date">{lang === 'tr' ? item.dateTr : item.date}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+
+    <div class="source-note note">{c.note(longDate(outreachSnapshot.checkedOn, lang))}</div>
+  </div>
+</Base>

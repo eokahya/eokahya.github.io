@@ -1,0 +1,15 @@
+---
+/**
+ * Schematic plate (decorative). Served as two cached SVG files — one per theme — and only the
+ * visible one is downloaded (lazy images that are not displayed are not fetched).
+ */
+import type { PlateName } from '../lib/plates';
+interface Props { name: PlateName; class?: string; caption?: string; eager?: boolean }
+const { name, class: className, caption, eager = false } = Astro.props;
+const loading = eager ? 'eager' : 'lazy';
+---
+<figure class:list={['plate-figure', `plate-figure--${name}`, className]}>
+  <img class="plate-img plate-img--dark" src={`/plates/${name}-dark.svg`} alt="" width="600" height="420" loading={loading} decoding="async" />
+  <img class="plate-img plate-img--light" src={`/plates/${name}-light.svg`} alt="" width="600" height="420" loading="lazy" decoding="async" />
+  {caption && <figcaption class="plate-figure__caption">{caption}</figcaption>}
+</figure>

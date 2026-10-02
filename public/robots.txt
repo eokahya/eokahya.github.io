@@ -1,3 +1,4 @@
 User-agent: *
 Allow: /
+
 Sitemap: https://eokahya.github.io/sitemap-index.xml

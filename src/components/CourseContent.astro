@@ -1,118 +1,232 @@
 ---
-import { course as defaultCourse, assessmentRows, minimumMidtermScore, totalAssessmentPoints, type Course, type LectureNote } from '../data/course';
+/**
+ * MYZ 310E course content, rendered for the screen (current and term pages) and for print
+ * (the syllabus route that the PDF is generated from). Single source: data/course.ts.
+ */
+import Icon from './Icon.astro';
+import AssessmentBar from './AssessmentBar.astro';
+import WeekStrip from './WeekStrip.astro';
+import Plate from './Plate.astro';
+import { assessmentRows, course as defaultCourse, minimumMidtermScore, totalAssessmentPoints, type Course, type CourseWeek, type LectureNote } from '../data/course';
+import { longDate } from '../lib/format';
 
-interface Props {
-  course?: Course;
-  notes?: readonly LectureNote[];
-  print?: boolean;
-}
-
+interface Props { course?: Course; notes?: readonly LectureNote[]; print?: boolean }
 const { course = defaultCourse, notes = [], print = false } = Astro.props;
 const rows = assessmentRows(course);
 const total = totalAssessmentPoints(course);
 const minimum = minimumMidtermScore(course);
+const foundations = course.weeks.filter((week) => week.phase === 'foundations').length;
+const numberWords = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+const foundationsWord = numberWords[foundations] ?? String(foundations);
 const sections = [
-  ['overview', 'Overview'], ['syllabus', 'Syllabus'], ['weekly-schedule', 'Weekly Schedule'],
-  ['lecture-notes', 'Lecture Notes'], ['project-guide', 'Project Guide'], ['assessment', 'Assessment'],
-  ['resources', 'Resources'], ['announcements', 'Announcements'],
-];
-const formatFileSize = (bytes: number) => bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  ['overview', 'Overview'], ['syllabus', 'Syllabus'], ['weekly-schedule', 'Weekly schedule'], ['lecture-notes', 'Lecture notes'],
+  ['project-guide', 'Project guide'], ['assessment', 'Assessment'], ['resources', 'Resources'], ['announcements', 'Announcements'],
+] as const;
+const phaseLabel: Record<CourseWeek['phase'], string> = { foundations: 'Foundations', midterm: 'Midterm', presentation: 'Presentation', clinic: 'Clinic', writing: 'Writing' };
+const fileSize = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`);
+const eligibility = `To be eligible for the final project-paper assessment, a student must achieve at least ${course.assessment.minimumMidtermPercent}% on the midterm examination AND complete both project presentations.`;
+const threshold = `For a midterm marked out of ${course.assessment.midtermPoints}, the minimum qualifying score is ${minimum}/${course.assessment.midtermPoints}. This threshold applies to the midterm itself, not to the overall course grade.`;
+const uploaded = new Set(notes.map((note) => note.week));
 ---
-
-<article class:list={['course-content', { 'print-syllabus': print }]} data-course-version={course.sourceVersion}>
-  <header class="page-heading course-heading">
-    <p class="eyebrow">{course.code} · {course.term}</p>
-    <h1>{course.title}</h1>
-    <p class="lead">{course.weeks.filter((week) => week.phase === 'foundations').length} weeks of machine learning foundations, followed by a research project in mechanistic interpretability.</p>
-    <p>{course.instructor} · {course.institution}<br /><a href={`mailto:${course.email}`}>{course.email}</a> · Course language: {course.language}</p>
-    <p class="muted">{course.timetable}</p>
-    <p class="syllabus-version">Source version: {course.sourceVersion} · Updated <time datetime={course.updatedOn}>{course.updatedOn}</time></p>
-    {!print && <div class="course-actions"><a class="button" href={course.syllabusPath} download>Download syllabus PDF</a><a class="text-link" href={course.printPath}>Print-friendly syllabus</a></div>}
+<article class:list={['course', { 'course--print': print }]} data-course-version={course.sourceVersion}>
+  <header class="course-hero">
+    {!print && <div class="course-hero__art" aria-hidden="true"><Plate name="circuit" /></div>}
+    <div class="course-hero__inner">
+      <p class="kicker">{course.code} · {course.term} · {course.language}</p>
+      <h1>{course.title}</h1>
+      <p class="lead">{foundationsWord} weeks of machine-learning foundations, then a semester-long research project in mechanistic interpretability, two presentations and a final paper.</p>
+      <dl class="course-facts">
+        <div><dt>Instructor</dt><dd>{course.instructor}</dd></div>
+        <div><dt>Institution</dt><dd>{course.institution}</dd></div>
+        <div><dt>Contact</dt><dd><a href={`mailto:${course.email}`}>{course.email}</a></dd></div>
+        <div><dt>Schedule</dt><dd>{course.timetable.replace('Timetable, room and office hours: to be announced.', 'Timetable, room and office hours to be announced')}</dd></div>
+      </dl>
+      <p class="course-version">Source version <span class="mono">{course.sourceVersion}</span> · updated <time datetime={course.updatedOn}>{longDate(course.updatedOn)}</time></p>
+      {!print && (
+        <div class="action-row">
+          <a class="button" href={course.syllabusPath} download><Icon name="download" size={18} />Syllabus (PDF)</a>
+          <a class="button button--ghost" href={course.printPath}><Icon name="file" size={18} />Print-friendly syllabus</a>
+          <a class="text-link" href="#lecture-notes">Lecture notes <Icon name="arrow-right" size={16} /></a>
+        </div>
+      )}
+    </div>
   </header>
 
-  {!print && <nav class="course-nav" aria-label="Course sections"><ul>{sections.map(([id, label]) => <li><a href={`#${id}`}>{label}</a></li>)}</ul></nav>}
+  <div class="course-layout">
+    {!print && (
+      <nav class="course-nav" aria-label="Course sections">
+        <p class="course-nav__title">On this page</p>
+        <ol role="list">{sections.map(([id, label]) => <li><a href={`#${id}`} data-spy={id}>{label}</a></li>)}</ol>
+      </nav>
+    )}
+    <div class="course-body">
+      <section id="overview" class="course-section" aria-labelledby="overview-title">
+        <h2 id="overview-title">Overview</h2>
+        <div class="prose">{course.overview.map((paragraph) => <p>{paragraph}</p>)}</div>
+        <div class="course-panel">
+          <h3>Assessment at a glance</h3>
+          <AssessmentBar course={course} />
+        </div>
+      </section>
 
-  <section id="overview" class="course-section prose" aria-labelledby="overview-heading">
-    <h2 id="overview-heading">Overview</h2>
-    {course.overview.map((paragraph) => <p>{paragraph}</p>)}
-    <aside class="course-summary callout" aria-label="Assessment summary" data-assessment-summary>
-      <h3>Assessment at a glance</h3>
-      <p><strong>{course.assessment.midtermPoints} points</strong> midterm · <strong>{course.assessment.presentationsTotalPoints} points</strong> for {course.assessment.requiredPresentations} presentations · <strong>{course.assessment.finalPaperPoints} points</strong> final paper.</p>
-      <p>Final-paper eligibility requires <strong>at least {minimum}/{course.assessment.midtermPoints} on the midterm AND completion of both project presentations</strong>.</p>
-      <p>The midterm threshold is {course.assessment.minimumMidtermPercent}% of the midterm itself.</p>
-    </aside>
-  </section>
+      <section id="syllabus" class="course-section" aria-labelledby="syllabus-title">
+        <h2 id="syllabus-title">Syllabus</h2>
+        <div class="note plan-status"><strong>Plan status.</strong> {course.planning.status}</div>
+        <div class="prose">
+          <h3>Recommended background</h3>
+          <p>{course.recommendedBackground}</p>
+          <h3>Learning outcomes</h3>
+          <p>By the end of the course, students should be able to:</p>
+          <ol class="outcomes">{course.learningOutcomes.map((outcome) => <li>{outcome}</li>)}</ol>
+        </div>
+      </section>
 
-  <section id="syllabus" class="course-section prose" aria-labelledby="syllabus-heading">
-    <h2 id="syllabus-heading">Syllabus</h2>
-    <div class="callout planning-note"><h3>Plan status</h3><p>{course.planning.status}</p></div>
-    <h3>Recommended background</h3>
-    <p>{course.recommendedBackground}</p>
-    <h3>Learning outcomes</h3>
-    <p>By the end of the course, students should be able to:</p>
-    <ol>{course.learningOutcomes.map((outcome) => <li>{outcome}</li>)}</ol>
-    {!print && <p><a href={course.syllabusPath}>Open the complete syllabus PDF</a>.</p>}
-  </section>
+      <section id="weekly-schedule" class="course-section" aria-labelledby="schedule-title">
+        <h2 id="schedule-title">Weekly schedule</h2>
+        <p class="muted">An indicative {course.weeks.length}-week plan{course.planning.scheduleProvisional && ' (provisional)'}. The midterm is planned for week {course.planning.midtermWeek}; presentation rounds are {course.planning.presentations.map((p) => p.window.toLowerCase()).join(' and ')}. Calendar dates will be announced.</p>
+        {!print && <div class="course-panel course-panel--flat"><WeekStrip course={course} linked /></div>}
+        <ol class="schedule" role="list">
+          {course.weeks.map((week) => (
+            <li class:list={['schedule__week', `schedule__week--${week.phase}`]} id={`week-${week.week}`}>
+              <p class="schedule__num"><span class="schedule__label">Week</span> {week.week}</p>
+              <div>
+                <p class="schedule__phase">{phaseLabel[week.phase]}</p>
+                <h3>{week.title}</h3>
+                <p>{week.description}</p>
+              </div>
+            </li>
+          ))}
+          <li class="schedule__week schedule__week--final">
+            <p class="schedule__num"><span class="schedule__label">After</span> 14</p>
+            <div>
+              <p class="schedule__phase">Final assessment period</p>
+              <h3>Final project paper</h3>
+              <p>{course.planning.finalSubmission}</p>
+            </div>
+          </li>
+        </ol>
+        <p class="scope-note">{course.supplementaryScope}</p>
+      </section>
 
-  <section id="weekly-schedule" class="course-section prose" aria-labelledby="schedule-heading">
-    <h2 id="schedule-heading">Weekly Schedule</h2>
-    <p class="muted">Indicative {course.weeks.length}-week plan. Weekly dates and presentation windows are provisional; the midterm is planned for week {course.planning.midtermWeek}. Calendar dates will be announced.</p>
-    <ol class="weekly-schedule">{course.weeks.map((week) => <li value={week.week}><div class="week-label">Week {week.week}</div><div><h3>{week.title}</h3><p>{week.description}</p></div></li>)}</ol>
-    <h3>Final assessment period</h3>
-    <p>{course.planning.finalSubmission}</p>
-    <p class="scope-note">{course.supplementaryScope}</p>
-  </section>
+      <section id="lecture-notes" class="course-section" aria-labelledby="notes-title">
+        <h2 id="notes-title">Lecture notes</h2>
+        {print ? (
+          <p>Instructor-provided weekly PDF notes are published on the course page as they are released: <a href={`https://eokahya.github.io${course.termPath}#lecture-notes`}>{`https://eokahya.github.io${course.termPath}`}</a>.</p>
+        ) : (
+          <Fragment>
+            <p class="muted">Weekly PDF notes appear here as they are uploaded{notes.length === 0 ? ' — none has been uploaded yet.' : `. ${notes.length} file${notes.length === 1 ? '' : 's'} available.`}</p>
+            <ol class="notes" role="list">
+              {course.weeks.map((week) => {
+                const weekNotes = notes.filter((note) => note.week === week.week);
+                return (
+                  <li class:list={['notes__row', { 'has-notes': uploaded.has(week.week) }]}>
+                    <p class="notes__week">Week {week.week}</p>
+                    <div class="notes__body">
+                      <p class="notes__title">{week.title}</p>
+                      {weekNotes.length > 0 ? (
+                        <ul class="notes__files" role="list">
+                          {weekNotes.map((note) => (
+                            <li>
+                              <span class="notes__file"><Icon name="file" size={16} />{note.title} <small>· PDF · {fileSize(note.fileSize)}</small></span>
+                              <span class="notes__links">
+                                <a href={note.relativePath} aria-label={`Open PDF: week ${note.week}, ${note.title}`}>Open PDF</a>
+                                <a href={note.relativePath} download aria-label={`Download PDF: week ${note.week}, ${note.title}`}>Download</a>
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <p class="notes__empty">Not yet uploaded</p>}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </Fragment>
+        )}
+      </section>
 
-  <section id="lecture-notes" class="course-section" aria-labelledby="notes-heading">
-    <h2 id="notes-heading">Lecture Notes</h2>
-    <p>Instructor-provided weekly PDF notes appear here as they are uploaded.{!print && notes.length === 0 && ' No lecture-note PDF has been supplied yet.'}</p>
-    {!print && <ol class="notes-list">{course.weeks.map((week) => {
-      const weekNotes = notes.filter((note) => note.week === week.week);
-      return <li value={week.week}><div class="note-week"><span class="week-label">Week {week.week}</span></div><div><h3>{week.title}</h3>{weekNotes.length > 0 ? <ul>{weekNotes.map((note) => <li><span>{note.title} <small>({formatFileSize(note.fileSize)})</small></span><span class="note-links"><a href={note.relativePath} aria-label={`Open PDF: week ${note.week}, ${note.title}`}>Open PDF</a><a href={note.relativePath} download aria-label={`Download PDF: week ${note.week}, ${note.title}`}>Download</a></span></li>)}</ul> : <p class="not-uploaded">Not yet uploaded</p>}</div></li>;
-    })}</ol>}
-    {print && <p>Check the permanent course page for the current note list: <a href={`https://eokahya.github.io${course.termPath}`}>{`https://eokahya.github.io${course.termPath}`}</a></p>}
-  </section>
+      <section id="project-guide" class="course-section" aria-labelledby="project-title">
+        <h2 id="project-title">Project guide</h2>
+        <div class="prose">
+          <p class="eyebrow-line">Research area: <strong>{course.project.title}</strong></p>
+          {course.planning.sameProjectAcrossPresentationsProvisional && <p>Both presentations provisionally develop the same research project in two stages: the research question and initial evidence, followed by results and critical interpretation.</p>}
+          {course.project.paragraphs.map((paragraph) => <p>{paragraph}</p>)}
+          <h3>Possible starting points</h3>
+          <ul>{course.project.directions.map((direction) => <li>{direction}</li>)}</ul>
+          <p class="muted">These are starting points, not claims that a topic is novel or that a result is already known.</p>
+          <h3>{course.planning.paperFormatProvisional ? 'Proposed final-paper format' : 'Final-paper format'}</h3>
+          <p>{course.planning.paperFormatProvisional && 'Provisionally, '}{course.planning.paperMainTextPages[0]}–{course.planning.paperMainTextPages[1]} pages of main text, excluding references and appendices. Suggested sections: {course.planning.paperSections.join(', ')}.</p>
+          <p>{course.project.supportingMaterial}</p>
+          <p>{course.planning.teamArrangements}</p>
+          <h3>Research integrity and tool use</h3>
+          <p>{course.integrity}</p>
+        </div>
+      </section>
 
-  <section id="project-guide" class="course-section prose" aria-labelledby="project-heading">
-    <h2 id="project-heading">Project Guide</h2>
-    <h3>{course.project.title}</h3>
-    {course.planning.sameProjectAcrossPresentationsProvisional && <p>Both presentations provisionally develop the same research project in two stages: the research question and initial evidence, followed by results and critical interpretation.</p>}
-    {course.project.paragraphs.map((paragraph) => <p>{paragraph}</p>)}
-    <h3>Possible starting points</h3>
-    <ul>{course.project.directions.map((direction) => <li>{direction}</li>)}</ul>
-    <p>These are starting points, not claims that a topic is novel or that a result is already known.</p>
-    <h3>{course.planning.paperFormatProvisional ? 'Proposed final-paper format' : 'Final-paper format'}</h3>
-    <p>{course.planning.paperFormatProvisional && 'Provisionally, '}{course.planning.paperMainTextPages[0]}–{course.planning.paperMainTextPages[1]} pages of main text, excluding references and appendices. Suggested sections: {course.planning.paperSections.join(', ')}.</p>
-    <p>{course.project.supportingMaterial}</p>
-    <p>{course.planning.teamArrangements}</p>
-    <h3>Research integrity and tool use</h3>
-    <p>{course.integrity}</p>
-  </section>
+      <section id="assessment" class="course-section" aria-labelledby="assessment-title" data-assessment>
+        <h2 id="assessment-title">Assessment</h2>
+        <div class="table-wrap">
+          <table class="data-table">
+            <caption class="visually-hidden">Assessment components and points</caption>
+            <thead><tr><th scope="col">Component</th><th scope="col" class="num">Points</th><th scope="col">Status</th></tr></thead>
+            <tbody>
+              {rows.map((row) => <tr><th scope="row">{row.title}</th><td class="num">{row.points}</td><td>{row.provisional ? 'Provisional split of the 30 presentation points' : 'Fixed'}</td></tr>)}
+            </tbody>
+            <tfoot><tr><th scope="row">Total</th><td class="num">{total}</td><td>The two presentations together carry {course.assessment.presentationsTotalPoints} points</td></tr></tfoot>
+          </table>
+        </div>
+        <div class="eligibility" data-eligibility>
+          <h3>Final-assessment eligibility</h3>
+          <div class="gates" aria-hidden="true">
+            <span class="gate">Midterm ≥ {minimum}/{course.assessment.midtermPoints}</span>
+            <span class="gate-op">AND</span>
+            <span class="gate">Both presentations completed</span>
+            <span class="gate-op">⟹</span>
+            <span class="gate gate--result">Final paper assessed</span>
+          </div>
+          <blockquote><p>“{eligibility}”</p><p>“{threshold}”</p></blockquote>
+        </div>
+        <div class="prose">
+          <p>{course.assessment.finalFormat} {course.assessment.practicePolicy}</p>
+        </div>
+        <h3 class="rubric-title">{course.planning.rubricsProvisional ? 'Proposed rubrics' : 'Rubrics'}</h3>
+        <div class="rubrics">
+          {course.planning.presentations.map((presentation) => (
+            <table class="data-table rubric">
+              <caption>{presentation.title} · {presentation.points} points{course.planning.presentationSplitProvisional && ' (provisional)'} · {presentation.window}</caption>
+              <thead><tr><th scope="col">Criterion</th><th scope="col" class="num">Points</th></tr></thead>
+              <tbody>{presentation.rubric.map((item) => <tr><th scope="row">{item.criterion}</th><td class="num">{item.points}</td></tr>)}</tbody>
+            </table>
+          ))}
+          <table class="data-table rubric">
+            <caption>Final project paper · {course.assessment.finalPaperPoints} points</caption>
+            <thead><tr><th scope="col">Criterion</th><th scope="col" class="num">Points</th></tr></thead>
+            <tbody>{course.planning.paperRubric.map((item) => <tr><th scope="row">{item.criterion}</th><td class="num">{item.points}</td></tr>)}</tbody>
+          </table>
+        </div>
+      </section>
 
-  <section id="assessment" class="course-section prose" aria-labelledby="assessment-heading" data-assessment>
-    <h2 id="assessment-heading">Assessment</h2>
-    <div class="table-wrap"><table class="assessment-table"><caption>Instructor-specified assessment weights.{course.planning.presentationSplitProvisional && ' Equal presentation split is provisional.'}</caption><thead><tr><th scope="col">Assessment</th><th scope="col">Points</th><th scope="col">Status</th></tr></thead><tbody>{rows.map((row) => <tr><th scope="row">{row.title}</th><td>{row.points}</td><td>{row.provisional ? 'Provisional split' : 'Instructor-specified'}</td></tr>)}</tbody><tfoot><tr><th scope="row">Total</th><td>{total}</td><td>Presentations together: {course.assessment.presentationsTotalPoints}</td></tr></tfoot></table></div>
-    <p>{course.assessment.finalFormat} {course.assessment.practicePolicy}</p>
-    <div class="callout eligibility-rule" data-eligibility-rule>
-      <h3>Final-assessment eligibility</h3>
-      <p>To be eligible for the final project-paper assessment, a student must achieve <strong>at least {course.assessment.minimumMidtermPercent}% on the midterm examination AND complete both project presentations</strong>.</p>
-      <p>For a midterm marked out of {course.assessment.midtermPoints}, the minimum qualifying score is <strong>{minimum}/{course.assessment.midtermPoints}</strong>. This threshold applies to the midterm itself, not to the overall course grade.</p>
+      <section id="resources" class="course-section" aria-labelledby="resources-title">
+        <h2 id="resources-title">Resources</h2>
+        <p class="muted">Instructor-provided weekly PDF notes are linked under Lecture notes as they are released. Suggested supplementary references — third-party resources are accessed on their original websites:</p>
+        <ul class="resources" role="list">
+          {course.resources.map((resource) => (
+            <li><a href={resource.url}><span class="resources__title">{resource.title}</span><span class="resources__desc">{resource.description}</span>{print && <span class="resources__url">{resource.url}</span>}</a></li>
+          ))}
+        </ul>
+        <p class="muted small">Additional readings will be announced.</p>
+      </section>
+
+      <section id="announcements" class="course-section" aria-labelledby="announcements-title">
+        <h2 id="announcements-title">Announcements</h2>
+        {course.announcements.length === 0 ? (
+          <p class="empty-note">No announcements yet. Course announcements will appear here.</p>
+        ) : (
+          <ul class="announcements" role="list">
+            {course.announcements.map((item) => <li>{item.date && <time datetime={item.date}>{longDate(item.date)}</time>}<h3>{item.title}</h3><p>{item.text}</p></li>)}
+          </ul>
+        )}
+      </section>
     </div>
-    <h3>{course.planning.rubricsProvisional ? 'Proposed rubrics' : 'Rubrics'}</h3>
-    <p>{course.planning.rubricsProvisional && 'Detailed criteria below are provisional teaching choices. '}The criteria do not change the fixed assessment categories or the final-assessment eligibility rule.</p>
-    {course.planning.presentations.map((presentation) => <div class="rubric"><h4>{presentation.title} · {presentation.points} points · {presentation.window} (provisional)</h4><dl>{presentation.rubric.map((item) => <div><dt>{item.criterion}</dt><dd>{item.points} points</dd></div>)}</dl></div>)}
-    <div class="rubric"><h4>Final paper · {course.assessment.finalPaperPoints} points</h4><dl>{course.planning.paperRubric.map((item) => <div><dt>{item.criterion}</dt><dd>{item.points} points</dd></div>)}</dl></div>
-  </section>
-
-  <section id="resources" class="course-section prose" aria-labelledby="resources-heading">
-    <h2 id="resources-heading">Resources</h2>
-    <p>Suggested supplementary references, available from their original sources. Additional readings will be announced.</p>
-    <ul class="resource-list">{course.resources.map((resource) => <li><a href={resource.url}>{resource.title}</a><p>{resource.description}</p>{print && <small class="print-url">{resource.url}</small>}</li>)}</ul>
-    <p>Instructor-provided notes are listed in Lecture Notes. Textbooks, other instructors’ lecture PDFs, and third-party course materials are not mirrored here.</p>
-  </section>
-
-  <section id="announcements" class="course-section prose" aria-labelledby="announcements-heading">
-    <h2 id="announcements-heading">Announcements</h2>
-    {course.announcements.length === 0 ? <p class="empty-state">No announcements yet. Timetable, examination dates and submission details will be announced.</p> : course.announcements.map((announcement) => <article class="announcement"><h3>{announcement.title}</h3>{announcement.date && <time datetime={announcement.date}>{announcement.date}</time>}<p>{announcement.text}</p></article>)}
-  </section>
+  </div>
 </article>

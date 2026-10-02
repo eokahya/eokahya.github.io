@@ -1,0 +1,115 @@
+---
+import '../styles/fonts.css';
+import '../styles/tokens.css';
+import '../styles/base.css';
+import '../styles/components.css';
+import displayFont from '../assets/fonts/fraunces-normal.woff2?url';
+import displayItalic from '../assets/fonts/fraunces-italic.woff2?url';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import { profile, allProfileLinks } from '../data/profile';
+import { site } from '../data/site';
+import { htmlLang, langOf, ogLocale, routes, type Lang, type RouteId } from '../i18n';
+import { ui } from '../i18n/ui';
+
+interface Props {
+  title?: string;
+  description?: string;
+  canonical?: string;
+  home?: boolean;
+  print?: boolean;
+  bodyClass?: string;
+  noindex?: boolean;
+  jsonLd?: Record<string, unknown>[];
+  lang?: Lang;
+}
+
+const pathname = Astro.url.pathname;
+const { title, description = site.description, canonical = pathname, home = false, print = false, bodyClass, noindex = false, jsonLd = [], lang = langOf(pathname) } = Astro.props;
+const fullTitle = title ? `${title} · ${site.title}` : `${site.title} — ${lang === 'tr' ? site.taglineTr : site.tagline}`;
+const canonicalUrl = new URL(canonical, Astro.site);
+const ogImage = new URL(site.ogImage, Astro.site);
+
+// hreflang alternates exist only for pages that have a counterpart in the other language.
+const normalised = pathname.endsWith('/') ? pathname : `${pathname}/`;
+const routeId = (Object.keys(routes) as RouteId[]).find((id) => routes[id].en === normalised || routes[id].tr === normalised);
+const alternates = routeId ? [
+  { hreflang: 'en', href: new URL(routes[routeId].en, Astro.site).href },
+  { hreflang: 'tr', href: new URL(routes[routeId].tr, Astro.site).href },
+  { hreflang: 'x-default', href: new URL(routes[routeId].en, Astro.site).href },
+] : [];
+
+const person = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: profile.name,
+  honorificPrefix: 'Prof. Dr.',
+  jobTitle: lang === 'tr' ? ui.tr.role : profile.displayRole,
+  email: `mailto:${profile.email}`,
+  telephone: profile.phone,
+  url: profile.site,
+  affiliation: { '@type': 'CollegeOrUniversity', name: profile.institution, department: profile.department },
+  alumniOf: [
+    { '@type': 'CollegeOrUniversity', name: 'Middle East Technical University' },
+    { '@type': 'CollegeOrUniversity', name: 'University of Florida' },
+    { '@type': 'CollegeOrUniversity', name: 'Université de Montréal' },
+  ],
+  award: profile.awards.map((award) => `${award.title} (${award.awardedBy}, ${award.year})`),
+  sameAs: allProfileLinks.filter((link) => link.label !== 'Teke Tek Bilim').map((link) => link.url),
+  knowsAbout: ['Quantum field theory in curved spacetime', 'Cosmology', 'Modified gravity', 'Machine learning', 'Mechanistic interpretability'],
+};
+---
+<!doctype html>
+<html lang={htmlLang[lang]} data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
+    {alternates.map((alt) => <link rel="alternate" hreflang={alt.hreflang} href={alt.href} />)}
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content={site.themeColor} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preload" href={displayFont} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={displayItalic} as="font" type="font/woff2" crossorigin />
+    <meta property="og:type" content={home ? 'profile' : 'website'} />
+    <meta property="og:site_name" content={site.title} />
+    <meta property="og:locale" content={ogLocale[lang]} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Emre Onur Kahya — a dotted spacetime grid curved by a binary source" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:creator" content="@EmreOnurKahya" />
+    <script is:inline>
+      (function () {
+        var d = document.documentElement;
+        d.classList.add('js');
+        try {
+          var t = localStorage.getItem('theme');
+          if (t === 'light' || t === 'dark') d.setAttribute('data-theme', t);
+          if (localStorage.getItem('motion') === 'paused') d.classList.add('motion-paused');
+        } catch (e) {}
+      })();
+    </script>
+    <script type="application/ld+json" set:html={JSON.stringify(person)} />
+    {jsonLd.map((item) => <script type="application/ld+json" set:html={JSON.stringify(item)} />)}
+  </head>
+  <body class:list={[bodyClass, { 'is-home': home, 'is-print': print }]}>
+    <a class="skip-link" href="#main">{ui[lang].skip}</a>
+    {!print && <SiteHeader home={home} lang={lang} />}
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    {!print && <SiteFooter lang={lang} />}
+    <script>
+      import '../scripts/site';
+    </script>
+  </body>
+</html>

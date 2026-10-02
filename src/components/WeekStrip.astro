@@ -1,0 +1,29 @@
+---
+/** Fourteen-week strip coloured by phase. Derived from course.weeks. */
+import { course as defaultCourse, type Course } from '../data/course';
+import type { Lang } from '../i18n';
+import { ui } from '../i18n/ui';
+interface Props { course?: Course; linked?: boolean; lang?: Lang }
+const { course = defaultCourse, linked = false, lang = 'en' } = Astro.props;
+const u = ui[lang];
+const phases = [...new Set(course.weeks.map((week) => week.phase))];
+const ranges = phases.map((phase) => {
+  const weeks = course.weeks.filter((week) => week.phase === phase).map((week) => week.week);
+  return `${u.phases[phase]}: ${u.weeksWord(weeks.length)} ${weeks.join(', ')}`;
+});
+---
+<figure class="weeks">
+  <ol class="weeks__strip" aria-hidden="true">
+    {course.weeks.map((week) => (
+      <li class:list={['weeks__cell', `weeks__cell--${week.phase}`]} title={`${u.weekWord(week.week)}: ${week.title}`}>
+        {linked ? <a href={`#week-${week.week}`} tabindex="-1">{week.week}</a> : <span>{week.week}</span>}
+      </li>
+    ))}
+  </ol>
+  <figcaption>
+    <ul class="weeks__legend">
+      {phases.map((phase) => <li class={`weeks__key weeks__key--${phase}`}>{u.phases[phase]}</li>)}
+    </ul>
+    <p class="visually-hidden">{u.scheduleSummary} — {ranges.join('; ')}.</p>
+  </figcaption>
+</figure>

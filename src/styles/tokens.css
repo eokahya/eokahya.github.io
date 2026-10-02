@@ -1,0 +1,93 @@
+/* Design tokens — "night plate" (dark, default) and "paper plate" (light). */
+:root {
+  color-scheme: dark;
+  --bg: #05060b;
+  --bg-2: #090b14;
+  --surface: #0d1019;
+  --surface-2: #131726;
+  --surface-3: #1a1f32;
+  --line: rgba(196, 204, 255, 0.11);
+  --line-2: rgba(196, 204, 255, 0.2);
+  --text: #f1ede4;
+  --text-2: #bfc2d0;
+  --text-3: #9196ab;
+  --accent: #f2c46d;
+  --accent-soft: rgba(242, 196, 109, 0.14);
+  --accent-ink: #1d1404;
+  --cyan: #7fe0d4;
+  --violet: #b0a2ff;
+  --coral: #ff9e80;
+  --blue: #8fb0ff;
+  --green: #9be38a;
+  --focus: #f2c46d;
+  --header-bg: rgba(6, 7, 13, 0.74);
+  --scrim: 5, 6, 11;
+  --shadow: 0 30px 80px -40px rgba(0, 0, 0, 0.8);
+
+  /* plate colours (inline SVG illustrations) */
+  --plate-ink: #8fb0ff;
+  --plate-dim: #4b5577;
+  --plate-gold: #f2c46d;
+  --plate-cold: #4a78ff;
+  --plate-neutral: #d6cdee;
+  --plate-hot: #ff8a4d;
+  --plate-c1: #66e5d6;
+  --plate-c2: #f7c466;
+  --plate-c3: #ff8075;
+  --plate-c4: #a894ff;
+  --plate-c5: #94e680;
+  --plate-coral: #ff9a75;
+
+  --font-display: 'Fraunces Variable', 'Fraunces Fallback S', 'Fraunces Fallback S Noto', Georgia, serif;
+  --font-display-m: 'Fraunces Variable', 'Fraunces Fallback M', 'Fraunces Fallback M Noto', Georgia, serif;
+  --font-display-l: 'Fraunces Variable', 'Fraunces Fallback L', 'Fraunces Fallback L Noto', Georgia, serif;
+  --font-body: 'IBM Plex Sans Variable', 'IBM Plex Sans Fallback', 'IBM Plex Sans Fallback Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --gutter: clamp(20px, 5vw, 64px);
+  --wrap: min(1240px, 100% - 2 * var(--gutter));
+  --wrap-narrow: min(760px, 100% - 2 * var(--gutter));
+  --header-h: 72px;
+  --radius: 18px;
+  --radius-sm: 10px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f4f0e7;
+  --bg-2: #eee8dc;
+  --surface: #fbf8f2;
+  --surface-2: #f2ece0;
+  --surface-3: #e8e0d1;
+  --line: rgba(31, 28, 52, 0.12);
+  --line-2: rgba(31, 28, 52, 0.22);
+  --text: #15161e;
+  --text-2: #3d3f4c;
+  --text-3: #5a5d6c;
+  --accent: #8a5700;
+  --accent-soft: rgba(138, 87, 0, 0.1);
+  --accent-ink: #fffaf0;
+  --cyan: #00695f;
+  --violet: #4b3ab8;
+  --coral: #a33f1f;
+  --blue: #22408a;
+  --green: #2f6a20;
+  --focus: #8a5700;
+  --header-bg: rgba(244, 240, 231, 0.82);
+  --scrim: 244, 240, 231;
+  --shadow: 0 30px 70px -45px rgba(40, 30, 10, 0.45);
+
+  --plate-ink: #22386f;
+  --plate-dim: #8a8fa6;
+  --plate-gold: #9a6100;
+  --plate-cold: #1b4fc4;
+  --plate-neutral: #6b6680;
+  --plate-hot: #c4501a;
+  --plate-c1: #00796f;
+  --plate-c2: #9a6a00;
+  --plate-c3: #c13b30;
+  --plate-c4: #5a45cc;
+  --plate-c5: #3a7f2a;
+  --plate-coral: #b24a26;
+}

@@ -1,7 +1,4 @@
 ---
-import Layout from '../../layouts/Layout.astro';
-import PublicationList from '../../components/PublicationList.astro';
-import {publications} from '../../data/publications';
-import {profile} from '../../data/profile';
+import PublicationsView from '../../views/PublicationsView.astro';
 ---
-<Layout title="Publications" description="Verified publication records of Emre Onur Kahya, with original DOI and arXiv sources."><div class="wrap page-shell"><header class="page-heading"><p class="eyebrow">Publications</p><h1>A record of<br/><em>inquiry.</em></h1><p>Verified records, with links to the original papers.</p></header><div class="publication-context"><p>{publications.length} records in this local snapshot · checked 2 October 2026.<br/>Journal articles, preprints, conference papers and theses are labelled separately. This snapshot may not include every publication.</p><div class="inline-links">{profile.links.filter(p=>['INSPIRE','ORCID','İTÜ research profile'].includes(p.label)).map(p=><a href={p.url}>{p.label}</a>)}</div></div><PublicationList items={publications} /></div></Layout>
+<PublicationsView lang="en" />

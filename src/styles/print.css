@@ -1,0 +1,71 @@
+/* ================= Print syllabus (also the source of the PDF) ================= */
+@page { size: A4; margin: 15mm 15mm 17mm; }
+
+/* The print route always renders as a light "paper" page, whatever the site theme. */
+html:has(body.print-syllabus) { background: #fff; color-scheme: light; }
+body.print-syllabus {
+  color-scheme: light;
+  --bg: #ffffff; --bg-2: #ffffff; --surface: #ffffff; --surface-2: #f4f1ea; --surface-3: #e9e4d8;
+  --line: #d9d4c8; --line-2: #bfb8a8;
+  --text: #15161d; --text-2: #34363f; --text-3: #5b5e69;
+  --accent: #7a4c00; --accent-soft: #f6efe2; --accent-ink: #ffffff;
+  --cyan: #0a6158; --violet: #4b3ab8; --coral: #9e3a1c; --focus: #7a4c00;
+  background: #fff; color: var(--text); font-size: 10pt; line-height: 1.45;
+}
+body.print-syllabus::after { display: none; }
+.print-syllabus main { width: min(186mm, 100% - 32px); margin: 0 auto; padding: 0; }
+.course--print .course-hero { padding: 0 0 7mm; border-bottom: 1.5px solid var(--text); }
+.course--print .course-hero::before { display: none; }
+.course--print .course-hero__inner { width: auto; }
+.course--print .course-hero h1 { font-size: 30pt; margin-top: 3mm; max-width: none; }
+.course--print .lead { font-size: 12pt; max-width: none; color: var(--text-2); margin-top: 3mm; }
+.course--print .course-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2mm 8mm; margin-top: 5mm; }
+.course--print .course-facts dd { font-size: 10pt; }
+.course--print .course-version { margin-top: 4mm; font-size: 8.5pt; }
+.course--print .course-layout { width: auto; display: block; padding: 0; }
+.course--print .course-section { padding: 5mm 0 1.5mm; margin: 0; border-top: 0; }
+.course--print .course-section + .course-section { border-top: 1px solid var(--line); margin-top: 2mm; }
+.course--print .course-section > h2 { font-size: 17pt; margin-bottom: 3mm; }
+.course--print .course-section h3 { font-size: 12pt; margin-top: 4mm; margin-bottom: 1.5mm; }
+.course--print .prose { max-width: none; }
+.course--print .prose > * + * { margin-top: 2mm; }
+.course--print .course-panel { margin-top: 4mm; padding: 4mm; border-radius: 3mm; background: #fff; }
+.course--print .assess__bar { height: 11mm; }
+.course--print .assess__seg { font-size: 13pt; color: #fff; }
+.course--print .assess__legend { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5mm 6mm; }
+.course--print .assess__item { font-size: 9pt; border-bottom: 0; padding: 0; }
+.course--print .note { font-size: 9.5pt; padding: 3mm 4mm; break-inside: avoid; }
+.course--print .schedule { margin-top: 3mm; }
+.course--print .schedule__week { grid-template-columns: 17mm 1fr; gap: 0 4mm; padding: 1.8mm 0; break-inside: avoid; }
+.course--print .schedule__week::before { left: -3mm; top: 3mm; bottom: 3mm; width: 1.2mm; }
+.course--print .schedule__num { font-size: 15pt; }
+.course--print .schedule h3 { font-size: 11pt; margin: 0.6mm 0 0.8mm; }
+.course--print .schedule__week p:last-child { font-size: 9pt; line-height: 1.4; }
+.course--print .scope-note { font-size: 9pt; }
+.course--print .eligibility { padding: 4mm 5mm; border-radius: 3mm; break-inside: avoid; }
+.course--print .gate { font-size: 9pt; padding: 1mm 3mm; }
+.course--print .eligibility blockquote p { font-size: 10pt; }
+.course--print .data-table { font-size: 9.5pt; }
+.course--print .data-table th, .course--print .data-table td { padding: 1.6mm 2mm; }
+.course--print .rubrics { grid-template-columns: 1fr 1fr; gap: 4mm 6mm; }
+.course--print .rubric { break-inside: avoid; }
+.course--print .resources { grid-template-columns: 1fr 1fr; gap: 2.5mm; }
+.course--print .resources a { padding: 2.5mm 3mm; break-inside: avoid; }
+.course--print .resources__title { font-size: 10.5pt; }
+.course--print .resources__desc { font-size: 8.5pt; }
+.course--print .empty-note { padding: 2mm 3mm; font-size: 9pt; }
+.course--print .course-panel { break-inside: avoid; }
+.course--print .resources a { padding: 2mm 3mm; }
+.course--print h2, .course--print h3 { break-after: avoid; }
+.course--print table, .course--print .gates, .course--print figure { break-inside: avoid; }
+.course--print a { color: inherit; text-decoration: none; }
+
+@media print {
+  body.print-syllabus { font-size: 10pt; }
+  .print-syllabus main { width: auto; }
+}
+
+/* Letter-spaced capitals extract as "S P A C E D" text from a PDF; keep print labels unspaced. */
+body.print-syllabus .kicker, body.print-syllabus .course-facts dt, body.print-syllabus .course-panel > h3,
+body.print-syllabus .schedule__label, body.print-syllabus .schedule__phase, body.print-syllabus .data-table thead th,
+body.print-syllabus .data-table caption, body.print-syllabus .assess__brace span, body.print-syllabus .badge { letter-spacing: 0.01em; }

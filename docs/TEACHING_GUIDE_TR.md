@@ -1,49 +1,61 @@
-# Ders ve içerik bakım kılavuzu
+# Ders sayfası bakım kılavuzu (MYZ 310E)
 
-Site İngilizcedir. Düzenlemeler, `eokahya/eokahya.github.io` repository'sine yapılan commit sonrasında GitHub Actions ile yeniden hazırlanır. Okuma herkese açıktır; dosya yükleme veya değiştirme için bu repository üzerinde GitHub yazma yetkisi gerekir. Site içinde bir yönetici yükleme formu yoktur.
+Bu kılavuz terminal gerektirmez; her şey GitHub web arayüzünden yapılabilir. Siteyi herkes okuyabilir, ama dosya ekleme/değiştirme yalnızca `eokahya/eokahya.github.io` deposuna yazma yetkisi olan GitHub hesabıyla mümkündür.
 
-## Haftalık PDF notu yükleme
+## 1. Haftalık ders notu PDF'i yüklemek (ör. `week-03.pdf`)
 
-1. GitHub'da `https://github.com/eokahya/eokahya.github.io` adresini açın. Repository'nin yayım workflow'unda belirtilen dalını seçin.
-2. Şu klasöre gidin: **public → teaching → myz-310e → 2026-fall → notes**.
-3. **Add file → Upload files** seçin. Örneğin `week-03.pdf` dosyasını sürükleyip bırakın. Standart dosya adları `week-01.pdf`, `week-02.pdf`, …, `week-14.pdf` biçimindedir.
-4. Ek dosya gerekiyorsa farklı bir ad kullanın: `week-03--worked-examples.pdf`. Böylece ana PDF silinmez. Ek dosya adında küçük İngilizce harfler, rakamlar ve tire kullanın.
-5. Commit mesajını yazın; örneğin “Add week 3 lecture notes”. Yetkili yayım dalına commit yapın. Dal koruması doğrudan commit'e izin vermiyorsa GitHub'ın önerdiği pull request'i açıp repository kurallarına göre birleştirin.
-6. **Actions** sekmesinde bu commit için yayım çalışmasını açın. Test, build ve syllabus PDF üretimi bittikten sonra başarılı deployment'ı kontrol edin. Yeşil çalışma sonucu oluşmadan dosyanın yayımlandığını varsaymayın.
-7. Canlı dönem sayfasını açın: `https://eokahya.github.io/teaching/myz-310e/2026-fall/`. **Lecture Notes → Week 3 → Open PDF** ve **Download** bağlantılarını deneyin. Eski görünüm kalırsa sayfayı yenileyin.
+1. https://github.com/eokahya/eokahya.github.io adresine gidin ve giriş yapın.
+2. Şu klasörü açın: `public/teaching/myz-310e/2026-fall/notes/`
+3. Sağ üstte **Add file → Upload files**'a tıklayın.
+4. PDF'i sürükleyin. Dosya adı tam olarak şu biçimde olmalı:
+   - Ana not: `week-01.pdf`, `week-02.pdf`, … `week-14.pdf` (hafta numarası **iki haneli**)
+   - Ek not: `week-03--worked-examples.pdf` (iki tire, sonra küçük harf ve tirelerle bir açıklama)
+5. Alttaki **Commit changes** kutusuna kısa bir not yazın (ör. "Week 3 notes") ve **Commit changes**'e basın.
+6. **Actions** sekmesinde "Verify and deploy GitHub Pages" iş akışının yeşil tikle bitmesini bekleyin (genellikle birkaç dakika).
+7. Ders sayfasını açın: https://eokahya.github.io/teaching/myz-310e/2026-fall/#lecture-notes — ilgili haftada **Open PDF** ve **Download** bağlantıları görünür. Sayfa eski görünüyorsa tarayıcıyı yenileyin.
 
-HTML veya JSON not listesi düzenlemeniz gerekmez. Build klasörü tarar; yalnızca gerçek PDF'leri listeler. PDF metadata'sında başlık varsa kullanır, yoksa ana dosyanın başlığını haftalık plandan ve ek dosyanın başlığını dosya adından türetir. Dosya boyutu gerçek dosyadan okunur. Yükleme tarihi uydurulmaz.
+Notlar:
+- HTML veya JSON düzenlemeniz gerekmez; liste derleme sırasında klasördeki gerçek dosyalardan otomatik üretilir.
+- Başlık: PDF'in kendi "Title" metadata'sı varsa o kullanılır; yoksa ek notlarda dosya adındaki açıklama ("Worked Examples"), ana notlarda haftalık plandaki başlık gösterilir.
+- PDF olmayan, boş, bozuk veya şifreli bir dosya ya da hatalı bir ad (ör. `week-3.pdf`, `Week03.pdf`) derlemeyi **durdurur** ve yayın yapılmaz; Actions günlüğünde hangi dosyanın sorunlu olduğu yazar. Dosyayı silin veya adını düzeltin.
+- Bir notu kaldırmak için dosyayı açıp çöp kutusu simgesiyle silin ve commit edin; bağlantı listeden kalkar.
+- Sunum ve klinik haftalarına (7–14) da not eklenebilir.
 
-PDF olmayan, boş, bozuk, şifreli veya yanlış adlandırılmış dosya build'i durdurur; Actions hata mesajında dosya adı görünür. Bu dosyayı düzeltip yeniden commit yapın. `.gitkeep` klasörü boşken korur ve taramaya katılmaz. Klasöre test PDF'si, öğrenci çalışması, not listesi veya özel belge koymayın.
+## 2. Syllabus, değerlendirme ve takvim
 
-Bir notu kaldırmak için GitHub'da ilgili PDF'yi açıp **Delete file** ile silin ve commit yapın. Sonraki başarılı build'de bağlantısı da kalkar. Dosyayı değiştirmek için aynı ada yeni PDF yükleyin. Sunum ve proje kliniği haftalarında da not eklenebilir.
+Tek kaynak `src/data/course.ts` dosyasıdır. Ders sayfası, "Assessment at a glance" kutusu, değerlendirme tablosu, 14 haftalık şerit ve PDF syllabus **aynı veriden** üretilir; elle tutulan ikinci bir kopya yoktur.
 
-## Ders içeriği ve syllabus
+- Dosyayı GitHub'da açıp kalem (Edit) simgesine basın, değişikliği yapın, commit edin.
+- `sourceVersion` (ör. `2026-fall-v2`) ve `updatedOn` (ör. `2026-10-15`) alanlarını her anlamlı değişiklikte güncelleyin; PDF'in altbilgisinde ve sayfada görünür.
+- Değişmez kurallar `assessment` altında: arasınav 30, iki sunum toplam 30, final makalesi 40; finale giriş şartı arasınavda en az %40 (30 üzerinden 12) **ve** iki sunumun tamamlanması. Testler bu kuralları denetler; yanlışlıkla değişirse derleme durur.
+- Provizyonel tercihler `planning` altında: 15+15 bölünmesi, hafta pencereleri, rubrikler, 4–6 sayfa makale biçimi. `...Provisional: true` bayrakları sayfada "provisional" ibaresini gösterir.
+- Saat, derslik ve ofis saatleri belli olduğunda `timetable` metnini güncelleyin. Takvim tarihleri hiçbir yerde uydurulmamıştır.
 
-`src/data/course.ts`, MYZ 310E'nin tek içerik kaynağıdır. GitHub'da dosyayı açıp kalem simgesiyle düzenleyebilirsiniz. Ders HTML'i, özet kutusu, değerlendirme tablosu, yazdırılabilir syllabus ve PDF aynı kaynaktan üretilir. PDF'yi ayrıca elle düzenlemeyin.
+## 3. Duyuru eklemek
 
-- `overview`, `recommendedBackground`, `learningOutcomes`: açıklama ve öğrenme çıktıları.
-- `weeks`: haftalık başlıklar ve açıklamalar; not dosyalarının varsayılan başlıkları buradan gelir.
-- `project`, `integrity`, `resources`: proje rehberi, araştırma dürüstlüğü ve kaynaklar.
-- `announcements`: gerçek duyurular. Liste boşsa sayfa “No announcements yet” gösterir. Duyuru nesnesinde `title` ve `text` yazın; `date` yalnızca gerçek tarih biliniyorsa `YYYY-MM-DD` biçiminde eklenebilir.
-- `assessment`: kesin ağırlıklar ve finale giriş kuralı. **Arasınav 30, iki sunum toplamı 30, final makalesi 40; toplam 100. Final makalesine giriş için arasınav en az 12/30 VE iki sunum tamamlanmış olmalıdır.** Bu kararlar ancak öğretim üyesinin açık değişikliğiyle değiştirilmelidir.
-- `planning`: düzenlenebilir öneriler. Eşit 15+15 sunum dağılımı, aynı proje üzerindeki iki sunum, 14 haftalık plan, 7. haftada arasınav, 8–9 ve 12–13 sunum pencereleri, ayrıntılı rubrikler ve 4–6 sayfa ana metin biçimi **provisional** olarak gösterilir. Tarih, sınıf, teslim kanalı ve ekip düzeni henüz açıklanmamıştır.
-- `sourceVersion` ve `updatedOn`: gerçek içerik güncellemesinden sonra sürümü ve gerçek güncelleme tarihini değiştirin. Dosya timestamp'ini ders veya yayın tarihi gibi kullanmayın.
+`src/data/course.ts` içindeki `announcements: []` dizisine bir kayıt ekleyin:
 
-Sunum puanları veya rubriklerini değiştirirken iki sunumun toplamını 30 ve her rubriğin toplamını ilgili değerlendirme puanıyla aynı tutun. Kesin kural ile öneriyi karıştırmayın. Devam oranı, geç teslim cezası, geçme notu veya ek final sınavı bu plana kendiliğinden eklenmemiştir.
+```ts
+announcements: [
+  { title: 'Midterm date', text: 'The midterm will be held on … in room …', date: '2026-11-05' },
+],
+```
 
-Commit sonrası Actions sonucu ve canlı syllabus PDF'sini birlikte kontrol edin: `https://eokahya.github.io/teaching/myz-310e/2026-fall/myz-310e-syllabus.pdf`.
+Liste boşken sayfada "No announcements yet" yazar.
 
-## Akademik kimlik ve yayınlar
+## 4. Yayın eklemek
 
-Akademik profil `src/data/profile.ts`, araştırma başlıkları ve açıklamaları `src/data/research.ts`, yayın kayıtları `src/data/publications.ts`, ders içeriği ise `src/data/course.ts` dosyasındadır. Yeni yayın eklerken başlık, yazarlar, yıl ve gerçek DOI/arXiv/yayınevi bağlantısını doğrulayın; kontrol edilen kamuya açık kaynağı ve tarihi `docs/SOURCES.md` içine kaydedin. Benzer isimli yazarları ayırın; DOI/arXiv tekrarlarını tek kayıtta birleştirin. Doğrulanamayan yayını siteye eklemeyin.
+`src/data/publications.ts` içindeki diziye mevcut kayıtlara benzer bir nesne ekleyin (başlık, yazarlar, yıl, `link`, `type`, varsa `journal`/`volume`/`articleNumber` veya `pages`, `doi`, `arxiv`, `topics`, `sourceUrls`, `verifiedOn`). `selected: true` olan kayıtlar ana sayfadaki "Selected work" bölümünde gösterilir. Testler tekrar eden DOI/arXiv kimliklerini ve eksik alanları yakalar.
 
-Kişisel e-posta yerine öğrenci bilgisi, not, özel repository bağlantısı, token veya `.env` dosyası eklemeyin. Site içeriği ve tüm PDF notları kamuya açık olacaktır.
+## 5. Bilim iletişimi listesi
 
-## Yeni dönem açma ve arşivi koruma
+`src/data/outreach.ts` dosyası Teke Tek Bilim programlarının ve kendi kanalınızdaki videoların tarihli bir snapshot'ıdır (izlenme sayıları 2 Ekim 2026 tarihlidir). Yeni bir Bilim Ekstra bölümü için `bilimEkstra` dizisine aynı biçimde bir satır ekleyin (`id` = YouTube video kimliği). İzlenme sayılarını güncellerseniz `outreachSnapshot.checkedOn` tarihini de değiştirin.
 
-2026 güz dönemi bağlantısı kalıcıdır. Yeni dönemde mevcut `2026-fall` yolunu yeniden adlandırmayın ve bu klasördeki notları yeni dönem notlarıyla değiştirmeyin.
+## 6. Yeni dönem (ör. Spring 2027) ve arşivleme
 
-Yeni dönem oluşturulurken ders verisinin bir dönem snapshot'ı ayrı kaydedilir; yeni dönem için ayrı veri, route ve `public/teaching/myz-310e/<yeni-dönem>/notes/` klasörü hazırlanır. Güncel `/teaching/myz-310e/` adresi yeni döneme yönlendirilir. Aynı dönemin güncel sayfası ile kalıcı sayfasının içeriği ayrı kopyalar olarak düzenlenmez. Yeni dönemin PDF yolu ve workflow taraması da kontrol edilir. Bu ilk sürümde dönem ekleme kod değişikliği gerektirir; haftalık PDF yükleme için terminal veya kod değişikliği gerekmez.
+1. `src/pages/teaching/myz-310e/2026-fall/` klasörünü yeni dönem adıyla (ör. `2027-spring/`) kopyalayın.
+2. `public/teaching/myz-310e/2026-fall/notes/` yerine yeni dönem için `public/teaching/myz-310e/2027-spring/notes/` klasörünü oluşturun (içine boş bir `.gitkeep`).
+3. `src/data/course.ts`'de yeni dönemin `term`, `termPath`, `notesPath`, `syllabusPath`, `printPath`, `sourceVersion` değerlerini güncelleyin; eski dönemin kalıcı sayfası ve PDF notları yerinde kalır, bağlantıları bozulmaz.
+4. Eski dönem sayfasının kendi veri kopyasıyla dondurulması isteniyorsa `course.ts`'nin o dönemki halini ayrı bir dosyaya (ör. `course-2026-fall.ts`) kaydedip eski sayfanın onu kullanmasını sağlayın.
 
-Kurulum, yerel build ve test komutları için `README.md` dosyasına bakın.
+Bu adım bir kez yapılır; isterseniz Claude/Codex'ten "yeni dönemi aç" diye isteyebilirsiniz.

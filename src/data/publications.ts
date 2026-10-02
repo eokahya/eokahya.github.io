@@ -1,5 +1,6 @@
 /** Verified, editable bibliography snapshot. No build-time network requests. */
 export type PublicationType = 'journal' | 'preprint' | 'conference' | 'thesis';
+export type PublicationTopic = 'quantum-fields' | 'cosmology' | 'machine-learning';
 export interface Publication {
   id: string;
   title: string;
@@ -14,7 +15,11 @@ export interface Publication {
   pages?: string;
   doi?: string;
   arxiv?: string;
+  /** Free-text venue for theses and other non-journal records. */
+  venue?: string;
   notes?: string;
+  /** Editorial grouping for browsing; matches research area ids in research.ts. */
+  topics: PublicationTopic[];
   sourceUrls: string[];
   verifiedOn: string;
 }
@@ -51,7 +56,10 @@ export const publications: Publication[] = [
       "https://arxiv.org/abs/2604.12987"
     ],
     "verifiedOn": "2026-10-02",
-    "arxiv": "2604.12987"
+    "arxiv": "2604.12987",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "satellite-collision-2026",
@@ -72,7 +80,10 @@ export const publications: Publication[] = [
       "https://arxiv.org/html/2609.13191v1"
     ],
     "verifiedOn": "2026-10-02",
-    "notes": "Public arXiv manuscript. The arXiv comments report acceptance at the 2026 AAS/AIAA Astrodynamics Specialist Conference; no journal publication is inferred."
+    "notes": "Public arXiv manuscript. The arXiv comments report acceptance at the 2026 AAS/AIAA Astrodynamics Specialist Conference; no journal publication is inferred.",
+    "topics": [
+      "machine-learning"
+    ]
   },
   {
     "id": "inspire-3117757",
@@ -94,7 +105,10 @@ export const publications: Publication[] = [
       "https://arxiv.org/abs/2602.08928"
     ],
     "verifiedOn": "2026-10-02",
-    "arxiv": "2602.08928"
+    "arxiv": "2602.08928",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-3149343",
@@ -114,7 +128,10 @@ export const publications: Publication[] = [
       "https://arxiv.org/abs/2604.23677"
     ],
     "verifiedOn": "2026-10-02",
-    "arxiv": "2604.23677"
+    "arxiv": "2604.23677",
+    "topics": [
+      "quantum-fields"
+    ]
   },
   {
     "id": "inspire-2878317",
@@ -138,7 +155,10 @@ export const publications: Publication[] = [
     "volume": "111",
     "articleNumber": "105019",
     "doi": "10.1103/PhysRevD.111.105019",
-    "arxiv": "2502.05645"
+    "arxiv": "2502.05645",
+    "topics": [
+      "quantum-fields"
+    ]
   },
   {
     "id": "inspire-2907383",
@@ -161,7 +181,10 @@ export const publications: Publication[] = [
     "articleNumber": "101965",
     "doi": "10.1016/j.dark.2025.101965",
     "arxiv": "2504.01669",
-    "notes": "Collective author credit; the linked record lists the individual authors."
+    "notes": "Collective author credit; the linked record lists the individual authors.",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-2842587",
@@ -188,7 +211,11 @@ export const publications: Publication[] = [
     "volume": "2024",
     "articleNumber": "217",
     "doi": "10.1007/JHEP12(2024)217",
-    "arxiv": "2410.18781"
+    "arxiv": "2410.18781",
+    "topics": [
+      "cosmology",
+      "quantum-fields"
+    ]
   },
   {
     "id": "light-curves-2021",
@@ -210,7 +237,10 @@ export const publications: Publication[] = [
       "https://research.itu.edu.tr/en/publications/on-the-classification-and-feature-relevance-of-multiband-light-cu/",
       "https://doi.org/10.3847/1538-3881/abdecf"
     ],
-    "verifiedOn": "2026-10-02"
+    "verifiedOn": "2026-10-02",
+    "topics": [
+      "machine-learning"
+    ]
   },
   {
     "id": "electron-identification-2020",
@@ -229,7 +259,11 @@ export const publications: Publication[] = [
       "https://orcid.org/0000-0003-2760-7091"
     ],
     "verifiedOn": "2026-10-02",
-    "notes": "M.Sc. thesis, Université de Montréal; thesis year 2020 in DataCite and the institutional repository."
+    "notes": "M.Sc. thesis, Université de Montréal; thesis year 2020 in DataCite and the institutional repository.",
+    "topics": [
+      "machine-learning"
+    ],
+    "venue": "M.Sc. thesis, Université de Montréal"
   },
   {
     "id": "inspire-1768430",
@@ -255,7 +289,10 @@ export const publications: Publication[] = [
     "volume": "04",
     "articleNumber": "005",
     "doi": "10.1088/1475-7516/2020/04/005",
-    "arxiv": "1912.01919"
+    "arxiv": "1912.01919",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-1682331",
@@ -279,7 +316,10 @@ export const publications: Publication[] = [
     "volume": "79",
     "articleNumber": "185",
     "doi": "10.1140/epjc/s10052-019-6695-6",
-    "arxiv": "1807.05201"
+    "arxiv": "1807.05201",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-1502315",
@@ -302,7 +342,10 @@ export const publications: Publication[] = [
     "volume": "78",
     "articleNumber": "86",
     "doi": "10.1140/epjc/s10052-018-5571-0",
-    "arxiv": "1612.02532"
+    "arxiv": "1612.02532",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-1631136",
@@ -315,7 +358,7 @@ export const publications: Publication[] = [
     ],
     "year": 2018,
     "link": "https://doi.org/10.1103/PhysRevD.97.041501",
-    "selected": false,
+    "selected": true,
     "type": "journal",
     "sourceUrls": [
       "https://inspirehep.net/literature/1631136",
@@ -327,7 +370,10 @@ export const publications: Publication[] = [
     "volume": "97",
     "articleNumber": "041501",
     "doi": "10.1103/PhysRevD.97.041501",
-    "arxiv": "1710.06168"
+    "arxiv": "1710.06168",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-1413719",
@@ -350,7 +396,11 @@ export const publications: Publication[] = [
     "volume": "97",
     "articleNumber": "043507",
     "doi": "10.1103/PhysRevD.97.043507",
-    "arxiv": "1601.01106"
+    "arxiv": "1601.01106",
+    "topics": [
+      "quantum-fields",
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-1470921",
@@ -376,7 +426,10 @@ export const publications: Publication[] = [
     "volume": "77",
     "articleNumber": "306",
     "doi": "10.1140/epjc/s10052-017-4874-x",
-    "arxiv": "1606.05308"
+    "arxiv": "1606.05308",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-1614630",
@@ -401,7 +454,10 @@ export const publications: Publication[] = [
     "articleNumber": "105003",
     "doi": "10.1103/PhysRevD.96.105003",
     "arxiv": "1708.01831",
-    "notes": "Includes the 2018 erratum: https://doi.org/10.1103/PhysRevD.98.029903."
+    "notes": "Includes the 2018 erratum: https://doi.org/10.1103/PhysRevD.98.029903.",
+    "topics": [
+      "quantum-fields"
+    ]
   },
   {
     "id": "inspire-1593746",
@@ -425,7 +481,10 @@ export const publications: Publication[] = [
     "volume": "96",
     "articleNumber": "025001",
     "doi": "10.1103/PhysRevD.96.025001",
-    "arxiv": "1704.05880"
+    "arxiv": "1704.05880",
+    "topics": [
+      "quantum-fields"
+    ]
   },
   {
     "id": "inspire-1421643",
@@ -448,7 +507,10 @@ export const publications: Publication[] = [
     "volume": "756",
     "pages": "265–267",
     "doi": "10.1016/j.physletb.2016.03.033",
-    "arxiv": "1602.04779"
+    "arxiv": "1602.04779",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-1401199",
@@ -471,7 +533,10 @@ export const publications: Publication[] = [
     "volume": "31",
     "articleNumber": "1650083",
     "doi": "10.1142/S0217732316500838",
-    "arxiv": "1510.08228"
+    "arxiv": "1510.08228",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-1359425",
@@ -495,7 +560,10 @@ export const publications: Publication[] = [
     "volume": "92",
     "articleNumber": "103511",
     "doi": "10.1103/PhysRevD.92.103511",
-    "arxiv": "1504.03412"
+    "arxiv": "1504.03412",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-1280920",
@@ -521,7 +589,10 @@ export const publications: Publication[] = [
     "volume": "75",
     "articleNumber": "43",
     "doi": "10.1140/epjc/s10052-015-3263-6",
-    "arxiv": "1402.2592"
+    "arxiv": "1402.2592",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-1342929",
@@ -544,7 +615,10 @@ export const publications: Publication[] = [
     "volume": "30",
     "articleNumber": "1550070",
     "doi": "10.1142/S0217732315500704",
-    "arxiv": "1502.01189"
+    "arxiv": "1502.01189",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-1309518",
@@ -565,7 +639,10 @@ export const publications: Publication[] = [
     "journal": "Results in Physics",
     "volume": "4",
     "pages": "101–102",
-    "doi": "10.1016/j.rinp.2014.05.007"
+    "doi": "10.1016/j.rinp.2014.05.007",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-1294132",
@@ -588,7 +665,10 @@ export const publications: Publication[] = [
     "volume": "2014",
     "articleNumber": "231452",
     "doi": "10.1155/2014/231452",
-    "arxiv": "1405.0667"
+    "arxiv": "1405.0667",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-1267496",
@@ -612,7 +692,10 @@ export const publications: Publication[] = [
     "volume": "11",
     "articleNumber": "1450061",
     "doi": "10.1142/S0219887814500613",
-    "arxiv": "1312.1162"
+    "arxiv": "1312.1162",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-1316411",
@@ -633,7 +716,10 @@ export const publications: Publication[] = [
     "journal": "Astrophysics and Space Science",
     "volume": "353",
     "pages": "677–682",
-    "doi": "10.1007/s10509-014-2069-6"
+    "doi": "10.1007/s10509-014-2069-6",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-1319289",
@@ -657,7 +743,10 @@ export const publications: Publication[] = [
     "volume": "90",
     "articleNumber": "124054",
     "doi": "10.1103/PhysRevD.90.124054",
-    "arxiv": "1409.7753"
+    "arxiv": "1409.7753",
+    "topics": [
+      "quantum-fields"
+    ]
   },
   {
     "id": "inspire-1261851",
@@ -680,7 +769,10 @@ export const publications: Publication[] = [
     "volume": "2014",
     "articleNumber": "282675",
     "doi": "10.1155/2014/282675",
-    "arxiv": "1310.6145"
+    "arxiv": "1310.6145",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-1082014",
@@ -704,7 +796,10 @@ export const publications: Publication[] = [
     "volume": "53",
     "articleNumber": "022304",
     "doi": "10.1063/1.3681886",
-    "arxiv": "1112.4420"
+    "arxiv": "1112.4420",
+    "topics": [
+      "quantum-fields"
+    ]
   },
   {
     "id": "inspire-841841",
@@ -726,7 +821,10 @@ export const publications: Publication[] = [
     "volume": "701",
     "pages": "291–295",
     "doi": "10.1016/j.physletb.2011.05.073",
-    "arxiv": "1001.0725"
+    "arxiv": "1001.0725",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-819121",
@@ -750,7 +848,11 @@ export const publications: Publication[] = [
     "volume": "81",
     "articleNumber": "023508",
     "doi": "10.1103/PhysRevD.81.023508",
-    "arxiv": "0904.4811"
+    "arxiv": "0904.4811",
+    "topics": [
+      "quantum-fields",
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-858985",
@@ -774,7 +876,11 @@ export const publications: Publication[] = [
     "volume": "694",
     "pages": "101–107",
     "doi": "10.1016/j.physletb.2010.09.050",
-    "arxiv": "1006.3999"
+    "arxiv": "1006.3999",
+    "topics": [
+      "quantum-fields",
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-777331",
@@ -796,7 +902,10 @@ export const publications: Publication[] = [
     "volume": "25",
     "articleNumber": "184008",
     "doi": "10.1088/0264-9381/25/18/184008",
-    "arxiv": "0801.1984"
+    "arxiv": "0801.1984",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-1263713",
@@ -811,7 +920,11 @@ export const publications: Publication[] = [
     "sourceUrls": [
       "https://inspirehep.net/literature/1263713"
     ],
-    "verifiedOn": "2026-10-02"
+    "verifiedOn": "2026-10-02",
+    "topics": [
+      "quantum-fields"
+    ],
+    "venue": "Ph.D. thesis, University of Florida"
   },
   {
     "id": "inspire-784182",
@@ -835,7 +948,10 @@ export const publications: Publication[] = [
     "volume": "77",
     "articleNumber": "124041",
     "doi": "10.1103/PhysRevD.77.124041",
-    "arxiv": "0804.3804"
+    "arxiv": "0804.3804",
+    "topics": [
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-765838",
@@ -846,7 +962,7 @@ export const publications: Publication[] = [
     ],
     "year": 2008,
     "link": "https://doi.org/10.1103/PhysRevD.77.084012",
-    "selected": false,
+    "selected": true,
     "type": "journal",
     "sourceUrls": [
       "https://inspirehep.net/literature/765838",
@@ -858,7 +974,10 @@ export const publications: Publication[] = [
     "volume": "77",
     "articleNumber": "084012",
     "doi": "10.1103/PhysRevD.77.084012",
-    "arxiv": "0710.5282"
+    "arxiv": "0710.5282",
+    "topics": [
+      "quantum-fields"
+    ]
   },
   {
     "id": "inspire-749690",
@@ -879,9 +998,13 @@ export const publications: Publication[] = [
     "verifiedOn": "2026-10-02",
     "journal": "Physics Letters B",
     "volume": "652",
-    "articleNumber": "24157",
     "doi": "10.1016/j.physletb.2007.07.029",
-    "arxiv": "0705.0153"
+    "arxiv": "0705.0153",
+    "topics": [
+      "cosmology"
+    ],
+    "pages": "213–216",
+    "notes": "Page range corrected from the publisher (Crossref) record on 2026-10-02."
   },
   {
     "id": "inspire-759916",
@@ -904,7 +1027,10 @@ export const publications: Publication[] = [
     "volume": "76",
     "articleNumber": "124005",
     "doi": "10.1103/PhysRevD.76.124005",
-    "arxiv": "0709.0536"
+    "arxiv": "0709.0536",
+    "topics": [
+      "quantum-fields"
+    ]
   },
   {
     "id": "inspire-733341",
@@ -927,7 +1053,11 @@ export const publications: Publication[] = [
     "volume": "76",
     "articleNumber": "043512",
     "doi": "10.1103/PhysRevD.76.043512",
-    "arxiv": "gr-qc/0612026"
+    "arxiv": "gr-qc/0612026",
+    "topics": [
+      "quantum-fields",
+      "cosmology"
+    ]
   },
   {
     "id": "inspire-723503",
@@ -950,7 +1080,10 @@ export const publications: Publication[] = [
     "volume": "74",
     "articleNumber": "084012",
     "doi": "10.1103/PhysRevD.74.084012",
-    "arxiv": "gr-qc/0608049"
+    "arxiv": "gr-qc/0608049",
+    "topics": [
+      "quantum-fields"
+    ]
   },
   {
     "id": "inspire-688934",
@@ -973,7 +1106,10 @@ export const publications: Publication[] = [
     "volume": "72",
     "articleNumber": "104001",
     "doi": "10.1103/PhysRevD.72.104001",
-    "arxiv": "gr-qc/0508015"
+    "arxiv": "gr-qc/0508015",
+    "topics": [
+      "quantum-fields"
+    ]
   },
   {
     "id": "inspire-585315",
@@ -997,7 +1133,10 @@ export const publications: Publication[] = [
     "volume": "66",
     "articleNumber": "024029",
     "doi": "10.1103/PhysRevD.66.024029",
-    "arxiv": "gr-qc/0204041"
+    "arxiv": "gr-qc/0204041",
+    "topics": [
+      "quantum-fields"
+    ]
   }
 ];
 

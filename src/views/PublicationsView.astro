@@ -1,0 +1,108 @@
+---
+import Base from '../layouts/Base.astro';
+import PublicationItem from '../components/PublicationItem.astro';
+import Icon from '../components/Icon.astro';
+import { publications, publicationSnapshot, type PublicationType } from '../data/publications';
+import { researchAreas } from '../data/research';
+import { profile } from '../data/profile';
+import { longDate } from '../lib/format';
+import type { Lang } from '../i18n';
+import { pagesCopy } from '../i18n/copy/pages';
+import { ui } from '../i18n/ui';
+import '../styles/pages.css';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = pagesCopy[lang].publications;
+const u = ui[lang];
+const sorted = [...publications].sort((a, b) => b.year - a.year || a.title.localeCompare(b.title));
+const years = [...new Set(sorted.map((p) => p.year))];
+const order: PublicationType[] = ['journal', 'conference', 'preprint', 'thesis'];
+const types = order.filter((type) => publications.some((p) => p.type === type));
+const count = (type: PublicationType) => publications.filter((p) => p.type === type).length;
+const topicAreas = researchAreas.filter((area) => publications.some((p) => (p.topics as string[]).includes(area.id)));
+const first = Math.min(...publications.map((p) => p.year)), last = Math.max(...publications.map((p) => p.year));
+
+// Bar chart (records per year, stacked by type) computed at build time.
+const span = Array.from({ length: last - first + 1 }, (_, i) => first + i);
+const maxPerYear = Math.max(...span.map((y) => publications.filter((p) => p.year === y).length));
+const W = 640, H = 150, pad = 18, barW = (W - pad * 2) / span.length;
+const bars = span.flatMap((year, i) => {
+  let y0 = H - pad;
+  return order.flatMap((type) => {
+    const n = publications.filter((p) => p.year === year && p.type === type).length;
+    if (!n) return [];
+    const h = (n / maxPerYear) * (H - pad * 2);
+    y0 -= h;
+    return [{ x: pad + i * barW + 1.5, y: y0, w: barW - 3, h, type }];
+  });
+});
+const colors: Record<PublicationType, string> = { journal: 'var(--accent)', preprint: 'var(--cyan)', conference: 'var(--violet)', thesis: 'var(--coral)' };
+---
+<Base lang={lang} title={c.metaTitle} description={c.description(publications.length, first, last)}>
+  <div class="page">
+    <header class="page-hero" style="--hero-tint: var(--accent)">
+      <div class="page-hero__inner" style="grid-template-columns: 1fr">
+        <div class="page-hero__text">
+          <p class="kicker">{c.kicker}</p>
+          <h1>{c.title[0]}<em>{c.title[1]}</em></h1>
+          <p class="lead">{c.lead(first, last)}</p>
+        </div>
+      </div>
+    </header>
+
+    <div class="pub-summary">
+      <dl class="pub-counts">
+        <div><dt>{c.records}</dt><dd>{publications.length}</dd></div>
+        {types.map((type) => <div><dt>{count(type) === 1 ? u.pubTypes[type] : u.pubTypesPlural[type]}</dt><dd>{count(type)}</dd></div>)}
+      </dl>
+      <figure class="year-chart">
+        <svg viewBox={`0 0 ${W} ${H + 14}`} role="img" aria-labelledby="chart-title">
+          <title id="chart-title">{c.chartTitle(first, last)}</title>
+          <line class="axis" x1={pad} x2={W - pad} y1={H - pad + 0.5} y2={H - pad + 0.5} />
+          {bars.map((bar) => <rect class={`bar-${bar.type}`} x={bar.x.toFixed(1)} y={bar.y.toFixed(1)} width={bar.w.toFixed(1)} height={bar.h.toFixed(1)} rx="2" />)}
+          {span.filter((y) => y % 4 === 2 || y === last).map((year) => <text x={(pad + (year - first) * barW + barW / 2).toFixed(1)} y={H + 4} text-anchor="middle">{year}</text>)}
+        </svg>
+        <ul class="chart-legend" aria-hidden="true">
+          {types.map((type) => <li style={`--c:${colors[type]}`}>{u.pubTypes[type]}</li>)}
+        </ul>
+      </figure>
+    </div>
+
+    <div class="pub-tools" data-pub-tools hidden>
+      <div class="pub-tools__inner">
+        <fieldset class="filter-group" data-filter="type">
+          <legend>{c.type}</legend>
+          <button class="filter-chip" type="button" data-value="all" aria-pressed="true">{c.all}</button>
+          {types.map((type) => <button class="filter-chip" type="button" data-value={type} aria-pressed="false">{u.pubTypes[type]}</button>)}
+        </fieldset>
+        <fieldset class="filter-group" data-filter="topic">
+          <legend>{c.area}</legend>
+          <button class="filter-chip" type="button" data-value="all" aria-pressed="true">{c.all}</button>
+          {topicAreas.map((area) => <button class="filter-chip" type="button" data-value={area.id} aria-pressed="false">{area[lang].title.replace(' and ', ' & ').replace(' ve ', ' ve ')}</button>)}
+        </fieldset>
+        <label class="search-field"><Icon name="search" size={16} /><span class="visually-hidden">{c.search}</span><input type="search" data-search placeholder={c.searchPlaceholder} autocomplete="off" /></label>
+        <p class="result-count" data-result-count data-template={c.count} role="status" aria-live="polite">{c.initialCount(publications.length)}</p>
+      </div>
+    </div>
+
+    <div class="pub-list" data-pub-list>
+      {years.map((year) => (
+        <section class="year-group" data-year-group aria-labelledby={`year-${year}`}>
+          <h2 id={`year-${year}`}>{year}</h2>
+          <div>
+            {sorted.filter((p) => p.year === year).map((p) => <PublicationItem publication={p} showYear={false} lang={lang} />)}
+          </div>
+        </section>
+      ))}
+      <p class="empty-state" data-empty hidden>{c.empty}</p>
+    </div>
+
+    <div class="source-note note">
+      {c.note(longDate(publicationSnapshot.verifiedOn, lang))} {c.profiles} <a href={publicationSnapshot.authorProfile}>INSPIRE-HEP</a>, <a href="https://orcid.org/0000-0003-2760-7091">ORCID</a>, <a href="https://research.itu.edu.tr/en/persons/eokahya/">İTÜ</a>. {c.topicsNote} {c.cv} <a href={profile.cv.en} hreflang="en">{u.cvEn}</a> · <a href={profile.cv.tr} hreflang="tr" lang="tr">{u.cvTr}</a>.
+    </div>
+  </div>
+  <script>
+    import '../scripts/publications';
+  </script>
+</Base>

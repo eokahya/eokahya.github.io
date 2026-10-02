@@ -1,5 +1,4 @@
 ---
-import Layout from '../../layouts/Layout.astro';
-import {profile} from '../../data/profile';
+import AboutView from '../../views/AboutView.astro';
 ---
-<Layout title="About" description="Academic biography of Prof. Dr. Emre Onur Kahya, Professor of Physics at Istanbul Technical University."><div class="wrap page-shell"><header class="page-heading"><p class="eyebrow">About</p><h1>Emre Onur<br/><em>Kahya.</em></h1><p>{profile.displayRole}<br/>{profile.affiliation}</p></header><div class="prose-columns"><div><h2>Physics, with an<br/>open horizon.</h2></div><div>{profile.aboutBio.map(p=><p>{p}</p>)}<a class="text-link" href="/research/">Explore my research</a></div></div>{profile.education.length>0&&<section class="education-section"><h2>Education</h2><ul class="timeline">{profile.education.map(e=><li><span>{e.year}</span><div><h3>{e.degree}</h3><p>{e.institution}</p></div></li>)}</ul></section>}<div class="inline-links">{profile.links.map(p=><a href={p.url}>{p.label}</a>)}</div></div></Layout>
+<AboutView lang="en" />

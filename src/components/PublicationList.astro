@@ -1,7 +1,0 @@
----
-import { publicationTypeLabels, type publications } from '../data/publications';
-interface Props { items: typeof publications; compact?: boolean }
-const {items,compact=false}=Astro.props;
-const Heading = compact ? 'h3' : 'h2';
----
-<ol class:list={['publication-list',{compact}]}>{items.map(p=><li><span class="pub-year">{p.year}</span><div><Heading><a href={p.link}>{p.title}</a></Heading><p class="authors">{p.authors.join(', ')}</p>{!compact&&<p class="pub-meta"><span class="pub-type">{publicationTypeLabels[p.type]}</span>{p.journal&&<> · {p.journal}</>}{p.doi&&<> · <a href={`https://doi.org/${p.doi}`}>DOI: {p.doi}</a></>}{p.arxiv&&<> · <a href={`https://arxiv.org/abs/${p.arxiv}`}>arXiv: {p.arxiv}</a></>}</p>}</div></li>)}</ol>

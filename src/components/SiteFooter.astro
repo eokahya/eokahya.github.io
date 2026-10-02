@@ -1,0 +1,59 @@
+---
+import Icon from './Icon.astro';
+import BrandMark from './BrandMark.astro';
+import { profile } from '../data/profile';
+import { href, navOrder, type Lang } from '../i18n';
+import { ui } from '../i18n/ui';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const u = ui[lang];
+const social = [
+  { label: 'YouTube', handle: '@emreonurkahya', url: 'https://www.youtube.com/@emreonurkahya', icon: 'play' },
+  { label: 'Teke Tek Bilim', handle: 'Bilim Ekstra', url: 'https://www.youtube.com/playlist?list=PLIWPLnDgfo-UvehLkGjmXCRuW2pAA6MGJ', icon: 'play' },
+  { label: 'X', handle: '@EmreOnurKahya', url: 'https://x.com/EmreOnurKahya', icon: 'x' },
+  { label: 'Instagram', handle: '@emreokahya', url: 'https://www.instagram.com/emreokahya/', icon: 'instagram' },
+] as const;
+const academic = [
+  { label: 'ORCID', url: 'https://orcid.org/0000-0003-2760-7091' },
+  { label: 'INSPIRE-HEP', url: 'https://inspirehep.net/authors/1039459' },
+  { label: lang === 'tr' ? 'İTÜ akademik profili' : 'İTÜ academic profile', url: 'https://akademi.itu.edu.tr/eokahya/Emre-Onur-Kahya' },
+  { label: lang === 'tr' ? 'İTÜ araştırma profili' : 'İTÜ research profile', url: 'https://research.itu.edu.tr/en/persons/eokahya/' },
+  { label: 'GitHub', url: 'https://github.com/eokahya' },
+];
+---
+<footer class="site-footer">
+  <div class="site-footer__inner">
+    <div class="footer-intro">
+      <a class="footer-brand" href={href(lang, 'home')}><BrandMark size={36} /><span>Emre Onur Kahya</span></a>
+      <p>{u.role}<br />{u.department}<br />{u.institution} · {u.location}</p>
+      <a class="footer-email" href={`mailto:${profile.email}`}><Icon name="mail" />{profile.email}</a>
+      <p class="footer-cv"><a href={profile.cv.en} hreflang="en"><Icon name="file" size={16} />{u.cvEn}</a><a href={profile.cv.tr} hreflang="tr" lang="tr"><Icon name="file" size={16} />{u.cvTr}</a></p>
+    </div>
+    <nav class="footer-col" aria-label={u.footerExplore}>
+      <h2 class="footer-heading">{u.footerExplore}</h2>
+      <ul>
+        {navOrder.map((id) => <li><a href={href(lang, id)}>{u.nav[id]}</a></li>)}
+        <li><a href="/teaching/myz-310e/" hreflang="en">{u.footerCourse}</a></li>
+      </ul>
+    </nav>
+    <div class="footer-col">
+      <h2 class="footer-heading">{u.footerTalks}</h2>
+      <ul>
+        {social.map((item) => (
+          <li><a href={item.url} rel="me noopener" target="_blank"><Icon name={item.icon} size={16} /><span>{item.label}</span><span class="footer-handle">{item.handle}</span><span class="visually-hidden">{u.newTab}</span></a></li>
+        ))}
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h2 class="footer-heading">{u.footerAcademic}</h2>
+      <ul>
+        {academic.map((item) => <li><a href={item.url} rel="me noopener" target="_blank">{item.label}<span class="visually-hidden">{u.newTab}</span></a></li>)}
+      </ul>
+    </div>
+  </div>
+  <div class="site-footer__legal">
+    <p>© 2026 Emre Onur Kahya</p>
+    <p>{u.footerLegal}</p>
+  </div>
+</footer>

@@ -1,0 +1,40 @@
+---
+import type { Publication } from '../data/publications';
+import { authorList, isSelf, publicationLinks, venueParts } from '../lib/format';
+import type { Lang } from '../i18n';
+import { ui } from '../i18n/ui';
+
+interface Props { publication: Publication; compact?: boolean; headingLevel?: 'h3' | 'h4'; showYear?: boolean; lang?: Lang }
+const { publication: p, compact = false, headingLevel = 'h3', showYear = true, lang = 'en' } = Astro.props;
+const u = ui[lang];
+const Heading = headingLevel;
+const venueRaw = venueParts(p);
+const venue = lang === 'tr' && venueRaw.text ? { ...venueRaw, text: venueRaw.text.replace('Ph.D. thesis', 'Doktora tezi').replace('M.Sc. thesis', 'Yüksek lisans tezi') } : venueRaw;
+const authors = authorList(p.authors, compact ? 4 : 8);
+const links = publicationLinks(p);
+---
+<article class:list={['pub', { 'pub--compact': compact }]} id={p.id} data-type={p.type} data-topics={p.topics.join(' ')} data-year={p.year} data-search={`${p.title} ${p.authors.join(' ')} ${p.journal ?? ''} ${p.venue ?? ''} ${p.year}`.toLowerCase()}>
+  {showYear && <p class="pub__year">{p.year}</p>}
+  <div class="pub__body">
+    <Heading class="pub__title" lang={lang === 'tr' ? 'en' : undefined}><a href={p.link}>{p.title}</a></Heading>
+    <p class="pub__authors">
+      {authors.names.map((name, i) => (
+        <Fragment>{i > 0 && ', '}{isSelf(name) ? <strong>{name}</strong> : name}</Fragment>
+      ))}{authors.more > 0 && <span> {u.etAl} (+{authors.more})</span>}
+    </p>
+    <p class="pub__meta">
+      <span class="pub__venue">
+        {venue.text ? venue.text : (
+          <Fragment><em>{venue.journal}</em>{venue.volume && <Fragment> <b>{venue.volume}</b></Fragment>}{venue.locator && `, ${venue.locator}`}</Fragment>
+        )}
+      </span>
+      <span class="badge">{u.pubTypes[p.type]}</span>
+      {!compact && (
+        <span class="pub__links">
+          {links.map((link) => <a href={link.url}>{link.label}<span class="visually-hidden">: {p.title}</span></a>)}
+        </span>
+      )}
+    </p>
+    {!compact && p.notes && <p class="pub__note" lang="en">{p.notes}</p>}
+  </div>
+</article>

@@ -1,0 +1,225 @@
+---
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+import AssessmentBar from '../components/AssessmentBar.astro';
+import WeekStrip from '../components/WeekStrip.astro';
+import PublicationItem from '../components/PublicationItem.astro';
+import VideoCard from '../components/VideoCard.astro';
+import { profile } from '../data/profile';
+import { publications, selectedPublications } from '../data/publications';
+import { course } from '../data/course';
+import { channels, clips, conversations, formatViews, formatViewsFloor, outreachSnapshot, outreachTotals, watchUrl } from '../data/outreach';
+import { longDate, numberWord, venueText } from '../lib/format';
+import { href, type Lang } from '../i18n';
+import { homeCopy } from '../i18n/copy/home';
+import { ui } from '../i18n/ui';
+import '../styles/home.css';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = homeCopy[lang];
+const u = ui[lang];
+
+const byId = (id: string) => publications.find((p) => p.id === id)!;
+const fieldsPapers = ['inspire-1631136', 'inspire-2878317'].map(byId);
+const learningPapers = ['light-curves-2021', 'electron-identification-2020'].map(byId);
+const totals = outreachTotals();
+const featured = conversations.slice(0, 3);
+const topClip = [...clips].sort((a, b) => b.views - a.views)[0]!;
+const foundations = course.weeks.filter((week) => week.phase === 'foundations').length;
+const plates = ['spacetime', 'cosmos', 'manifold', 'circuit', 'waves'];
+const plateStyle = (i: number) => `--plate-dark:url(/plates/${plates[i]}-dark.svg);--plate-light:url(/plates/${plates[i]}-light.svg)`;
+const journeyStrings = {
+  labels: c.plates,
+  pause: c.pause,
+  resume: c.resume,
+  circuitOn: c.mechanisms.circuitOn,
+  circuitOff: c.mechanisms.circuitOff,
+  ablateOn: c.mechanisms.ablateOn,
+  ablateOff: c.mechanisms.ablateOff,
+};
+const outreachText = c.outreach.text(totals.firstAired.slice(0, 4));
+const topClipText = c.outreach.topClip(topClip.title, topClip.with?.join(', ') ?? '', formatViews(topClip.views, lang));
+const newTab = u.newTab;
+---
+<Base lang={lang} home title={c.metaTitle} description={`${profile.fullName} — ${profile.summary[lang]}`}>
+  <div class="journey" data-journey data-stage="0" data-i18n={JSON.stringify(journeyStrings)}>
+    <div class="journey-stage">
+      <canvas id="journey-canvas" aria-hidden="true"></canvas>
+      <div class="journey-shade" aria-hidden="true"></div>
+    </div>
+    <div class="journey-overlay">
+      <div class="journey-hud">
+        <p class="plate-label">
+          <span class="plate-label__tag">{c.plate} <span data-plate-number>I</span></span>
+          <span class="plate-label__name" data-plate-name>{c.plates[0]![1]}</span>
+          <span class="plate-label__caption"><span data-plate-caption>{c.plates[0]![2]}</span> · {c.schematic}</span>
+        </p>
+        <button class="hud-button" id="motion-toggle" type="button" aria-pressed="false" hidden>
+          <span class="hud-button__pause"><Icon name="pause" size={16} /></span>
+          <span class="hud-button__play"><Icon name="resume" size={16} /></span>
+          <span data-label>{c.pause}</span>
+        </button>
+      </div>
+      <nav class="journey-rail" aria-label={c.railLabel}>
+        <ol>
+          {c.acts.map((act, i) => (
+            <li><a href={`#${act.id}`} data-rail-link aria-current={i === 0 ? 'step' : undefined}><span class="rail__numeral">{act.numeral}</span><span class="rail__name">{act.name}</span></a></li>
+          ))}
+        </ol>
+      </nav>
+    </div>
+
+    <!-- I · Spacetime -->
+    <section class="act act--hero" id="spacetime" data-act="0" aria-labelledby="hero-title">
+      <div class="act__plate" style={plateStyle(0)} aria-hidden="true"></div>
+      <div class="act__content act__content--left">
+        <p class="kicker kicker--plain hero-kicker">{c.heroKicker}</p>
+        <h1 id="hero-title" class="hero-title"><span class="hero-title__line">Emre Onur</span> <em class="hero-title__line">Kahya</em></h1>
+        <p class="hero-role">{u.role} · {u.institution}</p>
+        <p class="lead hero-lead">{c.heroLead}</p>
+        <div class="hero-actions">
+          <a class="button" href="#fields">{c.begin} <Icon name="arrow-down" size={18} /></a>
+          <a class="button button--ghost" href={course.path} hreflang="en">{course.code} · {u.footerCourse.split(' · ')[1]} <Icon name="arrow-right" size={18} class="icon--nudge" /></a>
+        </div>
+        <ul class="hero-quick" role="list">
+          <li><a href={href(lang, 'research')}>{c.quick.research}</a></li>
+          <li><a href={href(lang, 'publications')}>{c.quick.publications}</a></li>
+          <li><a href={href(lang, 'outreach')}>{c.quick.outreach}</a></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- II · Fields & the early universe -->
+    <section class="act act--left" id="fields" data-act="1" aria-labelledby="fields-title">
+      <div class="act__plate" style={plateStyle(1)} aria-hidden="true"></div>
+      <div class="act__content" data-reveal>
+        <p class="act__eq eq" aria-hidden="true">ds² = −dt² + a²(t) d<b>x</b>², &nbsp;a(t) ∝ e<sup>Ht</sup></p>
+        <p class="kicker"><span class="numeral">II</span>{c.fields.kicker}</p>
+        <h2 id="fields-title">{c.fields.title[0]}<em>{c.fields.title[1]}</em>{c.fields.title[2]}</h2>
+        <p>{c.fields.text}</p>
+        <ul class="paper-list" role="list">
+          {fieldsPapers.map((p) => <li><a href={p.link} lang="en"><span class="paper-list__title">{p.title}</span><span class="paper-list__venue">{venueText(p)} · {p.year}</span></a></li>)}
+        </ul>
+        <p class="act__links"><a class="text-link" href={href(lang, 'research', 'quantum-fields')}>{c.links.quantum} <Icon name="arrow-right" size={16} /></a><a class="text-link" href={href(lang, 'research', 'cosmology')}>{c.links.cosmology} <Icon name="arrow-right" size={16} /></a></p>
+      </div>
+    </section>
+
+    <!-- III · Learning -->
+    <section class="act act--right" id="learning" data-act="2" aria-labelledby="learning-title">
+      <div class="act__plate" style={plateStyle(2)} aria-hidden="true"></div>
+      <div class="act__content" data-reveal>
+        <p class="act__eq eq" aria-hidden="true">θ* = arg min<sub>θ</sub> Σ<sub>i</sub> ℓ( f<sub>θ</sub>(x<sub>i</sub>), y<sub>i</sub> )</p>
+        <p class="kicker"><span class="numeral">III</span>{c.learning.kicker}</p>
+        <h2 id="learning-title">{c.learning.title[0]}<em>{c.learning.title[1]}</em>{c.learning.title[2]}</h2>
+        <p>{c.learning.text}</p>
+        <ul class="paper-list" role="list">
+          {learningPapers.map((p) => <li><a href={p.link} lang="en"><span class="paper-list__title">{p.title}</span><span class="paper-list__venue">{venueText(p)} · {p.year}</span></a></li>)}
+        </ul>
+        <p class="act__links"><a class="text-link" href={href(lang, 'research', 'machine-learning')}>{c.links.ml} <Icon name="arrow-right" size={16} /></a></p>
+      </div>
+    </section>
+
+    <!-- IV · Mechanisms -->
+    <section class="act act--left" id="mechanisms" data-act="3" aria-labelledby="mechanisms-title">
+      <div class="act__plate" style={plateStyle(3)} aria-hidden="true"></div>
+      <div class="act__content" data-reveal>
+        <p class="act__eq eq" aria-hidden="true">do( h<sub>ℓ</sub> ← h̃<sub>ℓ</sub> ) ⟹ Δy</p>
+        <p class="kicker"><span class="numeral">IV</span>{c.mechanisms.kicker}</p>
+        <h2 id="mechanisms-title">{c.mechanisms.title[0]}<em>{c.mechanisms.title[1]}</em>{c.mechanisms.title[2]}</h2>
+        <p>{c.mechanisms.text}</p>
+        <div class="scene-controls" role="group" aria-label={c.mechanisms.controlsLabel}>
+          <button class="chip-button" type="button" data-scene-action="circuit" aria-pressed="false" hidden><Icon name="circuit" size={16} />{c.mechanisms.trace}</button>
+          <button class="chip-button" type="button" data-scene-action="ablate" aria-pressed="false" hidden><Icon name="scissors" size={16} />{c.mechanisms.ablate}</button>
+        </div>
+        <p class="scene-status" id="scene-status" role="status" aria-live="polite"></p>
+        <p class="scene-note">{c.mechanisms.note}</p>
+        <p class="act__links"><a class="text-link" href={href(lang, 'research', 'interpretability')}>{c.links.interp} <Icon name="arrow-right" size={16} /></a><a class="text-link" href={`${course.path}#project-guide`} hreflang="en">{c.mechanisms.project(course.code)} <Icon name="arrow-right" size={16} /></a></p>
+      </div>
+    </section>
+
+    <!-- V · Communication -->
+    <section class="act act--right" id="outreach" data-act="4" aria-labelledby="outreach-title">
+      <div class="act__plate" style={plateStyle(4)} aria-hidden="true"></div>
+      <div class="act__content act__content--wide" data-reveal>
+        <p class="act__eq eq" aria-hidden="true">□ψ = 0 &nbsp;⟹&nbsp; ψ ∝ e<sup>i(kr − ωt)</sup>/r</p>
+        <p class="kicker"><span class="numeral">V</span>{c.outreach.kicker}</p>
+        <h2 id="outreach-title">{c.outreach.title[0]}<em>{c.outreach.title[1]}</em>{c.outreach.title[2]}</h2>
+        <p>{outreachText[0]}<a href={channels.tekeTekBilim.url}>{outreachText[1]}</a>{outreachText[2]}<a href={channels.bilimEkstraPlaylist.url} lang="tr">{outreachText[3]}</a>{outreachText[4]}</p>
+        <dl class="stats">
+          <div><dt>{c.outreach.stats.programmes}</dt><dd>{totals.programmes}</dd></div>
+          <div><dt>{c.outreach.stats.views}</dt><dd>{formatViewsFloor(totals.tekeTekBilimViews, lang)}+</dd></div>
+          <div><dt><span lang="tr">Bilim Ekstra</span> {c.outreach.stats.episodes}</dt><dd>{totals.bilimEkstra}</dd></div>
+        </dl>
+        <p class="stats-note">{c.outreach.statsNote(longDate(outreachSnapshot.checkedOn, lang))}</p>
+        <div class="video-stack">
+          {featured.map((video) => <VideoCard video={video} variant="row" lang={lang} />)}
+        </div>
+        <p class="top-clip">{topClipText[0]}<a href={watchUrl(topClip)} lang="tr" target="_blank" rel="noopener">{topClipText[1]}</a>{topClipText[2]}<span class="visually-hidden">{newTab}</span></p>
+        <p class="act__links">
+          <a class="text-link" href={href(lang, 'outreach')}>{c.outreach.all} <Icon name="arrow-right" size={16} /></a>
+          <a class="text-link" href={channels.own.url} target="_blank" rel="noopener">{c.outreach.channel} <Icon name="external" size={16} /><span class="visually-hidden">{newTab}</span></a>
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <!-- Calm sections -->
+  <section class="home-section home-teaching" id="teaching" aria-labelledby="teaching-title">
+    <div class="wrap home-teaching__grid">
+      <div data-reveal>
+        <p class="kicker">{c.teaching.kicker(course.term)}</p>
+        <h2 id="teaching-title" lang={lang === 'tr' ? 'en' : undefined}>{course.code} — <em>{course.title}</em></h2>
+        <p class="lead">{c.teaching.lead(numberWord(foundations, lang))}</p>
+        <div class="home-teaching__actions">
+          <a class="button" href={course.path} hreflang="en">{c.teaching.open} <Icon name="arrow-right" size={18} class="icon--nudge" /></a>
+          <a class="button button--ghost" href={course.syllabusPath} hreflang="en"><Icon name="download" size={18} />{c.teaching.syllabus}</a>
+          <a class="text-link" href={`${course.path}#lecture-notes`} hreflang="en">{c.teaching.notes} <Icon name="arrow-right" size={16} /></a>
+        </div>
+      </div>
+      <div class="home-teaching__panel card" data-reveal>
+        <h3 class="panel-title">{c.teaching.assessment}</h3>
+        <AssessmentBar lang={lang} />
+        <h3 class="panel-title">{c.teaching.weeks} <span class="panel-title__note">{c.teaching.weeksNote}</span></h3>
+        <WeekStrip lang={lang} />
+      </div>
+    </div>
+  </section>
+
+  <section class="home-section home-pubs" id="selected-work" aria-labelledby="pubs-title">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <div>
+          <p class="kicker">{c.pubs.kicker}</p>
+          <h2 id="pubs-title">{c.pubs.title[0]}<em>{c.pubs.title[1]}</em></h2>
+        </div>
+        <a class="text-link" href={href(lang, 'publications')}>{c.pubs.all(publications.length)} <Icon name="arrow-right" size={16} /></a>
+      </div>
+      <div class="pub-grid" data-reveal>
+        {selectedPublications.map((p) => <PublicationItem publication={p} compact lang={lang} />)}
+      </div>
+    </div>
+  </section>
+
+  <section class="home-section home-about" aria-labelledby="about-title">
+    <div class="wrap home-about__grid" data-reveal>
+      <div>
+        <p class="kicker">{c.about.kicker}</p>
+        <h2 id="about-title">{c.about.title[0]}<em>{c.about.title[1]}</em></h2>
+      </div>
+      <div class="home-about__body">
+        <p class="lead">{profile.bio[lang]}</p>
+        <p class="muted">{c.about.recognitions}</p>
+        <p class="act__links">
+          <a class="text-link" href={href(lang, 'about')}>{c.about.more} <Icon name="arrow-right" size={16} /></a>
+          <a class="text-link" href={lang === 'tr' ? profile.cv.tr : profile.cv.en}><Icon name="file" size={16} />{lang === 'tr' ? u.cvTr : u.cvEn}</a>
+          <a class="text-link" href={`mailto:${profile.email}`}>{profile.email} <Icon name="mail" size={16} /></a>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    import '../scripts/journey/index';
+  </script>
+</Base>

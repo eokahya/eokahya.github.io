@@ -1,8 +1,14 @@
 ---
-import Layout from '../../../../layouts/Layout.astro';
+import Base from '../../../../layouts/Base.astro';
 import CourseContent from '../../../../components/CourseContent.astro';
-import {course} from '../../../../data/course';
-import {scanLectureNotes} from '../../../../../scripts/scan-notes';
-const notes=await scanLectureNotes();
+import { course } from '../../../../data/course';
+import { scanLectureNotes } from '../../../../../scripts/scan-notes';
+import { courseJsonLd } from '../../../../lib/course-jsonld';
+import '../../../../styles/course.css';
+
+const notes = await scanLectureNotes();
 ---
-<Layout title={`${course.code} — Fall 2026`} description="Permanent Fall 2026 course page for MYZ 310E, Machine Learning in Physics: syllabus, assessment, research project and weekly notes."><div class="wrap page-shell"><CourseContent notes={notes}/></div></Layout>
+<Base title={`${course.code} — ${course.term}`} description={`Permanent ${course.term} page for ${course.code}, ${course.title}: syllabus, assessment, research project and weekly lecture notes.`} jsonLd={[courseJsonLd()]}>
+  <CourseContent notes={notes} />
+  <script>import '../../../../scripts/course';</script>
+</Base>

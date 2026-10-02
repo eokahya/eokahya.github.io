@@ -1,5 +1,4 @@
 ---
-import Layout from '../../layouts/Layout.astro';
-import {course} from '../../data/course';
+import TeachingView from '../../views/TeachingView.astro';
 ---
-<Layout title="Teaching" description="MYZ 310E — Machine Learning in Physics. Fall 2026 teaching at Istanbul Technical University."><div class="wrap page-shell"><header class="page-heading"><p class="eyebrow">Teaching</p><h1>Learning through<br/><em>investigation.</em></h1><p>Courses at Istanbul Technical University.</p></header><section class="course-listing"><div><p class="eyebrow">{course.term} · {course.language}</p><h2>{course.code}<br/>{course.title}</h2><p>Statistical learning, neural networks and a focused research project in mechanistic interpretability.</p></div><div><a class="button" href={course.path}>Open the course page</a><a class="text-link" href={course.syllabusPath}>Download syllabus (PDF)</a><p class="quiet">Timetable, room and office hours will be announced.</p></div></section></div></Layout>
+<TeachingView lang="en" />

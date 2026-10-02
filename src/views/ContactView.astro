@@ -1,0 +1,60 @@
+---
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+import { profile, type ProfileLink } from '../data/profile';
+import { course } from '../data/course';
+import type { Lang } from '../i18n';
+import { pagesCopy } from '../i18n/copy/pages';
+import { ui } from '../i18n/ui';
+import '../styles/pages.css';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = pagesCopy[lang].contact;
+const u = ui[lang];
+const icons: Record<string, 'play' | 'x' | 'instagram' | 'orcid' | 'code' | 'atom' | 'building'> = {
+  YouTube: 'play', 'Teke Tek Bilim': 'play', X: 'x', Instagram: 'instagram', ORCID: 'orcid', GitHub: 'code', 'INSPIRE-HEP': 'atom',
+};
+const links: ProfileLink[] = [...profile.socialLinks, ...profile.academicLinks];
+const tel = (n: string) => `tel:${n.replace(/\s+/g, '')}`;
+---
+<Base lang={lang} title={c.metaTitle} description={c.description}>
+  <div class="page">
+    <header class="page-hero" style="--hero-tint: var(--accent)">
+      <div class="page-hero__inner" style="grid-template-columns: 1fr">
+        <div class="page-hero__text">
+          <p class="kicker">{c.kicker}</p>
+          <h1>{c.title[0]}<em>{c.title[1]}</em></h1>
+          <p class="lead">{c.lead[0]}<a href={course.path} hreflang="en">{c.lead[1]}</a>{c.lead[2]}</p>
+        </div>
+      </div>
+    </header>
+    <section class="contact-card" aria-label={`${c.email} · ${c.department}`}>
+      <div class="contact-card__main">
+        <p class="label">{c.email}</p>
+        <a class="contact-email" href={`mailto:${profile.email}`}>{profile.email}</a>
+        <div class="action-row">
+          <a class="button" href={`mailto:${profile.email}`}><Icon name="mail" size={18} />{c.write}</a>
+          <button class="button button--ghost" type="button" data-copy={profile.email} hidden><Icon name="copy" size={18} /><span data-copy-status data-done={c.copied}>{c.copy}</span><span class="visually-hidden">{c.copySr}</span></button>
+        </div>
+      </div>
+      <div class="contact-card__aside">
+        <p class="label kicker kicker--plain">{c.department}</p>
+        <address>
+          {u.department}<br />{u.faculty}<br />{u.institution}<br />{profile.address[lang]}
+        </address>
+        <dl class="contact-phones">
+          <div><dt>{c.phone}</dt><dd><a href={tel(profile.phone)}>{profile.phone}</a></dd></div>
+          <div><dt>{c.fax}</dt><dd>{profile.fax}</dd></div>
+        </dl>
+      </div>
+    </section>
+    <div class="contact-links">
+      {links.map((link) => (
+        <a href={link.url} rel="me noopener" target="_blank"><span class="name"><Icon name={icons[link.label] ?? 'building'} size={18} />{(lang === 'tr' && link.labelTr) || link.label}<span class="visually-hidden">{u.newTab}</span></span><span class="handle">{link.handle ?? new URL(link.url).hostname.replace('www.', '')}</span></a>
+      ))}
+      <a href={profile.cv.en} hreflang="en"><span class="name"><Icon name="file" size={18} />{u.cvEn}</span><span class="handle">PDF</span></a>
+      <a href={profile.cv.tr} hreflang="tr" lang="tr"><span class="name"><Icon name="file" size={18} />{u.cvTr}</span><span class="handle">PDF</span></a>
+    </div>
+  </div>
+</Base>

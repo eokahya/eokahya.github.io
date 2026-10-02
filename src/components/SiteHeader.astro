@@ -1,0 +1,44 @@
+---
+import Icon from './Icon.astro';
+import BrandMark from './BrandMark.astro';
+import { counterpart, currentRoute, href, navOrder, type Lang } from '../i18n';
+import { ui } from '../i18n/ui';
+
+interface Props { home?: boolean; lang: Lang }
+const { home = false, lang } = Astro.props;
+const u = ui[lang];
+const path = Astro.url.pathname;
+const current = currentRoute(path);
+const other = counterpart(path);
+---
+<header class:list={['site-header', { 'site-header--overlay': home }]} data-header>
+  <div class="site-header__inner">
+    <a class="brand" href={href(lang, 'home')} aria-label={u.brandHome}>
+      <BrandMark />
+      <span class="brand__text">
+        <span class="brand__name">Emre Onur Kahya</span>
+        <span class="brand__role">{u.brandRole}</span>
+      </span>
+    </a>
+    <nav class="site-nav" id="site-nav" aria-label={u.navMain}>
+      <ul class="site-nav__list">
+        {navOrder.map((id) => (
+          <li><a href={href(lang, id)} aria-current={current === id ? 'page' : undefined}>{u.nav[id]}</a></li>
+        ))}
+        <li class="site-nav__lang"><a href={other.href} hreflang={u.langSwitch.lang} lang={u.langSwitch.lang} data-lang-switch>{u.langSwitch.label}</a></li>
+      </ul>
+    </nav>
+    <div class="header-tools">
+      <a class="lang-switch" href={other.href} hreflang={u.langSwitch.lang} lang={u.langSwitch.lang} aria-label={`${u.langSwitch.label} (${u.langSwitch.text})`} title={u.langSwitch.label} data-lang-switch>{u.langSwitch.text}</a>
+      <button class="icon-button theme-toggle" type="button" data-theme-toggle hidden aria-label={u.themeToLight} title={u.themeTitle} data-label-light={u.themeToLight} data-label-dark={u.themeToDark}>
+        <span class="theme-toggle__sun"><Icon name="sun" size={18} /></span>
+        <span class="theme-toggle__moon"><Icon name="moon" size={18} /></span>
+      </button>
+      <button class="menu-toggle" type="button" data-menu-toggle hidden aria-expanded="false" aria-controls="site-nav" data-label-open={u.menu} data-label-close={u.close}>
+        <span class="menu-toggle__open"><Icon name="menu" size={20} /></span>
+        <span class="menu-toggle__close"><Icon name="close" size={20} /></span>
+        <span class="menu-toggle__label">{u.menu}</span>
+      </button>
+    </div>
+  </div>
+</header>

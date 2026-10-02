@@ -1,0 +1,43 @@
+---
+/** Proportional bar of the assessment scheme. Values come from course.ts only. */
+import { assessmentRows, course as defaultCourse, minimumMidtermScore, totalAssessmentPoints, type Course } from '../data/course';
+import type { Lang } from '../i18n';
+import { ui } from '../i18n/ui';
+interface Props { course?: Course; showRule?: boolean; lang?: Lang }
+const { course = defaultCourse, showRule = true, lang = 'en' } = Astro.props;
+const a = ui[lang].assessment;
+const rows = assessmentRows(course).map((row, i) => ({ ...row, label: lang === 'en' ? row.title : a.rows[i] ?? row.title }));
+const total = totalAssessmentPoints(course);
+const minimum = minimumMidtermScore(course);
+const tones = ['mid', 'p1', 'p2', 'paper'];
+const rule = a.rule(`${minimum}/${course.assessment.midtermPoints}`, course.assessment.minimumMidtermPercent);
+---
+<figure class="assess" data-assessment-summary>
+  <div class="assess__bar" aria-hidden="true">
+    {rows.map((row, i) => (
+      <span class:list={['assess__seg', `assess__seg--${tones[i]}`, { 'is-provisional': row.provisional }]} style={`flex-grow:${row.points}`}>
+        <span class="assess__pts">{row.points}</span>
+      </span>
+    ))}
+  </div>
+  <div class="assess__brace" aria-hidden="true" style={`--start:${(rows[0]!.points / total) * 100}%;--width:${(course.assessment.presentationsTotalPoints / total) * 100}%`}>
+    <span>{a.presentations(course.assessment.requiredPresentations)} · {course.assessment.presentationsTotalPoints}</span>
+  </div>
+  <figcaption>
+    <dl class="assess__legend">
+      {rows.map((row, i) => (
+        <div class={`assess__item assess__item--${tones[i]}`}>
+          <dt>{row.label}{row.provisional && <sup class="assess__prov" aria-hidden="true">*</sup>}{row.provisional && <span class="visually-hidden">{a.provisionalSr}</span>}</dt>
+          <dd>{row.points}<span class="visually-hidden"> {a.points}</span></dd>
+        </div>
+      ))}
+      <div class="assess__item assess__item--total"><dt>{a.total}</dt><dd>{total}<span class="visually-hidden"> {a.points}</span></dd></div>
+    </dl>
+    {rows.some((row) => row.provisional) && <p class="assess__foot" aria-hidden="true">{a.provisionalNote(course.assessment.presentationsTotalPoints)}</p>}
+    {showRule && (
+      <p class="assess__rule">
+        <strong>{rule[0]}</strong> {rule[1]} <strong>{rule[2]}</strong> {rule[3]} <strong>{rule[4]}</strong> {rule[5]}
+      </p>
+    )}
+  </figcaption>
+</figure>

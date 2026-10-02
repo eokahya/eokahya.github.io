@@ -1,4 +1,54 @@
 ---
-import Layout from '../layouts/Layout.astro';
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+import '../styles/pages.css';
 ---
-<Layout title="Page not found" description="This page could not be found."><div class="wrap page-shell"><p class="eyebrow">404</p><h1>Page not found.</h1><p>This address does not point to a page on this site.</p><a class="button" href="/">Return home</a><a class="text-link" href="/teaching/">Find a course</a></div></Layout>
+<Base title="Page not found · Sayfa bulunamadı" description="This page could not be found. Bu sayfa bulunamadı." noindex>
+  <section class="lost">
+    <div>
+      <svg class="horizon" viewBox="0 0 320 320" aria-hidden="true" focusable="false">
+        <defs>
+          <radialGradient id="bh-glow"><stop offset="0.52" stop-color="var(--accent)" stop-opacity="0.55" /><stop offset="0.62" stop-color="var(--accent)" stop-opacity="0.12" /><stop offset="1" stop-color="var(--accent)" stop-opacity="0" /></radialGradient>
+          <linearGradient id="bh-disk" x1="0" x2="1"><stop offset="0" stop-color="var(--coral)" stop-opacity="0.2" /><stop offset="0.5" stop-color="var(--accent)" /><stop offset="1" stop-color="var(--coral)" stop-opacity="0.2" /></linearGradient>
+        </defs>
+        <circle cx="160" cy="160" r="150" fill="url(#bh-glow)" />
+        <g class="horizon__disk"><path d="M20 168a140 34 0 0 1 280 0" fill="none" stroke="url(#bh-disk)" stroke-width="5" opacity="0.55" /></g>
+        <circle cx="160" cy="160" r="70" fill="#000" stroke="var(--accent)" stroke-width="1.5" />
+        <g class="horizon__disk"><path d="M300 168a140 34 0 0 1-280 0" fill="none" stroke="url(#bh-disk)" stroke-width="6" /></g>
+        <path d="M95 142a70 70 0 0 1 130 0" fill="none" stroke="var(--accent)" stroke-width="1" opacity="0.6" />
+      </svg>
+      <div class="lost__copy" data-lost="en" lang="en">
+        <p class="kicker kicker--plain">Error 404</p>
+        <h1 class="lost__title">This page crossed an <em>event horizon</em></h1>
+        <p>Nothing escapes from here — but the rest of the site is still in view.</p>
+        <div class="action-row">
+          <a class="button" href="/">Back to the start <Icon name="arrow-right" size={18} class="icon--nudge" /></a>
+          <a class="button button--ghost" href="/teaching/myz-310e/">MYZ 310E</a>
+          <a class="button button--ghost" href="/publications/">Publications</a>
+        </div>
+      </div>
+      <div class="lost__copy lost__copy--alt" data-lost="tr" lang="tr">
+        <p class="kicker kicker--plain">Hata 404</p>
+        <p class="lost__title">Bu sayfa bir <em>olay ufkunu</em> geçti</p>
+        <p>Buradan hiçbir şey kaçamaz — ama sitenin geri kalanı hâlâ görünür durumda.</p>
+        <div class="action-row">
+          <a class="button button--ghost" href="/tr/">Türkçe ana sayfa <Icon name="arrow-right" size={18} class="icon--nudge" /></a>
+          <a class="button button--ghost" href="/tr/yayinlar/">Yayınlar</a>
+        </div>
+      </div>
+    </div>
+  </section>
+  <script is:inline>
+    // Turkish addresses get the Turkish message first.
+    if (location.pathname === '/tr' || location.pathname.indexOf('/tr/') === 0) {
+      var tr = document.querySelector('[data-lost="tr"]'), en = document.querySelector('[data-lost="en"]');
+      var swap = function (el, tag) { var n = document.createElement(tag); n.className = el.className; n.innerHTML = el.innerHTML; el.replaceWith(n); };
+      if (tr && en) {
+        en.parentNode.insertBefore(tr, en);
+        tr.classList.remove('lost__copy--alt'); en.classList.add('lost__copy--alt');
+        swap(en.querySelector('.lost__title'), 'p'); swap(tr.querySelector('.lost__title'), 'h1');
+        document.documentElement.lang = 'tr'; document.title = 'Sayfa bulunamadı · Emre Onur Kahya';
+      }
+    }
+  </script>
+</Base>

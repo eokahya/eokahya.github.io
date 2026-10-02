@@ -100,4 +100,66 @@ Her satır **2026-10-02** tarihinde kontrol edildi. “Crossref” publisher-dep
 - https://probml.github.io/pml-book/book1.html and https://www.deeplearningbook.org/ — original supplementary book sites, HTTP200 verified. No copied textbook files or invented chapter assignments.
 - https://transformerlensorg.github.io/TransformerLens/ — official tool documentation and introductory mechanistic-interpretability materials read; original link only.
 
-All profile/course resource URLs returned HTTP200 in the direct link check, except the GitHub profile initially returned a transient504; a focused second fetch returned200. The public user API also returned eokahya. These are public identity signals, **not** authenticated write authorization. The target repository's anonymous API returned404 and git read attempted authentication; existence/private status cannot be inferred. HTTPS live homepage returned404. No deployment success is claimed.
+All profile and course resource URLs returned HTTP 200 in the direct link check on 2026-10-02 (the GitHub profile after one transient 504).
+
+---
+
+# Ek doğrulamalar (bu sürüm, 2 Ekim 2026)
+
+Bu bölüm, yukarıdaki doğrulanmış snapshot'ın üzerine bu sürümde yapılan ek kontrolleri kaydeder.
+
+## Crossref ile yeniden karşılaştırma
+
+Dergi kaydı olan 36 DOI'nin tamamı 2 Ekim 2026'da Crossref public API'sinden (`https://api.crossref.org/works/<DOI>`) bu kez hatasız okundu (daha önce 429 dönen altı DOI dahil). Başlık, dergi, cilt, makale numarası/sayfa ve yıl alanları yerel kayıtlarla karşılaştırıldı:
+
+- **35/36 kayıt birebir uyumlu.**
+- **Düzeltilen hata:** *A generic test of modified gravity models which emulate dark matter* (Physics Letters B 652, 2007; DOI 10.1016/j.physletb.2007.07.029). Önceki snapshot'ta `articleNumber: "24157"` yazıyordu; yayıncı kaydı sayfa aralığını **213–216** verir. Kayıt düzeltildi ve `notes` alanına not düşüldü.
+- JCAP kaydında cilt alanı derginin `04 (2020) 005` atıf biçimine göre tutuldu; Hindawi (Advances in High Energy Physics) kayıtlarında makale kimliği (231452, 282675) makale numarası olarak gösterilir.
+
+## Profil ayrıntıları
+
+- [İTÜ Akademi profili](https://akademi.itu.edu.tr/eokahya/Emre-Onur-Kahya) "Alınan Ödüller" bölümü: Mustafa Parlar Araştırma Teşvik Ödülü (ODTÜ Prof. Dr. Mustafa N. Parlar Eğitim ve Araştırma Vakfı, 2017); Genç Bilim İnsanı Ödülü (Bilim Kahramanları Derneği, 2016); Tübitak Teşvik (TÜBİTAK, 2016); Üstün Başarılı Genç Bilim İnsanı Ödülü – GEBİP (Türkiye Bilimler Akademisi, 2015). Aynı sayfadaki görevler: Öğretim Görevlisi İTÜ 2012–2013, Doçent 2013–2018, Profesör 2018–; Koç Üniversitesi 2008–2009 ve Friedrich-Schiller-Universität Jena 2009–2012 "Öğretim Görevlisi (Dr)"; ODTÜ araştırma görevlisi 2000–2002; UF araştırma görevlisi ve doktora 2002–2008; ODTÜ lisans 1996–2000.
+- [INSPIRE yazar kaydı (API)](https://inspirehep.net/api/authors/1039459): Koç ve Jena pozisyonları `POSTDOC` olarak kayıtlı; site bu iki görevi "Postdoctoral researcher" olarak gösterir.
+- [INSPIRE doktora tezi kaydı 1263713 (API)](https://inspirehep.net/api/literature/1263713): `thesis_info` = PhD, Florida U., 2008; Richard P. Woodard `supervisor` rolüyle listelenir.
+- [X profili](https://x.com/EmreOnurKahya): "PhD in Physics @UF, MSc in Computer Science (AI) @Mila_Quebec" — eğitim bilgisiyle tutarlı. [Instagram profili](https://www.instagram.com/emreokahya/) bio'su Teke Tek Bilim oynatma listesine bağlantı verir.
+
+## Bilim iletişimi snapshot'ı (`src/data/outreach.ts`)
+
+Kaynaklar, 2 Ekim 2026'da tarayıcıda ve kamuya açık YouTube izleme sayfalarından (`ytInitialPlayerResponse` içindeki `videoDetails` / `microformat` alanları) okundu:
+
+- [Teke Tek Bilim kanal araması: "Emre Onur Kahya"](https://www.youtube.com/@TekeTekBilim/search?query=Emre%20Onur%20Kahya) ve [Prof. Dr. Emre Onur Kahya ile Bilim Ekstra oynatma listesi](https://www.youtube.com/playlist?list=PLIWPLnDgfo-UvehLkGjmXCRuW2pAA6MGJ) (48 video). Oynatma listesinde olmayan bir Bilim Ekstra bölümü (*Zeeman etkisi ve Heisenberg resmi*, `gC3xApCbPgg`) arama sonucunda bulundu ve eklendi: **49 Bilim Ekstra bölümü**.
+- **7 uzun Teke Tek Bilim programı**: başlıkta adı geçenler ve başlıkta adı geçmese de açıklamasında konuk olarak adı geçen iki program (`MsMYj4Ac2b4`: 1 Ağustos 2021 yayını, konuklar Prof. Dr. Tekin Dereli, Prof. Dr. Emre Onur Kahya, Dr. Can Kozcaz; `kPym_ScuZqE`: 12 Eylül 2021 yayını, konuklar Prof. Dr. İbrahim Semiz, Prof. Dr. Emre Onur Kahya, Prof. Dr. Erkcan Özcan). Bu iki programın YouTube'a yükleme tarihi 2023'tür; sitede yayın tarihi (aired) gösterilir.
+- **5 kısa klip** (shorts) bu programlardan kesilmiştir; "program" sayısına dahil edilmez, izlenme toplamına dahildir.
+- Başlıklar orijinal Türkçe başlıklardır; tekrarlayan "/ Prof. Dr. Emre Onur Kahya ile Bilim Ekstra" gibi ekler kısaltılmış, tam başlık `originalTitle` alanında tutulmuştur. YouTube'un otomatik İngilizce çevirileri kullanılmadı (orijinal başlıklar oEmbed ile doğrulandı).
+- Toplamlar (2 Ekim 2026): uzun programlar 2.078.322; klipler 2.489.637; Bilim Ekstra 1.116.033 izlenme → **5.683.992** (sitede aşağı yuvarlanarak "5.6M+" gösterilir). Kendi kanalınız [@emreonurkahya](https://www.youtube.com/@emreonurkahya): 17 Elektrik ve Manyetizma/matematik videosu, toplam 26.917 izlenme.
+- Kullanıcının "40 civarı program" ifadesi yerine sitede verideki sayılar kullanılır: 7 uzun program + 49 Bilim Ekstra = **56 program**.
+- Tema grupları (Uzay-zaman, Kuantumun öncüleri, Nobel tarihi, Yapay zekâ, Fizikçi gibi düşünmek, Oktay Sinanoğlu, Türkiye'de üniversite ve bilim) başlıklara göre yapılmış editoryal bir gruplamadır.
+- Site YouTube oynatıcısı, küçük resmi veya üçüncü taraf betiği gömmez; yalnızca bağlantı verir.
+
+## Özgeçmişler (CV) — 2 Ekim 2026
+
+Kullanıcının kendi özgeçmiş dosyaları bu sürümün birincil kaynağıdır ve sitede **olduğu gibi** yayımlanır:
+
+| Dosya (sitede) | Özgün dosya | PDF oluşturma tarihi | SHA-256 |
+| --- | --- | --- | --- |
+| `public/cv/Emre-Onur-Kahya-CV-EN.pdf` | `cv_eng_kahya.pdf` | 28 Ağustos 2026 | `d22ecb0f339c6a07313b579625de01cf82b15497d728b2e0794c6f4ab11555f6` |
+| `public/cv/Emre-Onur-Kahya-Ozgecmis-TR.pdf` | `CV_Emre_Onur_Kahya.pdf` | 2 Eylül 2026 | `55a0e4b02f6bcc7c8bd45d8f63742bb266213c2bd52e2235a578a1c5a9bd0856` |
+
+Yayımlamadan önce iki dosyanın tüm metni ve PDF metaverisi tarandı: doğum tarihi, kimlik numarası, ev adresi, kişisel telefon veya kişisel e-posta yok; iletişim bilgileri kurumsaldır (İTÜ telefon/faks, Ayazağa adresi, `eokahya@itu.edu.tr`). `npm test` (`tests/cv.test.ts`), sitede gösterilen her konuşmanın, basın haberinin, ödülün, projenin, tezin ve hakemlik yapılan derginin PDF metninde gerçekten geçtiğini denetler.
+
+Özgeçmişten alınanlar: iletişim bilgileri; eğitim (2021 Mila/Université de Montréal bilgisayar bilimi yüksek lisansı dahil); araştırma alanları; iş geçmişi; 5 ödül; 6 araştırma projesi (destek tutarları sitede gösterilmez); hakemlik yapılan 4 dergi; 26 konuşma (13 davetli konuşma + 13 seminer/konferans sunumu, davetli olanlar CV'deki gibi işaretli); 7 basın haberi.
+
+Kaynaklar arasındaki farklar ve sitedeki karar:
+
+- **Bilgisayar bilimi yüksek lisansı:** CV 2021 (derece yılı), DataCite tez kaydı 2020, ORCID eğitim kaydı 2019–2020 der. Zaman çizelgesi CV'yi izler ("2019–2021 · M.Sc. 2021"); yayın listesindeki tez kaydı DataCite'taki 2020 yılını korur.
+- **Bilim Kahramanları Derneği ödülü:** CV "2015 Yılın Bilim İnsanı Ödülü", İTÜ Akademi profili "Genç Bilim İnsanı Ödülü (2016)" der. Site, yazarın kendi belgesi olan CV'yi izler. *Kullanıcının teyit etmesi önerilir.*
+- **"En Değerli Hakem" (Astroparticle Physics, 2010)** yalnızca CV'de geçer; CV'deki gibi listelendi.
+- **ODTÜ ve UF görevleri:** İngilizce CV "Teaching Assistant", Türkçe CV "Öğretim Görevlisi", İTÜ profili "araştırma görevlisi" der; sitedeki iki dil kendi CV'sini izler.
+- **11. Workshop on Quantization, Dualities and Integrable Systems (Pamukkale):** iki CV de tarihi "21–23 Nisan 2012" verir; 12. çalıştay da 20–22 Nisan 2012'dedir. Aynı hafta sonuna denk gelen iki ardışık çalıştay olası bir yazım hatasına işaret eder (11. çalıştay 2011 olabilir); doğrulanamadığı için CV'deki tarih kullanıldı. *Kullanıcının teyit etmesi önerilir.*
+- **GR21 konuşma başlığı:** İngilizce CV "Effects of Time-Dependent Scalar Mode Functions on Non-Gaussianity", Türkçe CV "Time-Dependent Scalar Mode Functions effect to Non-Gaussianity" der; konuşma başlıkları her iki dilde de İngilizce CV'deki özgün biçimiyle gösterilir.
+- **IVADO projesi:** Türkçe CV'de "Jean-Franois Arguin" yazılır; doğru yazım İngilizce CV'deki "Jean-François Arguin"dir.
+- **Basın haberleri:** Physics World ve Smithsonian Magazine bağlantıları açılıp başlık ve tarihle eşleştirildi ve bağlantı verildi. MIT Technology Review, Forbes, Alphr ve New Scientist haberleri ile insan doğrulaması (CAPTCHA) isteyen Ars Technica sayfası doğrulanamadığı için bağlantısız, CV'deki başlık ve tarihle listelenir.
+
+## Türkçe sürüm
+
+Türkçe metinler İngilizce metinlerin çevirisi değil, aynı olguların Türkçe anlatımıdır; olgular (tarihler, sayılar, başlıklar) aynı veri dosyalarından gelir. Yayın, video ve konuşma başlıkları özgün dillerinde gösterilir ve `lang` özniteliğiyle işaretlenir. Kurum ve ödül adlarının Türkçesi Türkçe CV'den ve İTÜ profilinden alındı.

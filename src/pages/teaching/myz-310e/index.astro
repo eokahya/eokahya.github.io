@@ -1,8 +1,16 @@
 ---
-import Layout from '../../../layouts/Layout.astro';
+import Base from '../../../layouts/Base.astro';
 import CourseContent from '../../../components/CourseContent.astro';
-import {course} from '../../../data/course';
-import {scanLectureNotes} from '../../../../scripts/scan-notes';
-const notes=await scanLectureNotes();
+import { course } from '../../../data/course';
+import { scanLectureNotes } from '../../../../scripts/scan-notes';
+import { courseJsonLd } from '../../../lib/course-jsonld';
+import '../../../styles/course.css';
+
+// The current-course address renders the same source as the permanent term page and
+// declares the term page canonical, so there is a single indexed copy.
+const notes = await scanLectureNotes();
 ---
-<Layout title={`${course.code} — ${course.title}`} description="MYZ 310E, Fall 2026: foundations of machine learning and a mechanistic interpretability project. Syllabus, assessment and weekly PDF notes." canonical={course.termPath}><div class="wrap page-shell"><CourseContent notes={notes}/></div></Layout>
+<Base title={`${course.code} — ${course.title}`} description={`${course.code}, ${course.term}: machine-learning foundations and a mechanistic-interpretability research project. Syllabus, assessment, weekly schedule and lecture notes.`} canonical={course.termPath} jsonLd={[courseJsonLd()]}>
+  <CourseContent notes={notes} />
+  <script>import '../../../scripts/course';</script>
+</Base>

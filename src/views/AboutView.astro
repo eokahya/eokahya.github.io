@@ -1,0 +1,124 @@
+---
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+import Plate from '../components/Plate.astro';
+import { profile, type ProfileLink } from '../data/profile';
+import { talks } from '../data/talks';
+import { longDate } from '../lib/format';
+import type { Lang } from '../i18n';
+import { pagesCopy } from '../i18n/copy/pages';
+import { ui } from '../i18n/ui';
+import '../styles/pages.css';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = pagesCopy[lang].about;
+const u = ui[lang];
+const tr = lang === 'tr';
+const timeline = [...profile.timeline].sort((a, b) => a.start - b.start);
+const highlighted = talks.filter((talk) => ['Hot Topics', 'GR21', 'Utrecht', 'Cosmo 2014', 'Physics of de Sitter', 'Quantum Gravity: From UV to IR'].some((key) => talk.event.includes(key)));
+const links: ProfileLink[] = [...profile.academicLinks, ...profile.socialLinks];
+const cvPrimary = tr ? { href: profile.cv.tr, label: u.cvTr, lang: 'tr' } : { href: profile.cv.en, label: u.cvEn, lang: 'en' };
+const cvSecondary = tr ? { href: profile.cv.en, label: u.cvEn, lang: 'en' } : { href: profile.cv.tr, label: u.cvTr, lang: 'tr' };
+---
+<Base lang={lang} title={c.metaTitle} description={c.description}>
+  <div class="page">
+    <header class="page-hero" style="--hero-tint: var(--accent)">
+      <div class="page-hero__inner">
+        <div class="page-hero__text">
+          <p class="kicker">{c.kicker}</p>
+          <h1>Emre Onur <em>Kahya</em></h1>
+          <p class="lead">{u.role}, {u.department}, {u.institution}.</p>
+          <div class="action-row">
+            <a class="button" href={cvPrimary.href} hreflang={cvPrimary.lang} lang={cvPrimary.lang}><Icon name="download" size={18} />{cvPrimary.label}</a>
+            <a class="button button--ghost" href={cvSecondary.href} hreflang={cvSecondary.lang} lang={cvSecondary.lang}><Icon name="download" size={18} />{cvSecondary.label}</a>
+          </div>
+          <p class="muted small cv-updated">{c.cvUpdated(longDate(profile.cv.updated[lang], lang))}</p>
+        </div>
+        <div class="page-hero__art" aria-hidden="true"><Plate name="cosmos" eager /></div>
+      </div>
+    </header>
+
+    <div class="about-grid">
+      <div class="about-bio" data-reveal>
+        {profile.aboutBio[lang].map((paragraph) => <p>{paragraph}</p>)}
+        <dl class="facts">
+          <div><dt>{c.interests}</dt><dd>{profile.researchInterests[lang]}</dd></div>
+          <div><dt>{c.refereeTitle}</dt><dd lang="en">{profile.refereeFor.join(', ')}</dd></div>
+        </dl>
+      </div>
+      <aside>
+        <section class="side-block" aria-labelledby="awards-title">
+          <h2 id="awards-title">{c.awards}</h2>
+          <ul class="award-list">
+            {profile.awards.map((award) => (
+              <li><span class="year">{award.year}</span><span class="title" lang={tr ? 'tr' : undefined}>{tr ? award.titleTr : award.title}</span><span class="by">{tr ? award.awardedByTr : award.awardedBy}</span></li>
+            ))}
+          </ul>
+        </section>
+        <section class="side-block" aria-labelledby="profiles-title">
+          <h2 id="profiles-title">{c.profiles}</h2>
+          <ul class="link-list">
+            {links.map((link) => (
+              <li><a href={link.url} rel="me noopener" target="_blank"><span>{(tr && link.labelTr) || link.label}<span class="visually-hidden">{u.newTab}</span></span><span class="handle">{link.handle ?? ''} <Icon name="external" size={14} /></span></a></li>
+            ))}
+          </ul>
+        </section>
+      </aside>
+    </div>
+
+    <section class="timeline" aria-labelledby="timeline-title">
+      <p class="kicker">{c.timelineKicker}</p>
+      <h2 id="timeline-title">{c.timelineTitle[0]}<em>{c.timelineTitle[1]}</em></h2>
+      <ul class="timeline-legend" aria-hidden="true"><li style="--c: var(--cyan)">{c.education}</li><li style="--c: var(--accent)">{c.positions}</li></ul>
+      <ol>
+        {timeline.map((entry) => (
+          <li data-kind={entry.kind}>
+            <p class="period">{tr ? entry.period.replace('present', 'günümüz') : entry.period}</p>
+            <div>
+              <p class="what">{tr ? entry.titleTr : entry.title}<span class="visually-hidden"> ({entry.kind === 'education' ? c.education : c.positions})</span></p>
+              <p class="where">{tr ? entry.institutionTr : entry.institution}</p>
+              {(tr ? entry.detailTr : entry.detail) && <p class="detail">{tr ? entry.detailTr : entry.detail}</p>}
+            </div>
+          </li>
+        ))}
+      </ol>
+      <p class="muted small" style="margin-top:2rem">{c.sources}</p>
+    </section>
+
+    <section class="projects" aria-labelledby="projects-title">
+      <p class="kicker">{c.projectsKicker}</p>
+      <h2 id="projects-title">{c.projectsTitle[0]}<em>{c.projectsTitle[1]}</em></h2>
+      <ul class="project-list" role="list">
+        {profile.projects.map((project) => (
+          <li>
+            <p class="project__period">{project.period}</p>
+            <div>
+              <p class="project__title" lang={tr ? 'tr' : 'en'}>{tr ? project.titleTr : project.title}</p>
+              <p class="project__meta">{tr ? project.funderTr : project.funder}{project.number && ` · ${project.number}`} · {c.role[project.role]}{project.team && ` · ${project.team}`}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section class="talks" id="talks" aria-labelledby="talks-title">
+      <p class="kicker">{c.talksKicker}</p>
+      <h2 id="talks-title">{c.talksTitle[0]}<em>{c.talksTitle[1]}</em></h2>
+      <p class="muted">{c.talksIntro(talks.length)}</p>
+      <ul class="talk-list" role="list">
+        {highlighted.map((talk) => (
+          <li><p class="talk__date">{tr ? talk.dateTr : talk.date}</p><div><p class="talk__title" lang="en">{talk.title}</p><p class="talk__event"><span lang="en">{talk.event}</span> · {tr ? talk.placeTr : talk.place}{talk.invited && <span class="badge badge--accent">{c.invited}</span>}</p></div></li>
+        ))}
+      </ul>
+      <details class="talk-details">
+        <summary>{c.showAll(talks.length)}</summary>
+        <ul class="talk-list" role="list">
+          {talks.map((talk) => (
+            <li><p class="talk__date">{tr ? talk.dateTr : talk.date}</p><div><p class="talk__title" lang="en">{talk.title}</p><p class="talk__event"><span lang="en">{talk.event}</span> · {tr ? talk.placeTr : talk.place}{talk.invited && <span class="badge badge--accent">{c.invited}</span>}</p></div></li>
+          ))}
+        </ul>
+      </details>
+    </section>
+  </div>
+</Base>

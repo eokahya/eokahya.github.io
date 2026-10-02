@@ -1,9 +1,0 @@
----
-const paths = Array.from({length:17},(_,row)=>Array.from({length:35},(_,i)=>{const x=35+i*18; const z=(row-8)/8;const y=310+z*175-Math.exp(-((x-340)**2)/15000)*120*(1-z*z);return `${i?'L':'M'}${x},${y}`;}).join(' '));
----
-<figure class="scientific-scene" aria-label="Schematic illustration of spacetime, learned representations and selected computational pathways">
-  <div class="scene-index" aria-hidden="true"><span id="scene-number">01</span><span id="scene-name">SPACETIME / FIELDS</span></div>
-  <div class="scene-drawing"><canvas id="science-canvas" aria-hidden="true"></canvas><svg class="scene-fallback" viewBox="0 0 680 590" aria-hidden="true">{paths.map(d=><path d={d} fill="none" stroke="currentColor" stroke-width="0.7"/>)}</svg></div>
-  <figcaption><span class="scene-caption">Schematic illustration</span><span class="scene-controls"><button id="path-toggle" hidden aria-pressed="false">Highlight a pathway</button><button id="motion-toggle" hidden aria-pressed="false">Pause animations</button></span></figcaption>
-</figure>
-<script>import '../scripts/scenes';</script>

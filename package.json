@@ -1,8 +1,9 @@
 {
-  "name": "eokahya-academic-website",
-  "version": "1.0.0",
+  "name": "eokahya-site",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
+  "description": "Personal academic website of Prof. Dr. Emre Onur Kahya — static Astro site for GitHub Pages.",
   "engines": {
     "node": ">=22.12.0"
   },
@@ -11,14 +12,17 @@
     "typecheck": "astro check && tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",
     "build:html": "astro build",
-    "pdf": "node scripts/generate-pdf.mjs",
-    "build": "npm run build:html && npm run pdf && npm run check:links",
+    "pdf": "node --import tsx scripts/generate-pdf.ts",
+    "build": "npm run build:html && npm run pdf && npm run check:links && npm run check:i18n",
     "check:links": "node scripts/check-links.mjs",
-    "check:browser": "node scripts/browser-check.mjs",
-    "check:pdf": "node scripts/check-pdf.mjs",
+    "check:i18n": "node scripts/check-i18n.mjs",
+    "check:pdf": "node --import tsx scripts/check-pdf.ts",
     "check:secrets": "node scripts/check-secrets.mjs",
+    "check:browser": "node scripts/browser-check.mjs",
+    "check:lighthouse": "node scripts/lighthouse-check.mjs",
+    "serve": "node scripts/static-server.mjs",
     "preview": "astro preview --host 127.0.0.1",
-    "check:lighthouse": "node scripts/lighthouse-check.mjs"
+    "images": "node scripts/make-images.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",

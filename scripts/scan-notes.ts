@@ -6,7 +6,12 @@ import { course, type Course, type LectureNote } from '../src/data/course';
 
 const filenamePattern = /^week-(\d{2})(?:--([a-z0-9]+(?:-[a-z0-9]+)*))?\.pdf$/;
 
-/** Build-time scan only: no client token, upload endpoint, or remote dependency. */
+/**
+ * Build-time scan of public/teaching/myz-310e/2026-fall/notes/ — no client token, upload
+ * endpoint or remote dependency. Accepted names: week-03.pdf and week-03--worked-examples.pdf.
+ * Titles come from the PDF metadata, the supplement slug, or the weekly plan, in that order.
+ * Invalid, empty or corrupt files stop the build with a clear message.
+ */
 export async function scanLectureNotes(
   directory: string | undefined = undefined,
   model: Course = course,
