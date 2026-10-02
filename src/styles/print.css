@@ -1,6 +1,16 @@
 /* ================= Print syllabus (also the source of the PDF) ================= */
 @page { size: A4; margin: 15mm 15mm 17mm; }
 
+/*
+ * Static IBM Plex Sans instances for the weights above regular. Chromium on Linux (where the published
+ * PDF is built) writes non-default weights of the variable font with glyph widths that break the PDF's
+ * text layer ("Midt erm examinat ion"); static fonts are embedded as plain TrueType and extract cleanly.
+ */
+@font-face { font-family: 'IBM Plex Sans Print'; font-style: normal; font-display: swap; font-weight: 400; src: url('../assets/fonts/ibm-plex-sans.woff2') format('woff2-variations'); }
+@font-face { font-family: 'IBM Plex Sans Print'; font-style: normal; font-display: swap; font-weight: 450; src: url('../assets/fonts/ibm-plex-sans-print-450.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Sans Print'; font-style: normal; font-display: swap; font-weight: 500; src: url('../assets/fonts/ibm-plex-sans-print-500.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Sans Print'; font-style: normal; font-display: swap; font-weight: 600; src: url('../assets/fonts/ibm-plex-sans-print-600.woff2') format('woff2'); }
+
 /* The print route always renders as a light "paper" page, whatever the site theme. */
 html:has(body.print-syllabus) { background: #fff; color-scheme: light; }
 body.print-syllabus {
@@ -10,7 +20,8 @@ body.print-syllabus {
   --text: #15161d; --text-2: #34363f; --text-3: #5b5e69;
   --accent: #7a4c00; --accent-soft: #f6efe2; --accent-ink: #ffffff;
   --cyan: #0a6158; --violet: #4b3ab8; --coral: #9e3a1c; --focus: #7a4c00;
-  background: #fff; color: var(--text); font-size: 10pt; line-height: 1.45;
+  --font-body: 'IBM Plex Sans Print', 'IBM Plex Sans Fallback', 'IBM Plex Sans Fallback Roboto', sans-serif;
+  background: #fff; color: var(--text); font-size: 10pt; line-height: 1.45; font-family: var(--font-body);
 }
 body.print-syllabus::after { display: none; }
 .print-syllabus main { width: min(186mm, 100% - 32px); margin: 0 auto; padding: 0; }

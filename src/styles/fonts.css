@@ -1,7 +1,8 @@
 /*
  * Self-hosted fonts (SIL Open Font License 1.1 — see docs/licenses). Each file is one subset that
  * covers English and Turkish (Basic Latin, Latin-1, Latin Extended-A, punctuation, a few symbols),
- * produced from the original Google Fonts sources by scripts/subset-fonts.py. Four files in total.
+ * produced from the original Google Fonts sources by scripts/subset-fonts.py. Four files for the site;
+ * the printed syllabus adds three static IBM Plex Sans weights (see print.css).
  */
 @font-face {
   font-family: 'Fraunces Variable';
