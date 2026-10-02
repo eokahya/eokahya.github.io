@@ -1,0 +1,51 @@
+name: Verify and deploy GitHub Pages
+on:
+  push:
+  workflow_dispatch:
+env:
+  ASTRO_TELEMETRY_DISABLED: 1
+permissions:
+  contents: read
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.repository == 'eokahya/eokahya.github.io' && github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run check:secrets
+      # build includes the real syllabus PDF; failure prevents artifact upload.
+      - run: npm run build
+      - run: npm run check:pdf
+      - name: Verify production pages in Chromium and WebKit
+        run: |
+          node scripts/static-server.mjs &
+          PREVIEW_PID=$!
+          trap 'kill "$PREVIEW_PID"' EXIT
+          npm run check:browser
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+  deploy:
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy verified artifact
+        id: deployment
+        uses: actions/deploy-pages@v5
