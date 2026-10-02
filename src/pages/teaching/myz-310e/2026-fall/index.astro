@@ -1,0 +1,8 @@
+---
+import Layout from '../../../../layouts/Layout.astro';
+import CourseContent from '../../../../components/CourseContent.astro';
+import {course} from '../../../../data/course';
+import {scanLectureNotes} from '../../../../../scripts/scan-notes';
+const notes=await scanLectureNotes();
+---
+<Layout title={`${course.code} — Fall 2026`} description="Permanent Fall 2026 course page for MYZ 310E, Machine Learning in Physics: syllabus, assessment, research project and weekly notes."><div class="wrap page-shell"><CourseContent notes={notes}/></div></Layout>
