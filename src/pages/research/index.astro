@@ -1,0 +1,8 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import {researchAreas} from '../../data/research';
+import {publications} from '../../data/publications';
+---
+<Layout title="Research" description="Quantum fields, gravity, cosmology, machine learning for physics and mechanistic interpretability: research directions of Emre Onur Kahya.">
+<div class="wrap page-shell"><header class="page-heading research-heading"><p class="eyebrow">Research</p><h1>Fields, learning<br/>& <em>understanding.</em></h1><p>From quantum corrections in spacetime to evidence about learned computation.</p></header><nav class="section-nav" aria-label="Research directions">{researchAreas.map((r,i)=><a href={`#${r.id}`}>0{i+1} · {r.title}</a>)}</nav>{researchAreas.map((r,i)=><section id={r.id} class="research-detail"><div><p class="eyebrow">0{i+1} / Research direction</p><h2>{r.title}</h2>{r.status&&<p class="status-label">{r.status}</p>}</div><div>{r.description.map(p=><p>{p}</p>)}{r.evidence.length>0&&<><h3 class="small-heading">Related publications</h3><ul class="evidence-list">{r.evidence.map(id=>{const p=publications.find(p=>p.id===id);return p&&<li><a href={p.link}>{p.title}</a><span> · {p.year}</span></li>;})}</ul></>}</div></section>)}</div>
+</Layout>
