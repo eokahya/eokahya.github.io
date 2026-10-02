@@ -1,0 +1,6 @@
+---
+import Layout from '../../../../../layouts/Layout.astro';
+import CourseContent from '../../../../../components/CourseContent.astro';
+import {course} from '../../../../../data/course';
+---
+<Layout title={`${course.code} — Syllabus`} description="Print-friendly English syllabus for MYZ 310E, Machine Learning in Physics, Fall 2026." canonical={course.termPath} print><div class="wrap page-shell"><CourseContent print /></div></Layout>
