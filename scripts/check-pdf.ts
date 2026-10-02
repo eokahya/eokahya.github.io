@@ -8,6 +8,7 @@ const path = join('dist', course.syllabusPath);
 const doc = await getDocument({ data: new Uint8Array(await readFile(path)), useSystemFonts: true }).promise;
 let text = '';
 const lines: string[] = [];
+const raw: { page: number; str: string; font: string; x: number; y: number }[] = [];
 const pages: { page: number; characters: number }[] = [];
 for (let i = 1; i <= doc.numPages; i++) {
   const page = await doc.getPage(i);
@@ -21,6 +22,7 @@ for (let i = 1; i <= doc.numPages; i++) {
   text += `${pageText}\n`;
   // The same text regrouped into visual lines (items within 3 pt of the same baseline, left to right),
   // so the checks do not depend on the order in which a platform's PDF backend emits text runs.
+  raw.push(...items.map((item) => ({ page: i, str: item.str, font: (item as { fontName?: string }).fontName ?? '', x: Math.round(item.transform[4]!), y: Math.round(item.transform[5]!) })));
   const placed = items.filter((item) => item.str.trim()).map((item) => ({ x: item.transform[4]!, y: item.transform[5]!, str: item.str })).sort((a, b) => b.y - a.y);
   let line: typeof placed = [];
   for (const item of placed) {
@@ -54,6 +56,10 @@ for (const [label, points, status] of table) {
   const match = visual.find((text) => rule.test(text));
   if (match) { console.log(`  row: ${match.slice(0, 90)}`); continue; }
   const context = visual.filter((text) => text.includes(label.split(' ')[0]!)).slice(0, 12);
+  // Diagnostics: the text pieces of the Assessment section as the PDF stores them (string, font, position).
+  const start = raw.findIndex((item) => item.str.trim() === 'Assessment');
+  const section = start < 0 ? [] : raw.slice(start, start + 60);
+  console.error(`Assessment section pieces:\n${section.map((item) => `  p${item.page} (${item.x},${item.y}) ${item.font} ${JSON.stringify(item.str)}`).join('\n')}`);
   throw new Error(`PDF assessment table mismatch: ${label} ${points} ${status}\nPrinted lines starting with "${label.split(' ')[0]}":\n${context.map((text) => `  | ${text}`).join('\n')}`);
 }
 if (/Not yet uploaded/.test(normalised)) throw new Error('The PDF must not contain the per-week upload placeholders');

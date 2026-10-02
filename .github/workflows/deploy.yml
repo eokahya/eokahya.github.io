@@ -30,6 +30,17 @@ jobs:
       - run: npm run build
       - run: npm run check:pdf
       - run: npm run check:browser
+      - name: Keep the PDF and check reports for inspection if a check failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-reports
+          path: |
+            dist/teaching/myz-310e/2026-fall/myz-310e-syllabus.pdf
+            artifacts/pdf/
+            artifacts/browser/results.json
+          retention-days: 7
+          if-no-files-found: ignore
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
