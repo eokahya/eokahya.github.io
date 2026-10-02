@@ -1,0 +1,5 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import {profile} from '../../data/profile';
+---
+<Layout title="Contact" description="Contact Prof. Dr. Emre Onur Kahya at the Department of Physics Engineering, Istanbul Technical University."><div class="wrap page-shell"><header class="page-heading"><p class="eyebrow">Contact</p><h1>Start a<br/><em>conversation.</em></h1><p>Research and teaching enquiries.</p></header><div class="contact-details"><div><p class="eyebrow">Email</p><a class="contact-email" href={`mailto:${profile.email}`}>{profile.email}</a></div><div><p class="eyebrow">Affiliation</p><p>{profile.affiliation}<br/>{profile.location}</p></div></div><div class="inline-links">{profile.links.map(p=><a href={p.url}>{p.label}</a>)}</div></div></Layout>
