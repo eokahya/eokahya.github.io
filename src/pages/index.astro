@@ -1,0 +1,19 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ScientificScene from '../components/ScientificScene.astro';
+import PublicationList from '../components/PublicationList.astro';
+import {profile} from '../data/profile';
+import {researchAreas} from '../data/research';
+import {publications} from '../data/publications';
+---
+<Layout title="Home" description="Emre Onur Kahya, Professor of Physics at Istanbul Technical University. Quantum fields, gravitation, cosmology and machine learning." home>
+  <div class="journey wrap">
+    <section class="story-section hero" data-scene-stage="0"><p class="eyebrow">Professor of Physics · Istanbul Technical University</p><h1>Emre Onur<br/><em>Kahya.</em></h1><p class="hero-intro">Exploring the structure of our universe.<br/>Understanding what machines learn.</p><div class="hero-links"><a class="button" href="/research/">Explore research</a><a class="text-link" href="/teaching/myz-310e/">MYZ 310E · Fall 2026</a></div><p class="journey-cue">01 — From spacetime to learned representations</p></section>
+    <ScientificScene />
+    <section class="story-section" data-scene-stage="1"><p class="eyebrow">02 / Learning</p><h2>From physical fields<br/>to learned <em>representations.</em></h2><p>Physical observations become data. Learning methods turn that data into useful representations, opening another way to investigate scientific questions.</p><p>My work connects theoretical physics with machine learning applications, including particle identification and astronomical light curves.</p><a class="text-link" href="/research/#machine-learning">Machine learning for physics</a></section>
+    <section class="story-section" data-scene-stage="2"><p class="eyebrow">03 / Understanding</p><h2>Beyond a prediction.<br/>Inside the <em>mechanism.</em></h2><p>What information does a model represent? What does it actually use? My current research direction explores these questions through interventions, controls and reproducible experiments.</p><p class="quiet">The changing geometry is a schematic illustration, not a measured model or a claim of equivalence between physics and AI.</p><a class="text-link" href="/research/#interpretability">Mechanistic interpretability & reliable AI</a></section>
+  </div>
+  <section class="home-research section wrap"><div class="section-heading"><div><p class="eyebrow">Research</p><h2>Four directions.<br/>A shared scientific curiosity.</h2></div><a class="text-link" href="/research/">Research in detail</a></div><div class="research-grid">{researchAreas.map((r,i)=><article><span class="ordinal">0{i+1}</span><h3><a href={`/research/#${r.id}`}>{r.title}</a></h3><p>{r.short}</p></article>)}</div><div class="bio-line"><p>{profile.bio}</p><a class="text-link" href="/about/">About me</a></div></section>
+  <section class="section wrap"><div class="section-heading"><div><p class="eyebrow">Selected work</p><h2>Ideas in print.</h2></div><a class="text-link" href="/publications/">All verified publications</a></div><PublicationList items={publications.filter(p=>p.selected)} compact /></section>
+  <section class="teaching-callout wrap"><div><p class="eyebrow">Teaching / Fall 2026</p><h2>Machine Learning<br/>in Physics</h2><p>MYZ 310E · Six weeks of foundations, then a research project in mechanistic interpretability.</p></div><div><a class="button" href="/teaching/myz-310e/">Open the course</a><p class="quiet">Syllabus, weekly schedule and lecture notes.</p></div></section>
+</Layout>
