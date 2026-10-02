@@ -1,0 +1,39 @@
+---
+import '../styles/global.css';
+import { profile } from '../data/profile';
+interface Props { title: string; description: string; canonical?: string; home?: boolean; print?: boolean }
+const { title, description, canonical = Astro.url.pathname, home = false, print = false } = Astro.props;
+const nav = [['Research','/research/'],['Publications','/publications/'],['Teaching','/teaching/'],['About','/about/'],['Contact','/contact/']];
+const url = new URL(canonical, Astro.site);
+const person = { '@context': 'https://schema.org', '@type':'Person', name:profile.name, jobTitle:profile.displayRole, affiliation:{'@type':'Organization',name:profile.affiliation}, email:profile.email, url:'https://eokahya.github.io/', sameAs:profile.links.map(p=>p.url) };
+---
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>{title} · Emre Onur Kahya</title><meta name="description" content={description}/>
+    <link rel="canonical" href={url}/><link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+    <meta name="theme-color" content="#102429"/>
+    <meta property="og:title" content={`${title} · Emre Onur Kahya`}/><meta property="og:description" content={description}/><meta property="og:type" content="website"/><meta property="og:url" content={url}/>
+    <script is:inline>try { const t = localStorage.getItem('theme'); if(t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
+    <script type="application/ld+json" set:html={JSON.stringify(person)} />
+  </head>
+  <body class:list={[{home,'print-page':print}]}>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header no-print">
+      <a class="wordmark" href="/" aria-label="Emre Onur Kahya, home">E. O. Kahya<span>Physics · ITU</span></a>
+      <nav class="desktop-nav" aria-label="Main navigation">{nav.map(([label,href])=><a href={href} aria-current={Astro.url.pathname.startsWith(href)?'page':undefined}>{label}</a>)}</nav>
+      <div class="header-tools"><button id="theme-toggle" class="theme-button" hidden aria-label="Switch to light theme">Light theme</button>
+      <details class="mobile-menu"><summary>Menu</summary><nav aria-label="Mobile navigation">{nav.map(([label,href])=><a href={href} aria-current={Astro.url.pathname.startsWith(href)?'page':undefined}>{label}</a>)}</nav></details></div>
+    </header>
+    <main id="main"><slot /></main>
+    <footer class="site-footer no-print"><div><a class="footer-name" href="/">Emre Onur Kahya</a><p>Department of Physics Engineering<br/>Istanbul Technical University · Istanbul, Türkiye</p></div><div><span class="eyebrow">Elsewhere</span><div class="footer-links">{profile.links.slice(0,4).map(link=><a href={link.url}>{link.label}</a>)}<a href={`mailto:${profile.email}`}>Email</a></div></div><p class="copyright">© 2026 Emre Onur Kahya</p></footer>
+    <script>
+      const button = document.querySelector<HTMLButtonElement>('#theme-toggle');
+      if(button){
+        const sync=()=>{const light=document.documentElement.dataset.theme==='light';button.textContent=light?'Dark theme':'Light theme';button.setAttribute('aria-label',`Switch to ${light?'dark':'light'} theme`);};
+        button.hidden=false;sync();button.addEventListener('click',()=>{const theme=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=theme;try{localStorage.setItem('theme',theme);}catch{}sync();window.dispatchEvent(new Event('themechange'));});
+      }
+    </script>
+  </body>
+</html>
