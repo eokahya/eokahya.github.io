@@ -16,7 +16,9 @@ await rm(`${output}.tmp`, { force: true });
 const preview = await startStaticServer('dist');
 let browser;
 try {
-  browser = await chromium.launch({ headless: true });
+  // Headless Chromium hints fonts fully on Linux (where the published PDF is built) and snaps glyphs to
+  // whole pixels; that spaces letters unevenly and splits words in the PDF's text layer ("Midt erm").
+  browser = await chromium.launch({ headless: true, args: ['--font-render-hinting=none'] });
   const page = await browser.newPage();
   const response = await page.goto(`${preview.url}${course.printPath}`, { waitUntil: 'networkidle' });
   if (response?.status() !== 200) throw new Error(`Syllabus route ${course.printPath} returned ${response?.status()}`);

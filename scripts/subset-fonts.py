@@ -1,5 +1,5 @@
 """
-Builds the self-hosted font files in src/assets/fonts/ from the original OFL sources
+Builds the four self-hosted font files in src/assets/fonts/ from the original OFL sources
 (github.com/google/fonts: ofl/fraunces, ofl/ibmplexsans, ofl/ibmplexmono). Run from a folder that
 contains the downloaded TTFs:  python subset-fonts.py <output-folder>   (needs fonttools + brotli)
 """
@@ -49,7 +49,3 @@ build('Fraunces[SOFT,WONK,opsz,wght].ttf', f'{out}/fraunces-normal.woff2', {'SOF
 build('Fraunces-Italic[SOFT,WONK,opsz,wght].ttf', f'{out}/fraunces-italic.woff2', {'SOFT': 0, 'WONK': 0, 'wght': (300, 500)})
 build('IBMPlexSans[wdth,wght].ttf', f'{out}/ibm-plex-sans.woff2', {'wdth': 100, 'wght': (400, 600)})
 build('IBMPlexMono-Regular.ttf', f'{out}/ibm-plex-mono-400.woff2', None)
-# Static IBM Plex Sans instances for the printed syllabus only: Chromium on Linux writes non-default
-# weights of the variable font into PDFs with glyph widths that break text extraction ("Midt erm").
-for weight in (450, 500, 600):
-    build('IBMPlexSans[wdth,wght].ttf', f'{out}/ibm-plex-sans-print-{weight}.woff2', {'wdth': 100, 'wght': weight})
