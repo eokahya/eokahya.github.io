@@ -42,5 +42,6 @@ Hedef: https://eokahya.github.io/ için GPT sürümünün işlevlerini koruyan, 
 
 ## Durum
 
-**LOCAL VERIFIED.** Yerel derleme ve tüm kabul kontrolleri tamamlandı.
-**LIVE: henüz yok.** Canlı site hâlâ GPT sürümüdür; bu sürüm kullanıcı onay verdiğinde `eokahya/eokahya.github.io` deposuna normal bir commit ile yüklenecek (force push yok, geçmiş silinmez).
+**LIVE (2 Ekim 2026).** Bu sürüm `eokahya/eokahya.github.io` deposunun `main` dalına normal commit'lerle yüklendi (force push yok, geçmiş korunuyor) ve GitHub Actions'taki tüm kontrollerden geçerek https://eokahya.github.io/ adresinde yayımlandı. Linux üzerindeki CI'da da 31/31 test, PDF tablo denetimi ve 332 tarayıcı kontrolü (0 FAIL) geçti; canlı sitede 17 sayfa (EN + TR), iki CV (byte byte aynı), syllabus PDF, iki dilde 404, dil düğmesi ve WebGL sahnesi ayrıca doğrulandı.
+
+CI'da bulunup düzeltilenler: başsız Chromium'un Linux'ta yazı tiplerini tam piksele oturtması PDF'in metin katmanını bozuyordu ("Midt erm") — PDF artık `--font-render-hinting=none` ile üretiliyor; Chromium için macOS'a özgü bir GPU bayrağı yalnızca macOS'ta kullanılıyor.
