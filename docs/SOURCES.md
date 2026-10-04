@@ -136,6 +136,13 @@ Kaynaklar, 2 Ekim 2026'da tarayıcıda ve kamuya açık YouTube izleme sayfalar�
 - Tema grupları (Uzay-zaman, Kuantumun öncüleri, Nobel tarihi, Yapay zekâ, Fizikçi gibi düşünmek, Oktay Sinanoğlu, Türkiye'de üniversite ve bilim) başlıklara göre yapılmış editoryal bir gruplamadır.
 - Site YouTube oynatıcısı, küçük resmi veya üçüncü taraf betiği gömmez; yalnızca bağlantı verir.
 
+### Güncelleme — 4 Ekim 2026
+
+- **Otomatik yenileme:** izlenme sayıları artık video listelerinden ayrı, `src/data/outreach-views.json` dosyasında tutuluyor. `scripts/refresh-views.ts` bu sayıları herkese açık YouTube izleme sayfalarından (`videoDetails.viewCount`, API anahtarı olmadan) yeniden okur; GitHub Actions bunu her yayından önce ve her pazartesi 06:23'te (İstanbul) çalıştırıp siteyi yeniden yayımlar. Videoların %80'inden azı okunabilirse eski sayılar ve tarihleri olduğu gibi kalır; bir sayı öncekinin %90'ının altına düşerse o video için eski sayı korunur.
+- **4 Ekim 2026 okuması (80 video):** Teke Tek Bilim (uzun programlar, klipler, Bilim Ekstra) 5.871.220; kişisel kanal 26.927; Literat 1.040.503 → YouTube toplamı **6.938.650** (sitede "6,9 milyon+"). 27 Eylül programı: `qp0k-ak7f7c` 720.739, `bvol2_D9gmo` 739.542, `aCB1NGFv5bg` 430.092.
+- **Literat kanalı** ([@Literatsf](https://www.youtube.com/@Literatsf)), kullanıcının verdiği bağlantılar: `uS4WaHeeRxQ` "FİZİK MÜHENDİSİ ATOM BOMBASI SAHNELERİNİ İZLİYOR!" (22 Mayıs 2024, 18:48, 797.669 izlenme) ve `rXjrqzaE464` "FİZİK MÜHENDİSİ, ZAMANDA YOLCULUK SAHNELERİNİ İZLİYOR!" (6 Kasım 2024, 14:12, 242.834 izlenme); açıklamaları Prof. Dr. Emre Onur Kahya'yı adıyla anar. Kullanıcının isteğiyle öne çıkarılmadan, "Diğer kanallarda" başlığı altında listelenir ve toplama dahil edilir; başlıklar Türkçe küçük harfle gösterilir, özgün büyük harfli hâli `originalTitle` alanındadır.
+- **Instagram:** kullanıcının verdiği iki reel, 27 Eylül programının iki YouTube klibinin @teketektv hesabındaki (@emreokahya ile ortak) paylaşımlarıdır: `DdyJ3LbO8RP` "Yapay zeka, Huggin Face'i nasıl hackledi?" ve `Dd_hKMlO3Zm` "Yapay zekanın fişi çekilebilir mi?" (2 Ekim 2026). Instagram izlenme sayısını yalnızca giriş yapmış kullanıcılara gösterdiği için sayılar doğrulanamadı; reeller ilgili kliplere "Instagram'da da" bağlantısıyla eklendi, izlenmeleri toplama dahil edilmedi. Kullanıcıya göre beş bağlantının toplamı 4 Ekim'de 3,3 milyondu; YouTube'daki üç video o gün 1,89 milyon olduğuna göre iki reel birlikte yaklaşık 1,4 milyon izlenmiş.
+
 ## Özgeçmişler (CV) — 2 Ekim 2026
 
 Kullanıcının kendi özgeçmiş dosyaları bu sürümün birincil kaynağıdır ve sitede **olduğu gibi** yayımlanır:

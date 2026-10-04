@@ -22,7 +22,8 @@
     "check:lighthouse": "node scripts/lighthouse-check.mjs",
     "serve": "node scripts/static-server.mjs",
     "preview": "astro preview --host 127.0.0.1",
-    "images": "node scripts/make-images.mjs"
+    "images": "node scripts/make-images.mjs",
+    "refresh:views": "node --import tsx scripts/refresh-views.ts"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",

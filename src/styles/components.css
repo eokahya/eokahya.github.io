@@ -28,6 +28,10 @@
 .video--row .video__meta { gap: 0.2rem 0; }
 .video--row .video__meta > span + span::before { content: '·'; margin: 0 0.55rem; color: var(--line-2); }
 .video__with { margin-top: 0.4rem; font-size: 0.9rem; color: var(--text-2); }
+/* A second link inside a card whose title link covers it (::after): lifted above that overlay. */
+.video__also { position: relative; z-index: 1; margin-top: 0.6rem; font-size: 0.84rem; }
+.video__also a { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 32px; color: var(--text-2); text-decoration: none; border-bottom: 1px solid var(--line-2); }
+.video__also a:hover { color: var(--coral); border-bottom-color: currentColor; }
 .video__programme { font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--coral); margin-bottom: 0.6rem; }
 .video__aired { color: var(--text-3); }
 .video--row { padding: 0.85rem 0; border-bottom: 1px solid var(--line); }

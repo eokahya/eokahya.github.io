@@ -5,7 +5,7 @@ import VideoCard from '../components/VideoCard.astro';
 import Icon from '../components/Icon.astro';
 import {
   bilimEkstra, bilimEkstraThemes, channels, clips, conversations, formatViews, formatViewsFloor,
-  lessons, lessonTopics, outreachSnapshot, outreachTotals,
+  lessons, lessonTopics, otherChannels, outreachSnapshot, outreachTotals,
 } from '../data/outreach';
 import { media } from '../data/talks';
 import { longDate } from '../lib/format';
@@ -35,7 +35,7 @@ const lead = c.lead(totals.firstAired.slice(0, 4));
           {c.trNote && <p class="tr-note" lang="tr">{c.trNote}</p>}
           <dl class="outreach-stats">
             <div><dt>{c.stats.programmes}</dt><dd>{totals.programmes}</dd></div>
-            <div><dt>{c.stats.views}</dt><dd>{formatViewsFloor(totals.tekeTekBilimViews, lang)}+</dd></div>
+            <div><dt>{c.stats.views}</dt><dd>{formatViewsFloor(totals.youtubeViews, lang)}+</dd></div>
             <div><dt><span lang="tr">Bilim Ekstra</span> {c.stats.episodes}</dt><dd>{totals.bilimEkstra}</dd></div>
           </dl>
           <div class="channel-links">
@@ -115,6 +115,21 @@ const lead = c.lead(totals.firstAired.slice(0, 4));
               {topic.videos.map((video) => <VideoCard video={video} variant="row" headingLevel="h4" programme="YouTube" lang={lang} />)}
             </section>
           ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="other-title">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <p class="kicker">{c.otherKicker}</p>
+            <h2 id="other-title">{c.otherTitle[0]}<em>{c.otherTitle[1]}</em></h2>
+          </div>
+          <p class="muted small">{c.otherMeta(otherChannels.length, formatViews(totals.otherChannelViews, lang))}<a href={channels.literat.url}>{channels.literat.name}</a><br />{c.otherText}</p>
+        </div>
+        <div class="other-grid">
+          {otherChannels.map((video) => <VideoCard video={video} variant="row" headingLevel="h3" programme={video.channel} lang={lang} />)}
         </div>
       </div>
     </section>

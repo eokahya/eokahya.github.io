@@ -53,6 +53,8 @@ Sayfaların düzeni `src/views/` altındadır; her görünüm hem İngilizce (`s
 
 **Özgeçmişi güncellemek:** yeni PDF'yi aynı adla `public/cv/` altına koyun ve `src/data/profile.ts` içindeki `cv.updated.en` ya da `cv.updated.tr` tarihini değiştirin. `npm test`, sitede listelenen konuşmaların, ödüllerin, projelerin ve tezlerin özgeçmiş PDF'lerinde gerçekten geçtiğini denetler; sitede bir şey PDF'de yoksa test başarısız olur.
 
+**İzlenme sayıları:** YouTube izlenmeleri `src/data/outreach-views.json` dosyasındadır ve kendiliğinden güncellenir: GitHub Actions her yayından önce ve her pazartesi sabahı sayıları herkese açık YouTube sayfalarından yeniden okuyup siteyi yeniden yayımlar (`npm run refresh:views` aynısını yerelde yapar). YouTube okunamazsa son sayılar ve tarihleri kalır. Yeni bir video eklemek için kimliğini (`watch?v=` sonrasındaki 11 karakter) `src/data/outreach.ts` içindeki uygun listeye ekleyin; sayısı ilk yenilemede gelir. Instagram izlenmeleri herkese açık olmadığından otomatik okunamaz.
+
 Ders notu yükleme ve dönem bakımı için teknik olmayan, adım adım kılavuz: [`docs/TEACHING_GUIDE_TR.md`](docs/TEACHING_GUIDE_TR.md). Kaynak doğrulamaları: [`docs/SOURCES.md`](docs/SOURCES.md). Üçüncü taraf lisansları: [`docs/THIRD_PARTY_NOTICES.md`](docs/THIRD_PARTY_NOTICES.md).
 
 ## Yayın

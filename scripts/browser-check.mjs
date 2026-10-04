@@ -261,6 +261,21 @@ for (const name of engines) {
     record(name, 'mobile menu: language link leads to the English page', (await phone.evaluate(() => document.documentElement.lang)) === 'en');
     await mobile.close();
   }
+
+  // 9 — outreach: other channels are listed, and Instagram links inside clip cards are reachable
+  {
+    const context = await contextFor(browser, {});
+    const page = await context.newPage();
+    await page.goto(base + '/tr/bilim-iletisimi/', { waitUntil: 'networkidle' });
+    const info = await page.evaluate(() => {
+      const links = [...document.querySelectorAll('.video__also a')];
+      document.documentElement.style.scrollBehavior = 'auto';
+      const reachable = links.filter((a) => { a.scrollIntoView({ block: 'center', behavior: 'instant' }); const r = a.getBoundingClientRect(); return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest('a') === a; }).length;
+      return { other: document.querySelectorAll('.other-grid .video').length, instagram: links.length, reachable };
+    });
+    record(name, 'outreach: other channels listed, Instagram links clickable', info.other === 2 && info.instagram === 2 && info.reachable === 2, JSON.stringify(info));
+    await context.close();
+  }
   await browser.close();
 }
 

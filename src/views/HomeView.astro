@@ -148,7 +148,7 @@ const newTab = u.newTab;
         <p>{outreachText[0]}<a href={channels.tekeTekBilim.url}>{outreachText[1]}</a>{outreachText[2]}<a href={channels.bilimEkstraPlaylist.url} lang="tr">{outreachText[3]}</a>{outreachText[4]}</p>
         <dl class="stats">
           <div><dt>{c.outreach.stats.programmes}</dt><dd>{totals.programmes}</dd></div>
-          <div><dt>{c.outreach.stats.views}</dt><dd>{formatViewsFloor(totals.tekeTekBilimViews, lang)}+</dd></div>
+          <div><dt>{c.outreach.stats.views}</dt><dd>{formatViewsFloor(totals.youtubeViews, lang)}+</dd></div>
           <div><dt><span lang="tr">Bilim Ekstra</span> {c.outreach.stats.episodes}</dt><dd>{totals.bilimEkstra}</dd></div>
         </dl>
         <p class="stats-note">{c.outreach.statsNote(longDate(outreachSnapshot.checkedOn, lang))}</p>
