@@ -5,7 +5,7 @@ import {
   otherChannels, outreachSnapshot, outreachTotals, watchUrl,
 } from '../src/data/outreach';
 import snapshot from '../src/data/outreach-views.json';
-import { acceptCount, istanbulDate, parseViewCount } from '../scripts/youtube';
+import { acceptCount, istanbulDate, parseApiCounts, parseViewCount } from '../scripts/youtube';
 
 test('every video id is unique and well-formed, with a view count from the snapshot', () => {
   const all = allYouTubeVideos();
@@ -17,7 +17,10 @@ test('every video id is unique and well-formed, with a view count from the snaps
     assert.match(video.published, /^\d{4}-\d{2}-\d{2}$/);
     assert.ok(video.published <= outreachSnapshot.checkedOn);
     if (video.aired) assert.ok(video.aired < video.published);
-    if (video.instagram) assert.match(video.instagram, /^https:\/\/www\.instagram\.com\/reel\/[A-Za-z0-9_-]+\/$/);
+    if (video.instagram) {
+      assert.match(video.instagram.url, /^https:\/\/www\.instagram\.com\/teketektv\/reel\/[A-Za-z0-9_-]+\/$/);
+      assert.ok(Number.isInteger(video.instagram.views) && video.instagram.views > 0);
+    }
   }
   // The snapshot holds exactly the listed videos and a valid date.
   assert.deepEqual(Object.keys(snapshot.views).sort(), all.map((video) => video.id).sort());
@@ -50,7 +53,9 @@ test('Bilim Ekstra episodes are all themed and the counts add up', () => {
   assert.equal(totals.tekeTekBilimViews, sum([...conversations, ...clips, ...bilimEkstra]));
   assert.equal(totals.youtubeViews, sum(allYouTubeVideos()));
   assert.equal(totals.otherChannelViews, sum(otherChannels));
-  assert.ok(otherChannels.every((video) => video.channel === 'Literat'));
+  assert.deepEqual([...new Set(otherChannels.map((video) => video.channel))].sort(), ['Haber Global', 'Literat']);
+  assert.equal(totals.instagramViews, clips.reduce((s, v) => s + (v.instagram?.views ?? 0), 0));
+  assert.equal(totals.allViews, totals.youtubeViews + totals.instagramViews);
   // Conversations and clips are shown most watched first.
   for (const list of [conversations, clips]) for (let i = 1; i < list.length; i++) assert.ok(list[i - 1]!.views >= list[i]!.views);
 });
@@ -64,6 +69,8 @@ test('view counts are read from YouTube pages only when they are plausible', () 
   assert.equal(acceptCount(null, 700).ok, false);
   assert.deepEqual(acceptCount(42, undefined), { ok: true });
   assert.equal(istanbulDate(new Date('2026-10-03T22:30:00Z')), '2026-10-04');
+  assert.deepEqual(parseApiCounts({ items: [{ id: 'qp0k-ak7f7c', statistics: { viewCount: '720739' } }, { id: 'x', statistics: {} }] }), { 'qp0k-ak7f7c': 720739 });
+  assert.deepEqual(parseApiCounts({ error: { code: 403 } }), {});
 });
 
 test('formatting helpers never overstate', () => {

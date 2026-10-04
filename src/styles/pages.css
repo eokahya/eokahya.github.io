@@ -113,7 +113,6 @@
 .theme-block h3 .tr { display: block; margin-top: 0.15rem; font-family: var(--font-body); font-size: 0.85rem; font-style: normal; color: var(--text-3); }
 @media (max-width: 860px) { .theme-grid { columns: 1; } }
 .lesson-grid { columns: 3; column-gap: clamp(1.6rem, 4vw, 3.5rem); }
-.other-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 0 clamp(2rem, 5vw, 4.5rem); border-top: 1px solid var(--line-2); }
 @media (max-width: 960px) { .lesson-grid { columns: 2; } }
 @media (max-width: 620px) { .lesson-grid { columns: 1; } }
 .press { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: clamp(2rem, 5vw, 5rem); align-items: start; }

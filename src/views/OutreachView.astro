@@ -5,7 +5,7 @@ import VideoCard from '../components/VideoCard.astro';
 import Icon from '../components/Icon.astro';
 import {
   bilimEkstra, bilimEkstraThemes, channels, clips, conversations, formatViews, formatViewsFloor,
-  lessons, lessonTopics, otherChannels, outreachSnapshot, outreachTotals,
+  instagramSnapshot, lessons, lessonTopics, otherChannels, outreachSnapshot, outreachTotals,
 } from '../data/outreach';
 import { media } from '../data/talks';
 import { longDate } from '../lib/format';
@@ -23,6 +23,10 @@ const themes = bilimEkstraThemes.map((theme) => ({ ...theme, videos: bilimEkstra
 const topics = lessonTopics.map((topic) => ({ ...topic, videos: lessons.filter((video) => video.topic === topic.id) })).filter((t) => t.videos.length);
 const seriesViews = bilimEkstra.reduce((sum, video) => sum + video.views, 0);
 const lead = c.lead(totals.firstAired.slice(0, 4));
+const channelUrl = (name: string) => Object.values(channels).find((channel) => channel.name === name)?.url;
+const otherGroups = [...new Set(otherChannels.map((video) => video.channel!))].map((name) => ({
+  name, url: channelUrl(name), slug: name.toLowerCase().replace(/[^a-z]+/g, '-'), videos: otherChannels.filter((video) => video.channel === name),
+}));
 ---
 <Base lang={lang} title={c.metaTitle} description={c.description(totals.programmes, totals.bilimEkstra)}>
   <div class="page">
@@ -35,7 +39,7 @@ const lead = c.lead(totals.firstAired.slice(0, 4));
           {c.trNote && <p class="tr-note" lang="tr">{c.trNote}</p>}
           <dl class="outreach-stats">
             <div><dt>{c.stats.programmes}</dt><dd>{totals.programmes}</dd></div>
-            <div><dt>{c.stats.views}</dt><dd>{formatViewsFloor(totals.youtubeViews, lang)}+</dd></div>
+            <div><dt>{c.stats.views}</dt><dd>{formatViewsFloor(totals.allViews, lang)}+</dd></div>
             <div><dt><span lang="tr">Bilim Ekstra</span> {c.stats.episodes}</dt><dd>{totals.bilimEkstra}</dd></div>
           </dl>
           <div class="channel-links">
@@ -126,10 +130,15 @@ const lead = c.lead(totals.firstAired.slice(0, 4));
             <p class="kicker">{c.otherKicker}</p>
             <h2 id="other-title">{c.otherTitle[0]}<em>{c.otherTitle[1]}</em></h2>
           </div>
-          <p class="muted small">{c.otherMeta(otherChannels.length, formatViews(totals.otherChannelViews, lang))}<a href={channels.literat.url}>{channels.literat.name}</a><br />{c.otherText}</p>
+          <p class="muted small">{c.otherMeta(otherChannels.length, formatViews(totals.otherChannelViews, lang))}<br />{c.otherText}</p>
         </div>
-        <div class="other-grid">
-          {otherChannels.map((video) => <VideoCard video={video} variant="row" headingLevel="h3" programme={video.channel} lang={lang} />)}
+        <div class="theme-grid other-grid">
+          {otherGroups.map((group) => (
+            <section class="theme-block" aria-labelledby={`other-${group.slug}`}>
+              <h3 id={`other-${group.slug}`}><span><a href={group.url}>{group.name}</a><span class="tr">{c.otherChannelNotes[group.name]}</span></span><span class="count">{group.videos.length}</span></h3>
+              {group.videos.map((video) => <VideoCard video={video} variant="row" headingLevel="h4" programme={group.name} lang={lang} />)}
+            </section>
+          ))}
         </div>
       </div>
     </section>
@@ -153,6 +162,6 @@ const lead = c.lead(totals.firstAired.slice(0, 4));
       </div>
     </section>
 
-    <div class="source-note note">{c.note(longDate(outreachSnapshot.checkedOn, lang))}</div>
+    <div class="source-note note">{c.note(longDate(outreachSnapshot.checkedOn, lang), longDate(instagramSnapshot.checkedOn, lang))}</div>
   </div>
 </Base>

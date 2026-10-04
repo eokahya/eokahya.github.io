@@ -13,6 +13,17 @@ export function parseViewCount(html: string): number | null {
   return Number.isSafeInteger(views) ? views : null;
 }
 
+/** View counts from a YouTube Data API v3 `videos?part=statistics` response, by video id. */
+export function parseApiCounts(body: unknown): Record<string, number> {
+  const items = (body as { items?: { id?: string; statistics?: { viewCount?: string } }[] })?.items ?? [];
+  const counts: Record<string, number> = {};
+  for (const item of items) {
+    const views = Number(item.statistics?.viewCount);
+    if (item.id && Number.isSafeInteger(views)) counts[item.id] = views;
+  }
+  return counts;
+}
+
 /** Decides whether a freshly read count can replace the previous one (counts only grow, give or take spam removal). */
 export function acceptCount(fresh: number | null, previous: number | undefined): { ok: boolean; reason?: string } {
   if (fresh === null) return { ok: false, reason: 'no view count on the page' };

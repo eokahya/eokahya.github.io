@@ -30,8 +30,8 @@ export interface Video {
   format: 'short' | 'video';
   /** Channel, when it is not Teke Tek Bilim or the personal channel. */
   channel?: string;
-  /** The same clip posted on Instagram (its view count is not public, so it is not counted). */
-  instagram?: string;
+  /** The same clip posted on Instagram, with its view count as Instagram shows it (see instagramSnapshot). */
+  instagram?: { url: string; views: number };
 }
 
 /** A video as written below; its view count is added from the snapshot. */
@@ -46,6 +46,12 @@ export const outreachSnapshot = {
   source: snapshot.source,
 } as const;
 
+/** Instagram shows view counts only to signed-in users: these figures are entered by hand. */
+export const instagramSnapshot = {
+  checkedOn: '2026-10-04',
+  source: 'The Instagram app (reels tab of @teketektv), as reported by the author',
+} as const;
+
 export const channels = {
   tekeTekBilim: { name: 'Teke Tek Bilim', handle: '@TekeTekBilim', url: 'https://www.youtube.com/@TekeTekBilim' },
   bilimEkstraPlaylist: { name: 'Prof. Dr. Emre Onur Kahya ile Bilim Ekstra', url: 'https://www.youtube.com/playlist?list=PLIWPLnDgfo-UvehLkGjmXCRuW2pAA6MGJ' },
@@ -53,6 +59,7 @@ export const channels = {
   instagram: { name: 'Instagram', handle: '@emreokahya', url: 'https://www.instagram.com/emreokahya/' },
   x: { name: 'X', handle: '@EmreOnurKahya', url: 'https://x.com/EmreOnurKahya' },
   literat: { name: 'Literat', handle: '@Literatsf', url: 'https://www.youtube.com/@Literatsf' },
+  haberGlobal: { name: 'Haber Global', handle: '@haberglobal', url: 'https://www.youtube.com/@haberglobal' },
 } as const;
 
 /** Long-form Teke Tek Bilim conversations, most watched first. */
@@ -68,10 +75,10 @@ export const conversations: readonly Video[] = byViews(withViews([
 
 /** Short clips cut from the conversations above, most watched first. */
 export const clips: readonly Video[] = byViews(withViews([
-  { id: "Jb4xXribPwk", title: "Evren hızlanarak genişler mi?", originalTitle: "Evren hızlanarak genişler mi? / Prof. Dr. Emre Onur Kahya & Emrah Safa Gürkan - Teke Tek Bilim", lang: 'tr', with: ["Emrah Safa Gürkan"], durationSeconds: 90, published: '2025-08-24', theme: 'cosmos', glyph: 'expansion', format: 'short' },
-  { id: "bvol2_D9gmo", title: "Yapay zekanın fişi çekilebilir mi?", originalTitle: "Yapay zekanın fişi çekilebilir mi? / Prof. Dr. Emre Onur Kahya & Fatih Altaylı", lang: 'tr', with: ["Fatih Altaylı"], durationSeconds: 75, published: '2026-09-27', theme: 'ai', format: 'short', instagram: 'https://www.instagram.com/reel/Dd_hKMlO3Zm/' },
-  { id: "aCB1NGFv5bg", title: "Yapay zeka Hugging Face'i nasıl hackledi?", originalTitle: "Yapay zeka Hugging Face'i nasıl hackledi? / Prof. Dr. Emre Onur Kahya & Fatih Altaylı", lang: 'tr', with: ["Fatih Altaylı"], durationSeconds: 108, published: '2026-09-27', theme: 'ai', format: 'short', instagram: 'https://www.instagram.com/reel/DdyJ3LbO8RP/' },
-  { id: "THYGEmgNYBM", title: "Einstein & Newton fiziği farkı", originalTitle: "Einstein & Newton fiziği farkı / Prof. Dr. Emre Onur Kahya & Emrah Safa Gürkan - Teke Tek Bilim", lang: 'tr', with: ["Emrah Safa Gürkan"], durationSeconds: 90, published: '2025-08-24', theme: 'history', glyph: 'curve', format: 'short' },
+  { id: "Jb4xXribPwk", title: "Evren hızlanarak genişler mi?", originalTitle: "Evren hızlanarak genişler mi? / Prof. Dr. Emre Onur Kahya & Emrah Safa Gürkan - Teke Tek Bilim", lang: 'tr', with: ["Emrah Safa Gürkan"], durationSeconds: 90, published: '2025-08-24', theme: 'cosmos', glyph: 'expansion', format: 'short', instagram: { url: 'https://www.instagram.com/teketektv/reel/DNulCieWIA5/', views: 206_000 } },
+  { id: "bvol2_D9gmo", title: "Yapay zekanın fişi çekilebilir mi?", originalTitle: "Yapay zekanın fişi çekilebilir mi? / Prof. Dr. Emre Onur Kahya & Fatih Altaylı", lang: 'tr', with: ["Fatih Altaylı"], durationSeconds: 75, published: '2026-09-27', theme: 'ai', format: 'short', instagram: { url: 'https://www.instagram.com/teketektv/reel/Dd_hKMlO3Zm/', views: 431_000 } },
+  { id: "aCB1NGFv5bg", title: "Yapay zeka Hugging Face'i nasıl hackledi?", originalTitle: "Yapay zeka Hugging Face'i nasıl hackledi? / Prof. Dr. Emre Onur Kahya & Fatih Altaylı", lang: 'tr', with: ["Fatih Altaylı"], durationSeconds: 108, published: '2026-09-27', theme: 'ai', format: 'short', instagram: { url: 'https://www.instagram.com/teketektv/reel/DdyJ3LbO8RP/', views: 966_000 } },
+  { id: "THYGEmgNYBM", title: "Einstein & Newton fiziği farkı", originalTitle: "Einstein & Newton fiziği farkı / Prof. Dr. Emre Onur Kahya & Emrah Safa Gürkan - Teke Tek Bilim", lang: 'tr', with: ["Emrah Safa Gürkan"], durationSeconds: 90, published: '2025-08-24', theme: 'history', glyph: 'curve', format: 'short', instagram: { url: 'https://www.instagram.com/teketektv/reel/DN7cFl9DA_A/', views: 87_900 } },
   { id: "oWuN0gZTxKQ", title: "Kozmik merdivende sapmayı nasıl bulabiliyoruz?", originalTitle: "Kozmik merdivende sapmayı nasıl bulabiliyoruz? / Prof. Dr. Bora Işıldak & Prof. Dr. Emre Onur Kahya", lang: 'tr', with: ["Prof. Dr. Bora Işıldak"], durationSeconds: 60, published: '2025-04-13', theme: 'cosmos', glyph: 'ladder', format: 'short' },
 ]));
 
@@ -167,11 +174,14 @@ export const lessons: readonly Video[] = withViews([
   { id: "tTOJWFKgyvA", title: "Taking the small argument limit of Log Term", originalTitle: "Taking the small argument limit of Log Term", lang: 'en', durationSeconds: 326, published: '2023-04-07', topic: 'math', format: 'video' },
 ]);
 
-/** Appearances on other YouTube channels — lighter, popular formats: linked and counted, not featured. */
+/** Appearances on other YouTube channels (talk shows, lighter formats): linked and counted, not featured. */
 export const otherChannels: readonly Video[] = withViews([
   { id: "uS4WaHeeRxQ", title: "Fizik mühendisi atom bombası sahnelerini izliyor!", originalTitle: "FİZİK MÜHENDİSİ ATOM BOMBASI SAHNELERİNİ İZLİYOR!", lang: 'tr', channel: 'Literat', durationSeconds: 1128, published: '2024-05-22', format: 'video' },
   { id: "rXjrqzaE464", title: "Fizik mühendisi, zamanda yolculuk sahnelerini izliyor!", originalTitle: "FİZİK MÜHENDİSİ, ZAMANDA YOLCULUK SAHNELERİNİ İZLİYOR!", lang: 'tr', channel: 'Literat', durationSeconds: 852, published: '2024-11-06', format: 'video' },
+  { id: "5_JWbA8hU6w", title: "Zaman nedir nasıl geçer?", originalTitle: "Zaman Nedir Nasıl Geçer? Okan Bayülgen ile Muhabbet Kralı", lang: 'tr', with: ["Okan Bayülgen"], channel: 'Haber Global', durationSeconds: 6039, published: '2022-05-30', format: 'video' },
 ]);
+
+const sum = (list: readonly Video[]) => list.reduce((total, video) => total + video.views, 0);
 
 /** Every YouTube video on the site, for the snapshot refresh and the totals. */
 export const allYouTubeVideos = (): Video[] => [...conversations, ...clips, ...bilimEkstra, ...lessons, ...otherChannels];
@@ -182,7 +192,8 @@ export const watchUrl = (video: Pick<Video, 'id' | 'format'>) =>
 export const tekeTekBilimVideos = (): Video[] => [...conversations, ...clips, ...bilimEkstra];
 
 export function outreachTotals() {
-  const sum = (list: readonly Video[]) => list.reduce((total, video) => total + video.views, 0);
+  const youtube = sum(allYouTubeVideos());
+  const instagram = clips.reduce((total, video) => total + (video.instagram?.views ?? 0), 0);
   return {
     conversations: conversations.length,
     bilimEkstra: bilimEkstra.length,
@@ -194,7 +205,12 @@ export function outreachTotals() {
     lessonViews: sum(lessons),
     otherChannelViews: sum(otherChannels),
     /** Every listed YouTube video: Teke Tek Bilim (with clips), the personal channel and other channels. */
-    youtubeViews: sum(allYouTubeVideos()),
+    youtubeViews: youtube,
+    /** Instagram reels of the clips, as reported (instagramSnapshot). */
+    instagramViews: instagram,
+    /** The headline figure: YouTube and Instagram together. */
+    allViews: youtube + instagram,
+    instagramReels: clips.filter((video) => video.instagram).length,
     firstAired: [...conversations, ...bilimEkstra].map((video) => video.aired ?? video.published).sort()[0]!,
   };
 }

@@ -273,7 +273,7 @@ for (const name of engines) {
       const reachable = links.filter((a) => { a.scrollIntoView({ block: 'center', behavior: 'instant' }); const r = a.getBoundingClientRect(); return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest('a') === a; }).length;
       return { other: document.querySelectorAll('.other-grid .video').length, instagram: links.length, reachable };
     });
-    record(name, 'outreach: other channels listed, Instagram links clickable', info.other === 2 && info.instagram === 2 && info.reachable === 2, JSON.stringify(info));
+    record(name, 'outreach: other channels listed, Instagram links clickable', info.other === 3 && info.instagram === 4 && info.reachable === 4, JSON.stringify(info));
     await context.close();
   }
   await browser.close();

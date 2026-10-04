@@ -47,7 +47,7 @@ const glyph = video.glyph ?? (video.theme ? themeGlyph[video.theme] ?? 'orbit' :
         <span><Icon name="calendar" size={14} /><time datetime={date}>{formatMonth(date, lang)}</time>{video.aired && <span class="video__aired"> ({u.aired})</span>}</span>
       </p>
     )}
-    {video.instagram && variant !== 'row' && <p class="video__also"><a href={video.instagram} target="_blank" rel="noopener"><Icon name="instagram" size={14} />{u.alsoOnInstagram}<span class="visually-hidden">{u.newTab}</span></a></p>}
+    {video.instagram && variant !== 'row' && <p class="video__also"><a href={video.instagram.url} target="_blank" rel="noopener"><Icon name="instagram" size={14} />{u.alsoOnInstagram}<span class="visually-hidden">{u.newTab}</span></a><span class="video__also-views">{formatViews(video.instagram.views, lang)} {u.views}</span></p>}
   </div>
   {variant !== 'row' && <span class="video__go" aria-hidden="true"><Icon name="external" size={18} /></span>}
 </article>
