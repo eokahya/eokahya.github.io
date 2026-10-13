@@ -1,0 +1,310 @@
+\documentclass[11pt]{article}
+\usepackage{myz310e-notes}
+\hypersetup{pdftitle={Probability distributions and the Gaussian},pdfauthor={Emre Onur Kahya},pdfsubject={MYZ 310E Machine Learning in Physics, Fall 2026, lecture note 2 (week 1)}}
+
+\begin{document}
+\NoteTitle{2}{1}{Probability distributions\\ and the Gaussian}{Probability and Gaussians}{%
+Every method in this course either estimates a probability distribution or makes predictions that are best
+understood through one. This note collects the probability we need --- how distributions are described, the four
+things we do with them, and the multivariate Gaussian in detail --- and connects it to two pillars of modern
+machine learning: maximum-likelihood training of language models and Gaussian noise in diffusion models. Notation
+follows Note~1, Section~2.}
+
+\section{Describing a distribution}\label{sec:describe}
+
+A random variable $X$ is described by how its probability is spread over its possible values. Three descriptions
+are in common use.
+
+\paragraph{Cumulative distribution function} For a real-valued $X$, the c.d.f.\ is $F(x) = P(X \le x)$. It is
+non-decreasing, tends to $0$ as $x \to -\infty$ and to $1$ as $x \to +\infty$, and it exists for every random
+variable, discrete or continuous. For a vector $\X = (X_1, \dots, X_d)$ the inequality is read component-wise:
+$F(\x) = P(X_1 \le x_1, \dots, X_d \le x_d)$.
+
+\paragraph{Probability table (discrete variables)} If $X$ takes finitely or countably many values, its distribution
+is the list of probabilities $P(X = x)$, which are non-negative and sum to one. For several discrete variables the
+table becomes an array with one axis per variable; a joint table for $d$ variables with $m$ values each has $m^d$
+entries --- a first sign of the difficulty Note~3 studies.
+
+\paragraph{Density (continuous variables)} If $F$ is differentiable, the probability density function is
+$p(x) = F'(x)$, and probabilities of regions are integrals,
+\[
+  P(\X \in A) = \int_A p(\x)\, d\x, \qquad \int_{\R^d} p(\x)\,d\x = 1 .
+\]
+A density is not a probability: it carries units of $1/[x]$ and may exceed one. A Gaussian of width $\sigma =
+0.1$~mm has a peak density of about $4\ \mathrm{mm}^{-1}$.
+
+\paragraph{The empirical distribution} Given a sample $x_1, \dots, x_n$, the empirical c.d.f.\
+$\hat F(x) = \frac{1}{n}\#\{i : x_i \le x\}$ is a step function that jumps by $1/n$ at each data point. By the law
+of large numbers $\hat F(x) \to F(x)$ for every $x$; the convergence is even uniform in $x$ (Glivenko--Cantelli).
+The empirical distribution is the simplest estimate of a distribution, and every learning algorithm can be viewed
+as a way of smoothing it.
+
+\subsection{Joint, marginal and conditional}
+
+For two variables with joint density $p(\x, \vect{z})$ (sums replace integrals in the discrete case):
+\begin{align*}
+  \text{marginal:} \quad & p(\x) = \int p(\x, \vect{z})\, d\vect{z}, \\
+  \text{conditional:} \quad & p(\vect{z} \mid \x) = \frac{p(\x, \vect{z})}{p(\x)} \qquad (p(\x) > 0), \\
+  \text{Bayes' rule:} \quad & p(\vect{z} \mid \x) = \frac{p(\x \mid \vect{z})\, p(\vect{z})}{\int p(\x \mid \vect{z}')\, p(\vect{z}')\, d\vect{z}'} .
+\end{align*}
+Independence means $p(\x, \vect{z}) = p(\x)\,p(\vect{z})$, equivalently $p(\vect{z} \mid \x) = p(\vect{z})$.
+Expectations are integrals against the density, $\E[g(\X)] = \int g(\x)\,p(\x)\,d\x$; the mean is $\vmu = \E[\X]$
+and the covariance matrix is $\Sigma = \E[(\X - \vmu)(\X - \vmu)\T]$, with variances on its diagonal.
+
+\section{Four things we do with a distribution}\label{sec:operations}
+
+Whether the distribution is a probability table, a Gaussian or a neural network with billions of parameters, the
+same four operations recur.
+
+\begin{enumerate}
+\item \textbf{Sample}: generate new data $\x \sim p$. This is what a generative model is for.
+\item \textbf{Evaluate}: compute $p(\x)$ (the \emph{likelihood} of a configuration), possibly after marginalising
+over unobserved variables. Low likelihood flags unusual data.
+\item \textbf{Infer}: given some variables, predict others --- the most probable value or the conditional mean
+$\E[\vect{Z} \mid \X = \x]$. Supervised learning is inference of $Y$ from $\X$.
+\item \textbf{Learn}: choose the parameters $\theta$ of a family $p_\theta$ from data. The standard principle is
+\emph{maximum likelihood},
+\begin{equation}\label{eq:mle}
+  \hat\theta = \argmax_\theta \prod_{i=1}^n p_\theta(\x_i) = \argmin_\theta \; -\frac{1}{n}\sum_{i=1}^n \log p_\theta(\x_i),
+\end{equation}
+the product being justified by the i.i.d.\ assumption. The right-hand side is the average negative log-likelihood,
+the density-estimation loss of Note~1, Table~2.
+\end{enumerate}
+
+\begin{example}[a categorical variable]
+The number $X \in \{0, 1, 2\}$ of reconstructed jets in a simplified event selection is described by three numbers
+$\pi_0, \pi_1, \pi_2$ with $\sum_k \pi_k = 1$. \emph{Sampling} draws $u$ uniform on $[0,1)$ and returns the first
+$k$ with $\pi_0 + \dots + \pi_k > u$. \emph{Learning} by maximum likelihood from $n$ events with counts
+$n_0, n_1, n_2$ gives $\hat\pi_k = n_k / n$, the observed frequencies (Exercise~E1).
+\end{example}
+
+\begin{modern}{a language model is a categorical distribution}
+A large language model defines, for every prefix of text, a categorical distribution over a vocabulary of
+$V \approx 10^5$ tokens. The network outputs scores (``logits'') $z_1, \dots, z_V$ and the probabilities are
+$\pi_k = e^{z_k/T} / \sum_j e^{z_j/T}$, where the \emph{temperature} $T = 1$ during training. All four operations
+appear: training is maximum likelihood \eqref{eq:mle} on the next token, i.e.\ minimising cross-entropy; generating
+text is repeated sampling, with $T < 1$ concentrating mass on likely tokens and $T \to 0$ giving the single most
+probable token; evaluating the likelihood of a text gives its \emph{perplexity}, $\exp$ of the average negative
+log-likelihood per token; and answering a question is inference, conditioning on the prompt. The example above
+--- learned frequencies from counts --- is exactly what such a model would do if it had no parameters to share
+between contexts.
+\end{modern}
+
+\section{The univariate Gaussian}\label{sec:gauss1d}
+
+The Gaussian (normal) density with mean $\mu$ and variance $\sigma^2$ is
+\begin{equation}\label{eq:gauss1d}
+  \Normal(x; \mu, \sigma^2) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp\!\left( -\frac{(x - \mu)^2}{2\sigma^2} \right).
+\end{equation}
+It is a symmetric bump centred at $\mu$ with width set by the standard deviation $\sigma$
+(Figure~\ref{fig:gauss1d}). About $68.3\%$, $95.4\%$ and $99.7\%$ of the probability lies within one, two and three
+standard deviations of the mean; physicists' ``$5\sigma$'' discovery threshold corresponds to a one-sided tail
+probability of $2.9 \times 10^{-7}$. Any Gaussian is a shifted and scaled standard one:
+$X = \mu + \sigma Z$ with $Z \sim \Normal(0, 1)$.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.52\linewidth]{figures/gaussian_1d.pdf}
+\caption{Gaussian densities. Doubling $\sigma$ halves the peak height, since the area stays one.}
+\label{fig:gauss1d}
+\end{figure}
+
+Why this particular shape? The central limit theorem says that a sum of many independent contributions with finite
+variance is approximately Gaussian, whatever the individual distributions. Measurement noise built from many small
+effects is therefore often close to Gaussian. A second reason is that, among all densities with a given mean and
+variance, the Gaussian has maximal entropy: it assumes nothing beyond those two numbers.
+
+\paragraph{Gaussian noise and squared error} Suppose targets are generated as $y = f(x) + \varepsilon$ with
+$\varepsilon \sim \Normal(0, \sigma^2)$. Then $-\log p(y \mid x) = \frac{(y - f(x))^2}{2\sigma^2} + \frac12
+\log(2\pi\sigma^2)$, and maximising the likelihood of a regression dataset over $f$ is the same as minimising the sum
+of squared errors. The squared loss of Note~1, Table~2, is maximum likelihood under Gaussian noise; heavier-tailed
+noise calls for other losses (Exercise~E3).
+
+\begin{physics}{$\chi^2$ fits are Gaussian likelihoods}
+Fitting a model $f_\theta$ to measurements $y_i \pm \sigma_i$ by minimising $\chi^2 = \sum_i (y_i -
+f_\theta(x_i))^2 / \sigma_i^2$ is maximum likelihood with independent Gaussian errors of known widths. The familiar
+rule ``$\Delta\chi^2 = 1$ gives the $1\sigma$ interval'' is the statement that $-2\log$ likelihood is quadratic
+near its minimum~\cite{cowan1998}. When errors are correlated, the sum becomes the quadratic form of the next
+section, with the covariance matrix of the measurements.
+\end{physics}
+
+\section{The multivariate Gaussian}\label{sec:gaussnd}
+
+For $\x \in \R^d$, the Gaussian with mean $\vmu \in \R^d$ and symmetric positive-definite covariance matrix
+$\Sigma \in \R^{d \times d}$ is
+\begin{equation}\label{eq:gaussnd}
+  \Normal(\x; \vmu, \Sigma) = \frac{1}{(2\pi)^{d/2} \lvert\Sigma\rvert^{1/2}}
+  \exp\!\left( -\tfrac12 (\x - \vmu)\T \Sigma^{-1} (\x - \vmu) \right),
+\end{equation}
+where $\lvert\Sigma\rvert$ is the determinant. The prefactor only normalises the density; all the shape is in the
+exponent. The quantity
+\[
+  \Delta^2(\x) = (\x - \vmu)\T \Sigma^{-1} (\x - \vmu)
+\]
+is the squared \emph{Mahalanobis distance} of $\x$ from the mean: Euclidean distance after the data have been
+rescaled so that every direction has unit variance. Surfaces of constant density are the ellipsoids
+$\Delta^2 = \text{const}$.
+
+\paragraph{Geometry through the eigendecomposition} Write $\Sigma = \sum_{i=1}^d \lambda_i \vect{v}_i \vect{v}_i\T$
+with orthonormal eigenvectors $\vect{v}_i$ and eigenvalues $\lambda_i > 0$. In the rotated coordinates
+$u_i = \vect{v}_i\T(\x - \vmu)$ the exponent becomes $\sum_i u_i^2 / \lambda_i$, so the density factorises into $d$
+independent one-dimensional Gaussians with variances $\lambda_i$. The ellipsoid axes point along the eigenvectors
+with half-lengths proportional to $\sqrt{\lambda_i}$, and $\lvert\Sigma\rvert = \prod_i \lambda_i$ measures the
+squared volume of the ellipsoid. Three families are common (Figure~\ref{fig:gauss2d}):
+
+\begin{center}\small
+\begin{tabular}{@{}L{0.18\linewidth}L{0.24\linewidth}L{0.22\linewidth}L{0.26\linewidth}@{}}
+\toprule
+Family & Covariance & Free parameters in $\Sigma$ & Shape \\
+\midrule
+Isotropic & $\sigma^2 I$ & $1$ & spheres \\
+Diagonal & $\operatorname{diag}(\sigma_1^2, \dots, \sigma_d^2)$ & $d$ & axis-aligned ellipsoids \\
+Full & any positive-definite $\Sigma$ & $d(d+1)/2$ & arbitrary ellipsoids \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\linewidth]{figures/gaussian_2d.pdf}
+\caption{Samples (grey) and the one- and two-$\sigma$ contour ellipses of three Gaussians in $d = 2$. Arrows are the
+eigenvectors scaled by $2\sqrt{\lambda_i}$. The isotropic case has no preferred direction; the full covariance
+captures a correlation between the two coordinates.}
+\label{fig:gauss2d}
+\end{figure}
+
+The choice is a choice of model size. For $d = 1000$ a full covariance has about half a million parameters, which
+$n = 500$ examples cannot determine; Note~4 calls this a question of \emph{capacity}.
+
+\paragraph{Closed under marginalising and conditioning} Split $\x = (\x_a, \x_b)$ and partition
+$\vmu$ and $\Sigma$ accordingly. Every marginal of a Gaussian is Gaussian --- just keep the corresponding entries,
+$\x_a \sim \Normal(\vmu_a, \Sigma_{aa})$ --- and every conditional is Gaussian,
+\begin{equation}\label{eq:conditional}
+  \x_a \mid \x_b \sim \Normal\!\big( \vmu_a + \Sigma_{ab}\Sigma_{bb}^{-1}(\x_b - \vmu_b),\;
+  \Sigma_{aa} - \Sigma_{ab}\Sigma_{bb}^{-1}\Sigma_{ba} \big).
+\end{equation}
+The conditional mean is linear in the observed part and the conditional covariance does not depend on it. This is
+inference in closed form: if two detector channels are correlated, reading one sharpens the prediction for the
+other by an amount set by the correlation. Formula \eqref{eq:conditional} underlies the Kalman filter used for
+particle-track reconstruction and spacecraft navigation, and Gaussian-process regression.
+
+\section{Sampling: from white noise to anything Gaussian}\label{sec:sampling}
+
+To sample $\Normal(\vmu, \Sigma)$, factor $\Sigma = LL\T$ (Cholesky decomposition, $L$ lower triangular), draw
+$\vect{z} \sim \Normal(\vect{0}, I)$ --- $d$ independent standard normals --- and return
+\begin{equation}\label{eq:reparam}
+  \x = \vmu + L \vect{z}.
+\end{equation}
+Indeed $\E[\x] = \vmu$ and $\Cov(\x) = L\,\E[\vect{z}\vect{z}\T]\,L\T = LL\T = \Sigma$, and a linear map of a
+Gaussian is Gaussian.
+
+\begin{modern}{Gaussian noise drives generative models}
+Equation \eqref{eq:reparam} separates the randomness ($\vect{z}$) from the parameters ($\vmu, L$). Variational
+autoencoders exploit this ``reparameterisation trick'' to differentiate through sampling~\cite{kingma2014}.
+Diffusion models, behind many of today's image generators, go further. Their \emph{forward process}
+gradually turns data into noise: with $\bar\alpha_t$ decreasing from $1$ to $0$,
+\[
+  \x_t = \sqrt{\bar\alpha_t}\, \x_0 + \sqrt{1 - \bar\alpha_t}\, \vect{z}, \qquad \vect{z} \sim \Normal(\vect{0}, I),
+\]
+so $\x_t \mid \x_0 \sim \Normal(\sqrt{\bar\alpha_t}\,\x_0, (1 - \bar\alpha_t) I)$, an isotropic Gaussian
+(Figure~\ref{fig:diffusion}). A neural network is trained to predict $\vect{z}$ from $\x_t$; running the process
+backwards from pure noise then generates new samples~\cite{ho2020,song2021}. Everything in this section --- isotropic
+covariances, scaling and shifting, sampling by \eqref{eq:reparam} --- is used literally.
+\end{modern}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\linewidth]{figures/diffusion_forward.pdf}
+\caption{The forward process of a diffusion model applied to a one-dimensional, two-peaked data distribution
+(histograms of $10^4$ samples, the noise schedule of Ho \emph{et al.}~\cite{ho2020} with $T = 1000$ steps). By the
+last step the data are indistinguishable from $\Normal(0, 1)$ (curve).}
+\label{fig:diffusion}
+\end{figure}
+
+\section{Learning the parameters}\label{sec:learn}
+
+Given $\x_1, \dots, \x_n \in \R^d$, the maximum-likelihood estimates of a Gaussian are the empirical mean and
+covariance,
+\begin{equation}\label{eq:mlegauss}
+  \hat{\vmu} = \frac{1}{n}\sum_{i=1}^n \x_i, \qquad
+  \hat\Sigma = \frac{1}{n}\sum_{i=1}^n (\x_i - \hat{\vmu})(\x_i - \hat{\vmu})\T = \frac{1}{n} X_c\T X_c ,
+\end{equation}
+where $X_c$ is the design matrix of Note~1 with $\hat{\vmu}$ subtracted from every row. In one dimension the derivation
+takes two lines: setting the derivatives of $\sum_i \big[(x_i - \mu)^2 / (2\sigma^2) + \frac12 \log \sigma^2\big]$ with
+respect to $\mu$ and $\sigma^2$ to zero gives $\hat\mu = \bar x$ and $\hat\sigma^2 = \frac1n \sum_i (x_i - \bar x)^2$.
+The variance estimate is slightly biased, $\E[\hat\sigma^2] = \frac{n-1}{n}\sigma^2$, which is why statistics
+software often divides by $n - 1$; for the sample sizes of machine learning the difference is negligible.
+
+\paragraph{When $n$ is not much larger than $d$} The matrix $\hat\Sigma = X_c\T X_c / n$ has rank at most $n - 1$, so for
+$n \le d$ it is singular: the fitted Gaussian is flat in some directions and \eqref{eq:gaussnd} cannot be evaluated.
+Even for $n$ somewhat larger than $d$ its small eigenvalues are badly underestimated. The usual remedies are to
+restrict the family (diagonal or isotropic) or to \emph{shrink}, $\hat\Sigma + \epsilon I$ --- the simplest
+instance of the regularisation discussed in Note~4.
+
+\paragraph{Computing log-densities} In practice one evaluates $\log \Normal(\x; \vmu, \Sigma)$, never the density
+itself, which underflows in high dimension. With $\Sigma = LL\T$, solve the triangular system $L\vect{u} = \x -
+\vmu$; then $\Delta^2 = \norm{\vect{u}}^2$ and $\log\lvert\Sigma\rvert = 2\sum_i \log L_{ii}$. No matrix is ever
+inverted.
+
+\begin{verbatim}
+import numpy as np
+from scipy.linalg import solve_triangular
+def gaussian_logpdf(X, mu, Sigma):            # X: (n, d)
+    L = np.linalg.cholesky(Sigma)
+    U = solve_triangular(L, (X - mu).T, lower=True)     # (d, n)
+    d = X.shape[1]
+    log_det_half = np.log(np.diag(L)).sum()             # = 0.5 log|Sigma|
+    return -0.5 * (U**2).sum(0) - log_det_half - 0.5 * d * np.log(2 * np.pi)
+\end{verbatim}
+
+\begin{modern}{Mahalanobis distance as an anomaly detector}
+A trained classifier can be fooled by inputs unlike anything it has seen. A simple and strong defence fits a
+Gaussian to the network's internal feature vectors for each class (with a shared covariance) and flags a new input
+whose features have a large Mahalanobis distance to every class mean~\cite{lee2018}. The same recipe --- fit a
+Gaussian to normal operation, alarm on large $\Delta^2$ --- is used to monitor detectors and industrial processes;
+under the model, $\Delta^2$ follows a $\chi^2$ distribution with $d$ degrees of freedom, which sets the alarm threshold.
+\end{modern}
+
+\begin{keyidea}[Summary]
+A distribution is given by a c.d.f., a probability table or a density; marginals, conditionals and Bayes' rule
+relate its parts. We sample from, evaluate, infer with and learn distributions, and maximum likelihood is the
+learning principle --- for language models as for $\chi^2$ fits. The multivariate Gaussian is described by a mean
+and a covariance whose eigenvectors and eigenvalues give the axes and widths of its elliptical contours. It is
+closed under marginalising and conditioning, sampled as $\vmu + L\vect{z}$, and fitted by the empirical mean and
+covariance, which require care when $d$ is comparable to $n$.
+\end{keyidea}
+
+\begin{exercises}
+\item Show that the maximum-likelihood estimate of a categorical distribution from counts $n_1, \dots, n_m$ is
+$\hat\pi_k = n_k / n$. (Maximise $\sum_k n_k \log \pi_k$ subject to $\sum_k \pi_k = 1$ with a Lagrange multiplier.)
+What does it predict for a category never observed, and why is this a problem for a language model?
+\item Verify that \eqref{eq:gauss1d} integrates to one and has mean $\mu$ and variance $\sigma^2$.
+\item If the noise has the Laplace density $p(\varepsilon) = \frac{1}{2b} e^{-|\varepsilon|/b}$, which loss does
+maximum likelihood minimise? Which estimate of a constant $\theta$ minimises $\sum_i |y_i - \theta|$, and why is it
+less sensitive to outliers than the mean?
+\item For $d = 2$, $\vmu = 0$ and $\Sigma = \begin{pmatrix} 1 & \rho \\ \rho & 1 \end{pmatrix}$ with $|\rho| < 1$,
+find the eigenvalues and eigenvectors of $\Sigma$ and use \eqref{eq:conditional} to compute $p(x_1 \mid x_2)$. How
+much does observing $x_2$ reduce the variance of $x_1$ when $\rho = 0.9$?
+\item Let $\vect{z} \sim \Normal(\vect{0}, I_d)$. Show that $\E\norm{\vect{z}}^2 = d$ and $\Var\norm{\vect{z}}^2 = 2d$.
+Conclude that for large $d$ almost all samples lie near a sphere of radius $\sqrt d$, far from the mode at the origin.
+(Note~3 returns to this.)
+\item Implement sampling by \eqref{eq:reparam} and \texttt{gaussian\_logpdf}. Draw $n$ samples from a Gaussian in $d = 50$
+with a random full covariance, refit by \eqref{eq:mlegauss}, and plot the average test log-likelihood against $n$ for
+the full, diagonal and shrunk ($\hat\Sigma + \epsilon I$) estimates. Which wins for small $n$?
+\end{exercises}
+
+\paragraph{Further reading} Bishop~\cite{bishop2006}, sections~2.1--2.3; Murphy~\cite{murphy2022}, chapters~2--3; for
+data analysis in physics, Cowan~\cite{cowan1998}.
+
+\begin{thebibliography}{99}\small
+\bibitem{bishop2006} C.~M. Bishop, \emph{Pattern Recognition and Machine Learning}, Springer (2006).
+\bibitem{cowan1998} G.~Cowan, \emph{Statistical Data Analysis}, Oxford University Press (1998).
+\bibitem{ho2020} J.~Ho, A.~Jain and P.~Abbeel, Denoising diffusion probabilistic models, \emph{NeurIPS} (2020).
+\bibitem{kingma2014} D.~P. Kingma and M.~Welling, Auto-encoding variational Bayes, \emph{ICLR} (2014).
+\bibitem{lee2018} K.~Lee, K.~Lee, H.~Lee and J.~Shin, A simple unified framework for detecting out-of-distribution samples and adversarial attacks, \emph{NeurIPS} (2018).
+\bibitem{murphy2022} K.~P. Murphy, \emph{Probabilistic Machine Learning: An Introduction}, MIT Press (2022).
+\bibitem{song2021} Y.~Song \emph{et al.}, Score-based generative modeling through stochastic differential equations, \emph{ICLR} (2021).
+\end{thebibliography}
+
+\SourceNote
+\end{document}

@@ -1,0 +1,266 @@
+\documentclass[11pt]{article}
+\usepackage{myz310e-notes}
+\hypersetup{pdftitle={Histogram methods and the curse of dimensionality},pdfauthor={Emre Onur Kahya},pdfsubject={MYZ 310E Machine Learning in Physics, Fall 2026, lecture note 3 (week 2)}}
+
+\begin{document}
+\NoteTitle{3}{2}{Histogram methods and\\ the curse of dimensionality}{Histograms and the curse}{%
+The simplest learning algorithm cuts the input space into cells and counts. It solves all three tasks of Note~1 ---
+classification, regression and density estimation --- works well in one or two dimensions, and fails completely in
+ten. Understanding why it fails is the best introduction to the central difficulty of machine learning in high
+dimension, and to the ideas --- adaptive partitions, low intrinsic dimension, learned representations --- that
+modern methods use to escape it. The note also walks through the steps of designing and analysing an algorithm.}
+
+\section{Cut the space into cells and count}\label{sec:hist}
+
+Every learning algorithm must produce a prediction at \emph{every} point of the input space, including where no
+training example lies. The most direct way to do this is to partition the space into cells $C_1, \dots, C_M$ and
+make one prediction per cell. With $m$ equal bins along each of $d$ axes the cells are boxes of side $h$ and there
+are $M = m^d$ of them. Write $C(\x)$ for the cell containing $\x$ and $n_C$ for the number of training points in
+cell $C$. One rule then serves each task of Note~1, Table~2:
+
+\begin{center}\small
+\begin{tabular}{@{}L{0.17\linewidth}L{0.4\linewidth}L{0.35\linewidth}@{}}
+\toprule
+Task & Prediction at $\x$ & Interpretation \\
+\midrule
+Classification & majority label among the points in $C(\x)$ & estimate of $P(Y = k \mid \X \in C(\x))$ by class frequencies \\
+Regression & average of $y_i$ over the points in $C(\x)$ & estimate of $\E[Y \mid \X \in C(\x)]$ \\
+Density & $\hat p(\x) = \dfrac{n_{C(\x)}}{n\,\mathrm{vol}(C(\x))}$ & fraction of the data per unit volume \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The density estimate is a valid density: it is non-negative and $\int \hat p = \sum_C n_C/n = 1$. All three rules
+replace the unknown conditional quantity at $\x$ by its average over a neighbourhood --- here, the cell. The
+neighbourhood is fixed in advance, which is both the simplicity and the weakness of the method; Note~5 centres the
+neighbourhood on the query point instead.
+
+\subsection{Density estimation in one dimension}
+
+Figure~\ref{fig:histdens} shows the effect of the number of bins on a density estimate from 200 points. Too few bins
+and the estimate is a coarse staircase that misses the structure (\emph{bias}); too many and most bins contain zero or
+one point, so the estimate is dominated by the luck of the sample (\emph{variance}). The counts are random: $n_C$ is
+binomial, approximately Poisson with mean $n\,P(\X \in C)$, so its relative fluctuation is about $1/\sqrt{n_C}$ ---
+the $\sqrt N$ error bar physicists draw on every bin.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\linewidth]{figures/hist_density.pdf}
+\caption{Histogram density estimates from the same 200 points with 3, 15 and 80 bins; the curve is the true density.}
+\label{fig:histdens}
+\end{figure}
+
+Balancing the two errors gives the classical result that the best bin width shrinks like $h \propto n^{-1/3}$; the
+Freedman--Diaconis rule $h = 2\,\mathrm{IQR}\cdot n^{-1/3}$, where IQR is the interquartile range, is a robust default.
+The mean squared error of the optimised histogram then decreases like $n^{-2/3}$. In $d$ dimensions the same
+analysis gives $n^{-2/(d+2)}$~\cite{scott2015}: to halve the error one needs about $2^{3/2} \approx 2.8$ times more data
+in $d = 1$ but $2^{6} = 64$ times more in $d = 10$. This is the curse of dimensionality in its most quantitative form.
+
+\begin{physics}{histograms are the language of experiments}
+Most results in particle and nuclear physics are histograms: event counts in bins of an invariant mass, a momentum or
+an angle. The 2012 Higgs-boson discovery showed a small excess in the histogram of diphoton invariant masses near
+125~GeV~\cite{atlas2012}. A \emph{binned likelihood fit} treats each count as Poisson with a mean predicted by a
+signal-plus-background model --- the density-estimation rule of the table above, turned into a statistical test. The
+physicist's choice of binning is exactly the bias--variance compromise of Figure~\ref{fig:histdens}.
+\end{physics}
+
+\section{More features help --- up to a point}\label{sec:features}
+
+Take the two-class problem of Note~1 (signal and background events described by two observables) with $n = 400$
+training events and classify with histograms (Figure~\ref{fig:histclass}). Using only $x_1$ with 8 bins, the
+classifier reaches 20.2\% test error. Adding $x_2$ with an $8 \times 8$ grid lowers it to 14.4\%: the second feature
+carries information the first lacks. Refining to $40 \times 40$ cells lowers the \emph{training} error to 5.2\% but
+raises the test error to 34.6\%. With 1600 cells and 400 points, most cells hold zero or one example; the
+predictions in those cells are noise or a default. The same table of counts has gone from summarising the data to
+memorising it.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\linewidth]{figures/hist_classifier.pdf}
+\caption{Histogram classifiers on 400 training events (indigo: background, amber: signal). Shaded regions show the
+predicted class; empty cells predict the overall majority class. Errors are measured on the training set and on 4000
+fresh test events.}
+\label{fig:histclass}
+\end{figure}
+
+Two lessons follow. First, the number of cells is a knob that controls how flexible the classifier is; it must be
+chosen on data not used for counting, which is the subject of Note~4. Second, the knob runs out of room quickly:
+every additional feature multiplies the number of cells by $m$, while the amount of data stays the same.
+
+\section{The curse of dimensionality}\label{sec:curse}
+
+\paragraph{Cells outnumber data} With $m = 10$ bins per axis there are $10^d$ cells. A dataset of $n = 10^5$ points
+spread uniformly fills every cell with $10^4$ points when $d = 1$, about ten per cell when $d = 4$, and when $d = 6$ only
+about 10\% of the cells contain any point at all. For $d = 10$, a fraction $10^{-5}$ of the cells is occupied: a new
+test point almost surely lands in a cell the training data never visited (Figure~\ref{fig:curse}, left). A
+$28 \times 28$ grey-scale image has $d = 784$, and $10^{784}$ dwarfs the roughly $10^{80}$ atoms in the observable
+universe.
+
+\paragraph{Neighbourhoods stop being local} To capture a fraction $r$ of uniformly distributed data in the unit cube
+with a sub-cube, its edge must be $r^{1/d}$. Capturing 1\% of the data needs an edge of $0.01$ in $d = 1$, $0.1$ in
+$d = 2$, $0.63$ in $d = 10$ and $0.95$ in $d = 100$. A ``neighbourhood'' that contains enough points to average over
+spans almost the whole range of every coordinate.
+
+\paragraph{Volume lives near the boundary} The fraction of a $d$-dimensional ball's volume that lies within 10\% of
+its surface is $1 - 0.9^d$: 19\% for $d = 2$, 65\% for $d = 10$ and more than 99\% for $d = 50$. The ball inscribed in
+a cube occupies 79\% of the cube in $d = 2$ but only 0.25\% in $d = 10$; almost all of the cube is in its corners. A
+standard Gaussian in $d$ dimensions concentrates near the sphere of radius $\sqrt d$ (Note~2, Exercise~E5), so
+its typical samples are nowhere near its most probable point.
+
+\paragraph{Distances concentrate} For points drawn at random, the ratio between the largest and the smallest distance
+from a query point tends to one as $d$ grows (Figure~\ref{fig:curse}, right): the nearest neighbour is hardly nearer
+than the farthest. Any method that relies on ``nearby'' points --- histograms, and also the neighbourhood methods of
+Note~5 --- loses its footing.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\linewidth]{figures/curse.pdf}
+\caption{Left: average number of points per cell and per \emph{occupied} cell for $n = 10^5$ uniform points and 10
+bins per axis. Beyond $d \approx 5$ occupied cells hold a single point and almost all cells are empty. Right: relative
+contrast between the farthest and the nearest of 1000 uniform points from a random query (median of 20 trials).}
+\label{fig:curse}
+\end{figure}
+
+\begin{keyidea}[The curse]
+A method that needs examples \emph{near} every query point needs a number of examples that grows exponentially with
+the dimension. The number of distinct functions such a method can represent grows just as fast, so without further
+assumptions the data cannot tell them apart. Histograms are useful in $d \le 3$ and useless beyond; all learning
+algorithms feel the curse, some far less than others.
+\end{keyidea}
+
+\section{Why learning in high dimension is possible at all}\label{sec:escape}
+
+Image classifiers work on inputs with $d \approx 10^5$; language models on sequences of thousands of tokens. They do
+not contradict the curse; they exploit structure that uniform random data do not have.
+
+\begin{enumerate}
+\item \textbf{Low intrinsic dimension.} Real data occupy a tiny, structured part of $\R^d$. Natural images of a given
+size are a vanishing subset of all pixel arrays, plausibly close to a manifold of much lower dimension. Estimates
+of the intrinsic dimension of standard image datasets give values of order 10 to 40, compared with input dimensions
+in the thousands, and learning is easier when the intrinsic dimension is lower~\cite{pope2021}.
+\item \textbf{Smoothness and invariance.} The target changes slowly or not at all along many directions: a
+translated cat is still a cat. Architectures that build these invariances in (convolutions for translations,
+graph networks for permutations, equivariant networks for rotations) reduce the effective number of functions to be
+distinguished.
+\item \textbf{Adaptive partitions.} Instead of a fixed grid, split only where the data require it and only along
+informative directions. A decision tree does exactly this; its number of cells grows with $n$, not with $m^d$.
+\item \textbf{Learned representations.} Map the input to a lower-dimensional space in which simple methods work,
+and learn the map from data. The embeddings of Note~1, Section~3, are such maps.
+\end{enumerate}
+
+\begin{physics}{many degrees of freedom, few that matter}
+A configuration of the two-dimensional Ising model on a $40 \times 40$ lattice is a point in a space of $2^{1600}$
+states, yet near the phase transition its physics is governed by one order parameter. Applying principal component
+analysis to Monte Carlo configurations recovers the magnetisation as the leading direction without being told about
+it, and locates the critical temperature~\cite{wang2016}. Statistical mechanics is, in this sense, a theory of low
+intrinsic dimension; machine learning tries to discover such coordinates when no theory supplies them.
+\end{physics}
+
+\begin{modern}{the histogram's descendants}
+Decision trees are adaptive histograms, and ensembles of them --- random forests and gradient-boosted trees --- remain
+the strongest general-purpose methods on tabular data of moderate size, often ahead of deep networks~\cite{grinsztajn2022}.
+Boosted decision trees were the standard multivariate classifier in particle physics for over a
+decade~\cite{roe2005}. Modern implementations even keep the literal histogram: LightGBM bins each feature into at most a
+few hundred values and finds splits by scanning those per-feature histograms, which is what makes training on
+millions of rows fast~\cite{ke2017}. Binning one feature at a time is cheap; binning all features jointly is what
+the curse forbids.
+\end{modern}
+
+\section{From idea to algorithm}\label{sec:design}
+
+Designing a learning algorithm follows a sequence that is worth making explicit once:
+\begin{enumerate}
+\item explain the idea in words (``count labels per cell, predict the majority'');
+\item formalise it mathematically (the table in Section~\ref{sec:hist});
+\item write pseudocode (Algorithm~\ref{alg:hist}), identifying its \emph{hyperparameters} --- quantities fixed before
+training, here the bins --- and its \emph{parameters} --- quantities computed from data, here the counts;
+\item implement and test on low-dimensional synthetic data, where decision regions can be plotted and errors are
+visible (as in Figure~\ref{fig:histclass});
+\item analyse cost in time and memory;
+\item evaluate on real data against other algorithms, with the methodology of Note~4.
+\end{enumerate}
+
+\begin{algorithm}[h]
+\caption{Histogram classifier with $m$ bins per axis on the box $[a_1, b_1] \times \dots \times [a_d, b_d]$}
+\label{alg:hist}
+\begin{algorithmic}[1]
+\Function{CellIndex}{$\x$}
+  \For{$j = 1, \dots, d$}
+    \State $c_j \gets \min\big(m - 1,\; \max(0,\; \lfloor m (x_j - a_j)/(b_j - a_j) \rfloor)\big)$ \Comment{clip to the box}
+  \EndFor
+  \State \Return $(c_1, \dots, c_d)$
+\EndFunction
+\Function{Train}{$\Dtrain$}
+  \State $N[c, k] \gets 0$ for every cell $c$ and class $k$
+  \For{each $(\x_i, y_i) \in \Dtrain$}
+    \State $N[\Call{CellIndex}{\x_i}, y_i] \gets N[\Call{CellIndex}{\x_i}, y_i] + 1$
+  \EndFor
+\EndFunction
+\Function{Predict}{$\x$}
+  \State $c \gets \Call{CellIndex}{\x}$
+  \If{$\sum_k N[c, k] = 0$} \Return the majority class of $\Dtrain$ \EndIf
+  \State \Return $\argmax_k N[c, k]$ \Comment{$N[c,\cdot]/\sum_k N[c,k]$ estimates $P(Y \mid \X \in c)$}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Cost} With $n$ training points, $d$ features, $m$ bins per axis and $K$ classes:
+
+\begin{center}\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & Dense array of counts & Hash table of occupied cells \\
+\midrule
+Memory & $O(K m^d)$ & $O(K \min(n, m^d))$ \\
+Training time & $O(nd)$ & $O(nd)$ \\
+Prediction time per query & $O(d + K)$ & $O(d + K)$ on average \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Training and prediction are as fast as any algorithm can be: one pass over the data, constant work per query. Storing
+only occupied cells in a hash table (a Python dictionary keyed by the cell index) removes the exponential memory. It
+does not remove the curse: a query in high dimension still lands, almost surely, in a cell with no data. The
+bottleneck is statistical, not computational.
+
+\begin{keyidea}[Summary]
+Partitioning the input space and counting gives a classifier, a regressor and a density estimator in a few lines, with
+the bin width trading bias against variance. The number of cells grows as $m^d$, so in high dimension cells are empty,
+neighbourhoods are not local, volume sits near the boundary and distances concentrate. Learning in high dimension
+succeeds by exploiting structure --- low intrinsic dimension, smoothness, invariances --- through adaptive partitions
+and learned representations.
+\end{keyidea}
+
+\begin{exercises}
+\item Show that the histogram density estimate integrates to one. For a smooth density $p$ in one dimension and a bin
+$C$ of width $h$, show that $\E[\hat p(x)] = \frac{1}{h}\int_C p$ and that $\Var[\hat p(x)] \approx p(x)/(nh)$ for small
+$h$. Explain how these two facts produce the bias--variance trade-off of Figure~\ref{fig:histdens}.
+\item A test point is uniform in $[0,1]^d$ and the $n$ training points are uniform and independent. With $m$ bins per
+axis, what is the probability that the test point's cell contains no training point? Evaluate it for $n = 10^6$,
+$m = 4$ and $d = 5, 10, 20$.
+\item Using $V_d(r) = \pi^{d/2} r^d / \Gamma(d/2 + 1)$, compute the ratio of the volume of the unit ball to that of the
+cube $[-1, 1]^d$ for $d = 1, \dots, 20$ and plot it. Where is the volume of a high-dimensional cube?
+\item Implement Algorithm~\ref{alg:hist} with a dictionary of occupied cells and reproduce the three panels of
+Figure~\ref{fig:histclass} with data of your own. Add the regression variant and test it on $y = \sin(2\pi x_1) +$ noise.
+\item Draw $1000$ points uniformly in $[0,1]^d$ and one query point. Plot the histogram of the $1000$ distances for
+$d = 2$, $20$ and $200$. Rescale each histogram by its mean and comment.
+\item The Freedman--Diaconis rule gives the bin width in one dimension. Propose a way to choose the number of bins
+using only the data, without a formula, and say why the training log-likelihood cannot be used for this.
+\end{exercises}
+
+\paragraph{Further reading} Hastie, Tibshirani and Friedman~\cite{hastie2009}, section~2.5, for the curse of
+dimensionality; Scott~\cite{scott2015} for histograms and their optimal bin widths.
+
+\begin{thebibliography}{99}\small
+\bibitem{atlas2012} ATLAS Collaboration, Observation of a new particle in the search for the Standard Model Higgs boson with the ATLAS detector at the LHC, \emph{Phys.\ Lett.\ B} 716, 1--29 (2012).
+\bibitem{grinsztajn2022} L.~Grinsztajn, E.~Oyallon and G.~Varoquaux, Why do tree-based models still outperform deep learning on typical tabular data?, \emph{NeurIPS Datasets and Benchmarks} (2022).
+\bibitem{hastie2009} T.~Hastie, R.~Tibshirani and J.~Friedman, \emph{The Elements of Statistical Learning}, 2nd ed., Springer (2009).
+\bibitem{ke2017} G.~Ke \emph{et al.}, LightGBM: a highly efficient gradient boosting decision tree, \emph{NeurIPS} (2017).
+\bibitem{pope2021} P.~Pope \emph{et al.}, The intrinsic dimension of images and its impact on learning, \emph{ICLR} (2021).
+\bibitem{roe2005} B.~P. Roe \emph{et al.}, Boosted decision trees as an alternative to artificial neural networks for particle identification, \emph{Nucl.\ Instrum.\ Meth.\ A} 543, 577--584 (2005).
+\bibitem{scott2015} D.~W. Scott, \emph{Multivariate Density Estimation: Theory, Practice, and Visualization}, 2nd ed., Wiley (2015).
+\bibitem{wang2016} L.~Wang, Discovering phase transitions with unsupervised learning, \emph{Phys.\ Rev.\ B} 94, 195105 (2016).
+\end{thebibliography}
+
+\SourceNote
+\end{document}

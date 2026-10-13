@@ -1,0 +1,122 @@
+% Shared style for the MYZ 310E lecture notes (compile with Tectonic / XeLaTeX).
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{myz310e-notes}[2026/10/13 MYZ 310E lecture notes]
+
+\RequirePackage{amsmath,amsthm,mathtools}
+\RequirePackage{fontspec}
+\RequirePackage[warnings-off={mathtools-colon,mathtools-overbracket}]{unicode-math}
+\setmainfont{LibertinusSerif}[Extension=.otf,UprightFont=*-Regular,BoldFont=*-Semibold,ItalicFont=*-Italic,BoldItalicFont=*-SemiboldItalic]
+\setsansfont{LibertinusSans}[Extension=.otf,UprightFont=*-Regular,BoldFont=*-Bold,ItalicFont=*-Italic]
+\setmathfont{LibertinusMath-Regular.otf}
+\RequirePackage[a4paper,top=24mm,bottom=26mm,left=27mm,right=27mm,headsep=8mm,headheight=14pt]{geometry}
+\RequirePackage[protrusion=true]{microtype}
+\RequirePackage{xcolor,graphicx,booktabs,array,enumitem,caption,subcaption}
+\RequirePackage[most]{tcolorbox}
+\RequirePackage{algorithm,algpseudocode}
+\RequirePackage{fancyhdr,titlesec}
+\RequirePackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,decorations.pathreplacing}
+\RequirePackage[hidelinks]{hyperref}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\definecolor{ink}{HTML}{15161D}
+\definecolor{indigo}{HTML}{2E3A8C}
+\definecolor{amber}{HTML}{9A5B00}
+\definecolor{teal}{HTML}{1A6F66}
+\definecolor{mute}{HTML}{5B5E69}
+\definecolor{paper}{HTML}{F6F4EE}
+\color{ink}
+
+\makeatletter\def\verbatim@font{\small\ttfamily}\makeatother
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\linespread{1.06}
+\setlist{itemsep=0.15em,topsep=0.3em}
+\captionsetup{font=small,labelfont={bf,color=indigo},labelsep=period}
+
+% Headings
+\titleformat{\section}{\Large\bfseries\color{indigo}}{\thesection}{0.7em}{}
+\titleformat{\subsection}{\large\bfseries\color{ink}}{\thesubsection}{0.6em}{}
+\titleformat{\paragraph}[runin]{\bfseries\color{ink}}{}{0pt}{}[.]
+\titlespacing*{\section}{0pt}{1.4em}{0.5em}
+\titlespacing*{\subsection}{0pt}{1.0em}{0.3em}
+
+% Running head
+\newcommand{\NoteNumber}{}
+\newcommand{\NoteShortTitle}{}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.3pt}
+\renewcommand{\headrule}{{\color{mute}\hrule width\headwidth height\headrulewidth}}
+\fancyhead[L]{\small\color{mute}MYZ 310E · Machine Learning in Physics}
+\fancyhead[R]{\small\color{mute}Note \NoteNumber\ · \NoteShortTitle}
+\fancyfoot[C]{\small\color{mute}\thepage}
+\fancypagestyle{first}{\fancyhf{}\renewcommand{\headrulewidth}{0pt}\fancyfoot[C]{\small\color{mute}\thepage}}
+
+% Title block: \NoteTitle{number}{week}{title}{short title}{abstract}
+\newcommand{\NoteTitle}[5]{%
+  \renewcommand{\NoteNumber}{#1}\renewcommand{\NoteShortTitle}{#4}%
+  \thispagestyle{first}%
+  {\small\color{mute}\textsc{MYZ 310E · Machine Learning in Physics · Fall 2026}\hfill Lecture note #1 · Week #2}\par
+  \vspace{0.6em}{\color{indigo}\rule{\linewidth}{0.8pt}}\par\vspace{0.8em}
+  {\fontsize{22}{26}\selectfont\color{ink}#3\par}\vspace{0.6em}
+  {\color{mute}Prof.\ Dr.\ Emre Onur Kahya · Department of Physics Engineering, Istanbul Technical University}\par
+  \vspace{0.9em}
+  \begin{tcolorbox}[enhanced,colback=paper,colframe=paper,boxrule=0pt,arc=2pt,left=10pt,right=10pt,top=6pt,bottom=6pt]
+  \small #5
+  \end{tcolorbox}
+  \vspace{0.2em}
+}
+
+% Acknowledgement printed at the end of every note.
+\newcommand{\SourceNote}{%
+  \par\vfill{\footnotesize\color{mute}The selection and order of topics in weeks~1--3 follow the course
+  IFT~6390 \emph{Fondements de l'apprentissage machine} at Université de Montréal (taught by Ioannis Mitliagkas,
+  slides by Pascal Vincent). The text, examples, figures and exercises of this note are original. Figures are
+  computed from synthetic data by \texttt{figures.py}, published with the sources of these notes.\par}}
+
+% Boxes
+\newtcolorbox{keyidea}[1][Key idea]{enhanced,breakable,colback=indigo!4,colframe=indigo,boxrule=0pt,leftrule=2.2pt,
+  arc=0pt,left=9pt,right=8pt,top=5pt,bottom=5pt,fonttitle=\bfseries\small,coltitle=indigo,colbacktitle=indigo!4,
+  title={#1},attach title to upper={\ \ },before skip=0.8em,after skip=0.8em}
+\newtcolorbox{modern}[1]{enhanced,breakable,colback=amber!5,colframe=amber,boxrule=0pt,leftrule=2.2pt,arc=0pt,
+  left=9pt,right=8pt,top=5pt,bottom=5pt,fonttitle=\bfseries\small,coltitle=amber,colbacktitle=amber!5,
+  title={Modern connection --- #1},before skip=0.8em,after skip=0.8em}
+\newtcolorbox{physics}[1]{enhanced,breakable,colback=teal!5,colframe=teal,boxrule=0pt,leftrule=2.2pt,arc=0pt,
+  left=9pt,right=8pt,top=5pt,bottom=5pt,fonttitle=\bfseries\small,coltitle=teal,colbacktitle=teal!5,
+  title={In physics --- #1},before skip=0.8em,after skip=0.8em}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{example}{Example}
+\theoremstyle{remark}
+\newtheorem*{remark}{Remark}
+
+% Exercises
+\newcounter{exercise}
+\newenvironment{exercises}{\section*{Exercises}\addcontentsline{toc}{section}{Exercises}%
+  \begin{enumerate}[label=\textbf{\color{indigo}E\arabic*.},leftmargin=2.2em,itemsep=0.5em]}{\end{enumerate}}
+
+% Notation
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\renewcommand{\P}{\mathbb{P}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\Cov}{\operatorname{Cov}}
+\newcommand{\vect}[1]{\symbf{#1}}
+\newcommand{\x}{\vect{x}}
+\newcommand{\X}{\vect{X}}
+\newcommand{\vmu}{\vect{\mu}}
+\newcommand{\Dtrain}{D_{\mathrm{train}}}
+\newcommand{\Dvalid}{D_{\mathrm{valid}}}
+\newcommand{\Dtest}{D_{\mathrm{test}}}
+\newcommand{\F}{\mathcal{F}}
+\newcommand{\ind}[1]{\mathbf{1}\!\left\{#1\right\}}
+\newcommand{\Risk}{R}
+\newcommand{\ERisk}{\hat R}
+\newcommand{\Normal}{\mathcal{N}}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\newcommand{\T}{^{\mathsf{T}}}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}

@@ -21,6 +21,16 @@ Notlar:
 - Bir notu kaldırmak için dosyayı açıp çöp kutusu simgesiyle silin ve commit edin; bağlantı listeden kalkar.
 - Sunum ve klinik haftalarına (7–14) da not eklenebilir.
 
+### 1a. İlk üç haftanın LaTeX notları (`course-notes/`)
+
+1–3. haftalardaki beş not, `course-notes/myz-310e-2026-fall/` klasöründeki LaTeX kaynaklarından üretilir (konu sırası Université de Montréal IFT 6390'ı izler; metin, örnekler, alıştırmalar ve şekiller özgündür). Bir notu değiştirmek için ilgili `.tex` dosyasını düzenleyin ve şu komutu çalıştırın (Python 3 + numpy + matplotlib ve `brew install tectonic` gerekir):
+
+```bash
+./course-notes/myz-310e-2026-fall/build.sh
+```
+
+Betik şekilleri yeniden üretir, notları derler ve PDF'leri `public/teaching/myz-310e/2026-fall/notes/` klasörüne doğru adlarla (`week-01--learning-from-data.pdf` gibi) kopyalar. Ayrıntılar ve dosya–hafta eşleşmesi: `course-notes/myz-310e-2026-fall/README.md`.
+
 ## 2. Syllabus, değerlendirme ve takvim
 
 Tek kaynak `src/data/course.ts` dosyasıdır. Ders sayfası, "Assessment at a glance" kutusu, değerlendirme tablosu, 14 haftalık şerit ve PDF syllabus **aynı veriden** üretilir; elle tutulan ikinci bir kopya yoktur.
