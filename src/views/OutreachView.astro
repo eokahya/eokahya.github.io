@@ -5,7 +5,7 @@ import VideoCard from '../components/VideoCard.astro';
 import Icon from '../components/Icon.astro';
 import {
   bilimEkstra, bilimEkstraThemes, channels, clips, conversations, formatViews, formatViewsFloor,
-  instagramSnapshot, lessons, lessonTopics, otherChannels, outreachSnapshot, outreachTotals,
+  instagramSnapshot, lessons, lessonTopics, otherChannelGroups, otherChannels, outreachSnapshot, outreachTotals,
 } from '../data/outreach';
 import { media } from '../data/talks';
 import { longDate } from '../lib/format';
@@ -23,10 +23,8 @@ const themes = bilimEkstraThemes.map((theme) => ({ ...theme, videos: bilimEkstra
 const topics = lessonTopics.map((topic) => ({ ...topic, videos: lessons.filter((video) => video.topic === topic.id) })).filter((t) => t.videos.length);
 const seriesViews = bilimEkstra.reduce((sum, video) => sum + video.views, 0);
 const lead = c.lead(totals.firstAired.slice(0, 4));
-const channelUrl = (name: string) => Object.values(channels).find((channel) => channel.name === name)?.url;
-const otherGroups = [...new Set(otherChannels.map((video) => video.channel!))].map((name) => ({
-  name, url: channelUrl(name), slug: name.toLowerCase().replace(/[^a-z]+/g, '-'), videos: otherChannels.filter((video) => video.channel === name),
-}));
+const otherGroups = otherChannelGroups();
+const rowSource = (video: (typeof otherChannels)[number]) => [video.channel, video.programme].filter(Boolean).join(' · ');
 ---
 <Base lang={lang} title={c.metaTitle} description={c.description(totals.programmes, totals.bilimEkstra)}>
   <div class="page">
@@ -103,6 +101,37 @@ const otherGroups = [...new Set(otherChannels.map((video) => video.channel!))].m
       </div>
     </section>
 
+    <section class="section" aria-labelledby="other-title">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <p class="kicker">{c.otherKicker}</p>
+            <h2 id="other-title">{c.otherTitle[0]}<em>{c.otherTitle[1]}</em></h2>
+          </div>
+          <p class="muted small">{c.otherMeta(otherChannels.length, formatViews(totals.otherChannelViews, lang))}<br />{c.otherText}</p>
+        </div>
+        <div class="theme-grid other-grid">
+          {otherGroups.map((group) => {
+            const shown = group.visible ? group.videos.slice(0, group.visible) : group.videos;
+            const folded = group.visible ? group.videos.slice(group.visible) : [];
+            const card = (video: (typeof group.videos)[number]) => <VideoCard video={video} variant="row" headingLevel="h4" programme={video.programme ?? video.channel} source={group.labelRows ? rowSource(video) : undefined} lang={lang} />;
+            return (
+              <section class="theme-block" aria-labelledby={`other-${group.id}`}>
+                <h3 id={`other-${group.id}`}><span>{group.url ? <a href={group.url}>{group.title[lang]}</a> : group.title[lang]}<span class="tr">{group.note[lang]}</span></span><span class="count">{group.videos.length}</span></h3>
+                {shown.map(card)}
+                {folded.length > 0 && (
+                  <details class="talk-details other-more">
+                    <summary>{c.otherMore(folded.length)}</summary>
+                    {folded.map(card)}
+                  </details>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+
     <section class="section" aria-labelledby="lessons-title">
       <div class="wrap">
         <div class="section-head">
@@ -117,26 +146,6 @@ const otherGroups = [...new Set(otherChannels.map((video) => video.channel!))].m
             <section class="theme-block" aria-labelledby={`lesson-${topic.id}`}>
               <h3 id={`lesson-${topic.id}`}><span>{lang === 'tr' ? topic.titleTr : topic.title}</span><span class="count">{topic.videos.length}</span></h3>
               {topic.videos.map((video) => <VideoCard video={video} variant="row" headingLevel="h4" programme="YouTube" lang={lang} />)}
-            </section>
-          ))}
-        </div>
-      </div>
-    </section>
-
-    <section class="section" aria-labelledby="other-title">
-      <div class="wrap">
-        <div class="section-head">
-          <div>
-            <p class="kicker">{c.otherKicker}</p>
-            <h2 id="other-title">{c.otherTitle[0]}<em>{c.otherTitle[1]}</em></h2>
-          </div>
-          <p class="muted small">{c.otherMeta(otherChannels.length, formatViews(totals.otherChannelViews, lang))}<br />{c.otherText}</p>
-        </div>
-        <div class="theme-grid other-grid">
-          {otherGroups.map((group) => (
-            <section class="theme-block" aria-labelledby={`other-${group.slug}`}>
-              <h3 id={`other-${group.slug}`}><span><a href={group.url}>{group.name}</a><span class="tr">{c.otherChannelNotes[group.name]}</span></span><span class="count">{group.videos.length}</span></h3>
-              {group.videos.map((video) => <VideoCard video={video} variant="row" headingLevel="h4" programme={group.name} lang={lang} />)}
             </section>
           ))}
         </div>

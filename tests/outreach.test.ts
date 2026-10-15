@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  allYouTubeVideos, bilimEkstra, bilimEkstraThemes, channels, clips, conversations, formatDuration, formatMonth, formatViews, formatViewsFloor,
+  otherChannelGroups, otherGroups, allYouTubeVideos, bilimEkstra, bilimEkstraThemes, channels, clips, conversations, formatDuration, formatMonth, formatViews, formatViewsFloor,
   otherChannels, outreachSnapshot, outreachTotals, watchUrl,
 } from '../src/data/outreach';
 import snapshot from '../src/data/outreach-views.json';
@@ -30,7 +30,8 @@ test('every video id is unique and well-formed, with a view count from the snaps
 test('short titles are faithful excerpts of the original YouTube titles', () => {
   for (const video of allYouTubeVideos()) {
     // Turkish-aware lower case: all-caps originals (FİZİK …) are shown in sentence case.
-    const squash = (text: string) => text.replace(/\s+/g, ' ').replace('rˆ2', 'r²').trim().toLocaleLowerCase(video.lang);
+    // Spaces and punctuation are ignored: some originals read "oluştu ?Bilim,Tanrı".
+    const squash = (text: string) => text.replace('rˆ2', 'r²').toLocaleLowerCase(video.lang).replace(/[\s?!,.:;]+/g, '');
     assert.ok(squash(video.originalTitle).startsWith(squash(video.title)), `${video.id}: ${video.title}`);
   }
   for (const video of bilimEkstra) assert.match(video.originalTitle, /Prof\. Dr\. Emre Onur Kahya ile Bilim Ekstra$/);
@@ -53,7 +54,14 @@ test('Bilim Ekstra episodes are all themed and the counts add up', () => {
   assert.equal(totals.tekeTekBilimViews, sum([...conversations, ...clips, ...bilimEkstra]));
   assert.equal(totals.youtubeViews, sum(allYouTubeVideos()));
   assert.equal(totals.otherChannelViews, sum(otherChannels));
-  assert.deepEqual([...new Set(otherChannels.map((video) => video.channel))].sort(), ['Haber Global', 'Literat']);
+  // Every other-channel video sits in exactly one block; Muhakeme holds the 21 EKOTÜRK episodes.
+  const groups = otherChannelGroups();
+  assert.equal(groups.reduce((n, group) => n + group.videos.length, 0), otherChannels.length);
+  for (const group of groups) assert.ok(group.videos.length > 0, group.id);
+  assert.equal(new Set(otherGroups.map((group) => group.id)).size, otherGroups.length);
+  assert.equal(groups.find((group) => group.id === 'muhakeme')?.videos.length, 21);
+  assert.equal(otherChannels.length, 43);
+  assert.equal(groups.at(-1)?.id, 'literat');
   assert.equal(totals.instagramViews, clips.reduce((s, v) => s + (v.instagram?.views ?? 0), 0));
   assert.equal(totals.allViews, totals.youtubeViews + totals.instagramViews);
   // Conversations and clips are shown most watched first.

@@ -145,6 +145,13 @@ Kaynaklar, 2 Ekim 2026'da tarayıcıda ve kamuya açık YouTube izleme sayfalar�
 - **Instagram güncellemesi (7 Ekim 2026, kullanıcının bildirdiği):** `DdyJ3LbO8RP` 966K → **1M**; `Dd_hKMlO3Zm` 431K → **557K**. Diğer iki reel 4 Ekim sayılarıyla kalır. Instagram toplamı 1.850.900.
 - **Haber Global** ([@haberglobal](https://www.youtube.com/@haberglobal)): `5_JWbA8hU6w` "Zaman Nedir Nasıl Geçer? Okan Bayülgen ile Muhabbet Kralı" (30 Mayıs 2022, 1 sa 41 dk, 4 Ekim 2026'da 117.468 izlenme). Video açıklaması konukları saymıyor; Emre Onur Kahya'nın dört konuktan biri olduğu kullanıcının bildirimine dayanır. "Diğer kanallarda" altında listelenir ve toplama dahil edilir.
 
+### Güncelleme — 15 Ekim 2026
+
+- **40 yeni video, kullanıcının verdiği bağlantılar:** 20 tekil video ve Fatih Ergenekon'un [EKOTÜRK TV oynatma listesi](https://www.youtube.com/playlist?list=PLbB3LzyLbpBQg2AY6sZUmBnPYa7XCC3iM) (21 video; `_aT8jl-qy5s` iki listede de geçtiği için bir kez sayıldı). Başlık, kanal, süre ve yayın tarihi kamuya açık izleme sayfalarından (`videoDetails`, `microformat`) okundu; başlıklar özgün başlığın baştan alınmış kısmıdır (test, boşluk ve noktalama farklarını yok sayarak bunu denetler).
+- **"Diğer kanallarda" bölümü** artık Bilim Ekstra'dan hemen sonra gelir ve programlara göre gruplanır: Habertürk (Mesut Yar ile Başka Meseleler — `qmL8q4E0hQU` 5 Ocak 2025, `H_1oENzMOqA` 9 Mart 2025 —, Habertürk Manşet `0bxtAS73Npg` 14 Ekim 2026 ve aynı Başka Meseleler programlarının HT Bilim Tarih Felsefe kanalındaki 6 kesiti; açıklamaları programı ve konukları adıyla anar), Muhakeme · EKOTÜRK TV (21 bölüm, 2022–2025; en çok izlenen 6'sı görünür, diğerleri açılır listede), Caner Taslaman kanalı (Tv8 28., 29. ve 32. programlar, 2026; 2021'den iki sohbet), Söyleşiler (BloombergHT Yarının Zekası, A Haber Sahur Vakti, Emre Dorman, Haber Global/Okan Bayülgen) ve Vav TV (Asıl Mesele 2021, Bilim ve Ötesi 2023). Daha hafif format olan Literat en sonda kalır.
+- **15 Ekim 2026 okuması (121 video, izleme sayfaları):** Teke Tek Bilim 6.502.576; kişisel kanal 26.990; diğer kanallar 1.689.501 (Habertürk 448.581, Muhakeme 22.808, Caner Taslaman 30.882, Söyleşiler 132.683, Vav TV 9.355, Literat 1.045.192) → YouTube toplamı **8.219.067**.
+- **Instagram (15 Ekim 2026, kullanıcının bildirdiği):** `Dd_hKMlO3Zm` 557K → **675K**; `DdyJ3LbO8RP` **1M** olarak kalır. Instagram toplamı 1.968.900. Genel toplam 10.187.967 → sitede aşağı yuvarlanarak **"10,1 milyon+"**.
+
 ## Özgeçmişler (CV) — 2 Ekim 2026
 
 Kullanıcının kendi özgeçmiş dosyaları bu sürümün birincil kaynağıdır ve sitede **olduğu gibi** yayımlanır:

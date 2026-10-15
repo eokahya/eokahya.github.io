@@ -9,6 +9,7 @@ import snapshot from './outreach-views.json';
 
 export type OutreachTheme = 'cosmos' | 'thinking' | 'quantum' | 'nobel' | 'ai' | 'sinanoglu' | 'academia' | 'history';
 export type LessonTopic = 'intro' | 'field' | 'gauss' | 'potential' | 'math';
+export type OtherGroupId = 'haberturk' | 'muhakeme' | 'taslaman' | 'interviews' | 'vav' | 'literat';
 
 export interface Video {
   id: string;
@@ -30,6 +31,10 @@ export interface Video {
   format: 'short' | 'video';
   /** Channel, when it is not Teke Tek Bilim or the personal channel. */
   channel?: string;
+  /** Television or YouTube programme on that channel (other channels only). */
+  programme?: string;
+  /** Block of the "other channels" section (see otherChannelGroups). */
+  group?: OtherGroupId;
   /** The same clip posted on Instagram, with its view count as Instagram shows it (see instagramSnapshot). */
   instagram?: { url: string; views: number };
 }
@@ -48,7 +53,7 @@ export const outreachSnapshot = {
 
 /** Instagram shows view counts only to signed-in users: these figures are entered by hand. */
 export const instagramSnapshot = {
-  checkedOn: '2026-10-07',
+  checkedOn: '2026-10-15',
   source: 'The Instagram app (reels tab of @teketektv), as reported by the author',
 } as const;
 
@@ -76,7 +81,7 @@ export const conversations: readonly Video[] = byViews(withViews([
 /** Short clips cut from the conversations above, most watched first. */
 export const clips: readonly Video[] = byViews(withViews([
   { id: "Jb4xXribPwk", title: "Evren hızlanarak genişler mi?", originalTitle: "Evren hızlanarak genişler mi? / Prof. Dr. Emre Onur Kahya & Emrah Safa Gürkan - Teke Tek Bilim", lang: 'tr', with: ["Emrah Safa Gürkan"], durationSeconds: 90, published: '2025-08-24', theme: 'cosmos', glyph: 'expansion', format: 'short', instagram: { url: 'https://www.instagram.com/teketektv/reel/DNulCieWIA5/', views: 206_000 } },
-  { id: "bvol2_D9gmo", title: "Yapay zekanın fişi çekilebilir mi?", originalTitle: "Yapay zekanın fişi çekilebilir mi? / Prof. Dr. Emre Onur Kahya & Fatih Altaylı", lang: 'tr', with: ["Fatih Altaylı"], durationSeconds: 75, published: '2026-09-27', theme: 'ai', format: 'short', instagram: { url: 'https://www.instagram.com/teketektv/reel/Dd_hKMlO3Zm/', views: 557_000 } },
+  { id: "bvol2_D9gmo", title: "Yapay zekanın fişi çekilebilir mi?", originalTitle: "Yapay zekanın fişi çekilebilir mi? / Prof. Dr. Emre Onur Kahya & Fatih Altaylı", lang: 'tr', with: ["Fatih Altaylı"], durationSeconds: 75, published: '2026-09-27', theme: 'ai', format: 'short', instagram: { url: 'https://www.instagram.com/teketektv/reel/Dd_hKMlO3Zm/', views: 675_000 } },
   { id: "aCB1NGFv5bg", title: "Yapay zeka Hugging Face'i nasıl hackledi?", originalTitle: "Yapay zeka Hugging Face'i nasıl hackledi? / Prof. Dr. Emre Onur Kahya & Fatih Altaylı", lang: 'tr', with: ["Fatih Altaylı"], durationSeconds: 108, published: '2026-09-27', theme: 'ai', format: 'short', instagram: { url: 'https://www.instagram.com/teketektv/reel/DdyJ3LbO8RP/', views: 1_000_000 } },
   { id: "THYGEmgNYBM", title: "Einstein & Newton fiziği farkı", originalTitle: "Einstein & Newton fiziği farkı / Prof. Dr. Emre Onur Kahya & Emrah Safa Gürkan - Teke Tek Bilim", lang: 'tr', with: ["Emrah Safa Gürkan"], durationSeconds: 90, published: '2025-08-24', theme: 'history', glyph: 'curve', format: 'short', instagram: { url: 'https://www.instagram.com/teketektv/reel/DN7cFl9DA_A/', views: 87_900 } },
   { id: "oWuN0gZTxKQ", title: "Kozmik merdivende sapmayı nasıl bulabiliyoruz?", originalTitle: "Kozmik merdivende sapmayı nasıl bulabiliyoruz? / Prof. Dr. Bora Işıldak & Prof. Dr. Emre Onur Kahya", lang: 'tr', with: ["Prof. Dr. Bora Işıldak"], durationSeconds: 60, published: '2025-04-13', theme: 'cosmos', glyph: 'ladder', format: 'short' },
@@ -174,12 +179,81 @@ export const lessons: readonly Video[] = withViews([
   { id: "tTOJWFKgyvA", title: "Taking the small argument limit of Log Term", originalTitle: "Taking the small argument limit of Log Term", lang: 'en', durationSeconds: 326, published: '2023-04-07', topic: 'math', format: 'video' },
 ]);
 
-/** Appearances on other YouTube channels (talk shows, lighter formats): linked and counted, not featured. */
+/** Appearances on other YouTube channels — television programmes, interviews and lighter formats — shown by group. */
 export const otherChannels: readonly Video[] = withViews([
-  { id: "uS4WaHeeRxQ", title: "Fizik mühendisi atom bombası sahnelerini izliyor!", originalTitle: "FİZİK MÜHENDİSİ ATOM BOMBASI SAHNELERİNİ İZLİYOR!", lang: 'tr', channel: 'Literat', durationSeconds: 1128, published: '2024-05-22', format: 'video' },
-  { id: "rXjrqzaE464", title: "Fizik mühendisi, zamanda yolculuk sahnelerini izliyor!", originalTitle: "FİZİK MÜHENDİSİ, ZAMANDA YOLCULUK SAHNELERİNİ İZLİYOR!", lang: 'tr', channel: 'Literat', durationSeconds: 852, published: '2024-11-06', format: 'video' },
-  { id: "5_JWbA8hU6w", title: "Zaman nedir nasıl geçer?", originalTitle: "Zaman Nedir Nasıl Geçer? Okan Bayülgen ile Muhabbet Kralı", lang: 'tr', with: ["Okan Bayülgen"], channel: 'Haber Global', durationSeconds: 6039, published: '2022-05-30', format: 'video' },
+  { id: "qmL8q4E0hQU", title: "Zamanda yolculuk mümkün mü?", originalTitle: "Zamanda Yolculuk Mümkün Mü? | Başka Meseleler - 5 Ocak 2025", lang: 'tr', with: ["Mesut Yar", "Prof. Dr. İbrahim Semiz", "Dr. Tevfik Uyar"], channel: "Habertürk TV", programme: "Başka Meseleler", group: 'haberturk', durationSeconds: 11167, published: '2025-01-06', aired: '2025-01-05', format: 'video' },
+  { id: "H_1oENzMOqA", title: "Bilim ile din çatışır mı?", originalTitle: "Bilim İle Din Çatışır Mı? | Başka Meseleler - 9 Mart 2025", lang: 'tr', with: ["Mesut Yar", "Prof. Dr. Caner Taslaman"], channel: "Habertürk TV", programme: "Başka Meseleler", group: 'haberturk', durationSeconds: 10233, published: '2025-03-10', aired: '2025-03-09', format: 'video' },
+  { id: "0bxtAS73Npg", title: "Terminatör senaryosu: Gerçek mi oluyor?", originalTitle: "Terminatör Senaryosu: Gerçek Mi Oluyor? | Habertürk Manşet - 14 Ekim 2026", lang: 'tr', channel: "Habertürk TV", programme: "Habertürk Manşet", group: 'haberturk', durationSeconds: 3328, published: '2026-10-14', format: 'video' },
+  { id: "VEd8GB8sLc4", title: "Zamanın bir kıyameti olacak mı, zamanın sonu var mı? Kur'an'a göre zamanda yolculuk mümkün mü?", originalTitle: "Zamanın Bir Kıyameti Olacak Mı, Zamanın  Sonu Var Mı? Kur'an'a Göre Zamanda Yolculuk Mümkün Mü?", lang: 'tr', with: ["Mesut Yar", "Prof. Dr. İbrahim Semiz", "Dr. Tevfik Uyar"], channel: "HT Bilim Tarih Felsefe", programme: "Başka Meseleler", group: 'haberturk', durationSeconds: 10864, published: '2025-01-12', format: 'video' },
+  { id: "H-AsdD9H4cI", title: "Zamanın bir kıyameti olacak mı, zamanın sonu var mı? Zamanın akışına müdahale edilebilir mi?", originalTitle: "Zamanın Bir Kıyameti Olacak Mı, Zamanın Sonu Var Mı? Zamanın Akışına Müdahale Edilebilir Mi?", lang: 'tr', with: ["Mesut Yar", "Prof. Dr. İbrahim Semiz", "Dr. Tevfik Uyar"], channel: "HT Bilim Tarih Felsefe", programme: "Başka Meseleler", group: 'haberturk', durationSeconds: 2787, published: '2025-01-07', format: 'video' },
+  { id: "a4APOL4Nh40", title: "Bilim, Tanrı için ne diyor? Kur'an ve bilime göre evren nasıl yaratıldı?", originalTitle: "Bilim, Tanrı İçin Ne Diyor ? Kur'an Ve Bilime Göre Evren Nasıl Yaratıldı ?", lang: 'tr', with: ["Mesut Yar", "Prof. Dr. Caner Taslaman"], channel: "HT Bilim Tarih Felsefe", programme: "Başka Meseleler", group: 'haberturk', durationSeconds: 1969, published: '2025-03-10', format: 'video' },
+  { id: "5DflZWs_e5s", title: "Einstein ve Newton'a göre evren nasıl oluştu?", originalTitle: "Einstein Ve Newton'a Göre Evren Nasıl Oluştu ?", lang: 'tr', with: ["Mesut Yar", "Prof. Dr. Caner Taslaman"], channel: "HT Bilim Tarih Felsefe", programme: "Başka Meseleler", group: 'haberturk', durationSeconds: 2620, published: '2025-03-12', format: 'video' },
+  { id: "epfI0TshIPo", title: "Kur'an dünya dışı varlıklardan bahseder mi? Evrende yalnız mıyız?", originalTitle: "Kur'an Dünya Dışı Varlıklardan Bahseder Mi Evrende Yalnız Mıyız ? Sorusuna Kur'an Ve Bilim Ne Diyor", lang: 'tr', with: ["Mesut Yar", "Prof. Dr. Caner Taslaman"], channel: "HT Bilim Tarih Felsefe", programme: "Başka Meseleler", group: 'haberturk', durationSeconds: 2762, published: '2025-03-14', format: 'video' },
+  { id: "oaoEiCUjW_k", title: "Einstein ve Newton'a göre evren nasıl oluştu? Bilim, Tanrı için ne diyor?", originalTitle: "Einstein Ve Newton'a Göre Evren Nasıl Oluştu ?Bilim,Tanrı İçin Ne Diyor? Kur'an Ve Bilime Göre Evren", lang: 'tr', with: ["Mesut Yar", "Prof. Dr. Caner Taslaman"], channel: "HT Bilim Tarih Felsefe", programme: "Başka Meseleler", group: 'haberturk', durationSeconds: 10213, published: '2025-03-20', format: 'video' },
+  { id: "ZOoKtLruiIQ", title: "Tv8 32. Program: Yapay zeka ve savaşlar", originalTitle: "Tv8 32. Program: Yapay zeka ve savaşlar | Emre Onur Kahya | Caner Taslaman", lang: 'tr', with: ["Prof. Dr. Caner Taslaman"], channel: "Caner Taslaman", programme: "Tv8", group: 'taslaman', durationSeconds: 3677, published: '2026-10-13', format: 'video' },
+  { id: "qKoWja630E0", title: "Tv8 29. Program: Yapay zeka", originalTitle: "Tv8 29. Program: Yapay Zeka | Emre Onur Kahya | Caner Taslaman", lang: 'tr', with: ["Prof. Dr. Caner Taslaman"], channel: "Caner Taslaman", programme: "Tv8", group: 'taslaman', durationSeconds: 3583, published: '2026-09-17', format: 'video' },
+  { id: "XtsaoUtAJdU", title: "Tv8 28. Program: Fizik ve evren", originalTitle: "Tv8 28. Program: Fizik ve Evren | Emre Onur Kahya | Caner Taslaman", lang: 'tr', with: ["Prof. Dr. Caner Taslaman"], channel: "Caner Taslaman", programme: "Tv8", group: 'taslaman', durationSeconds: 3719, published: '2026-09-09', format: 'video' },
+  { id: "9ZoufUoBa_8", title: "Sonsuz evrenler tartışmaları hakkında", originalTitle: "Sonsuz Evrenler Tartışmaları Hakkında / Emre Onur Kahya, Caner Taslaman", lang: 'tr', with: ["Prof. Dr. Caner Taslaman"], channel: "Caner Taslaman", group: 'taslaman', durationSeconds: 470, published: '2021-12-08', format: 'video' },
+  { id: "9m5eeOgzvrc", title: "Evrenin gizemi", originalTitle: "Evrenin Gizemi / Emre Onur Kahya, Caner Taslaman, Emre Dorman ve Birün Aktaş", lang: 'tr', with: ["Prof. Dr. Caner Taslaman", "Emre Dorman", "Birün Aktaş"], channel: "Caner Taslaman", group: 'taslaman', durationSeconds: 3319, published: '2021-11-24', format: 'video' },
+  { id: "3FbqmGvSK9Y", title: "Yarının zekası", originalTitle: "Yarının Zekası - Prof. Dr. Emre Onur Kahya | 11 Ekim 2026", lang: 'tr', channel: "BloombergHT", programme: "Yarının Zekası", group: 'interviews', durationSeconds: 2148, published: '2026-10-11', format: 'video' },
+  { id: "5zrw1GldexI", title: "Ramazan'a veda ederken... Bilim dini inancımızı nasıl etkiliyor?", originalTitle: "Ramazan'a Veda Ederken... Bilim Dini İnancımızı Nasıl Etkiliyor? | Sahur Vakti", lang: 'tr', channel: "A Haber", programme: "Sahur Vakti", group: 'interviews', durationSeconds: 5486, published: '2026-03-09', format: 'video' },
+  { id: "-lnA3shtGF8", title: "Fizik bilimi ve evren hakkında en çok merak edilenler", originalTitle: "Fizik Bilimi ve Evren Hakkında En Çok Merak Edilenler / Emre Onur Kahya", lang: 'tr', with: ["Emre Dorman"], channel: "Emre Dorman", programme: "Aklımdaki Sorular", group: 'interviews', durationSeconds: 2495, published: '2025-01-20', format: 'video' },
+  { id: "hXt4N1UCiAg", title: "Evrenin anlaşılmasında fizik bilimi", originalTitle: "Evrenin Anlaşılmasında Fizik Bilimi | Bilim ve Ötesi (9. Bölüm)", lang: 'tr', channel: "Vav TV", programme: "Bilim ve Ötesi", group: 'vav', durationSeconds: 3089, published: '2023-07-14', format: 'video' },
+  { id: "2mGMBmD8Q_0", title: "Fizik bilimine dair", originalTitle: "Fizik Bilimine Dair | Prof. Dr. Emre Onur Kahya - Asıl Mesele (29. Bölüm)", lang: 'tr', channel: "Vav TV", programme: "Asıl Mesele", group: 'vav', durationSeconds: 6586, published: '2021-08-04', format: 'video' },
+  { id: "JBROioD-Azc", title: "Evrende dünya dışında canlı yaşamı olabilir mi?", originalTitle: "Evrende dünya dışında canlı yaşamı olabilir mi? | Prof. Dr. Emre Onur Kahya|Fatih Ergenekon|Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 3267, published: '2024-10-07', format: 'video' },
+  { id: "6KZXDjJZabs", title: "Fizikte yeni gelişmeler var mı?", originalTitle: "Fizikte yeni gelişmeler var mı? | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 3036, published: '2024-05-20', format: 'video' },
+  { id: "sCU2xA2S1BM", title: "Din ve bilim ilişkisi", originalTitle: "Din ve bilim ilişkisi | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 3096, published: '2024-04-29', format: 'video' },
+  { id: "zmZGCZ-rKXI", title: "Türk astronot Alper Gezeravcı'nın uzay yolculuğu", originalTitle: "Türk astronot Alper Gezeravcı'nın uzay yolculuğu | Prof. Dr. Emre O. Kahya |Fatih Ergenekon|Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 3030, published: '2024-02-19', format: 'video' },
+  { id: "AQ8wz7YzCqk", title: "Din ve bilim ilişkisi", originalTitle: "Din ve Bilim İlişkisi | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 3149, published: '2024-01-15', format: 'video' },
+  { id: "LbKhtruq3h8", title: "Güneş sistemi ve gezegenler", originalTitle: "Güneş Sistemi ve Gezegenler | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 3354, published: '2024-01-03', format: 'video' },
+  { id: "28CIC1rmpwI", title: "Matematik ve evren ilişkisi", originalTitle: "Matematik ve Evren İlişkisi | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 3165, published: '2023-11-13', format: 'video' },
+  { id: "ZuuOLR8UbTg", title: "Yapay zeka bilinç kazanabilir mi?", originalTitle: "Yapay zeka bilinç kazanabilir mi? | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 2999, published: '2023-09-25', format: 'video' },
+  { id: "FFZt-9gvEGM", title: "Kara delikler Dünya için tehdit mi?", originalTitle: "Kara delikler Dünya için tehdit mi? | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 3059, published: '2023-09-05', format: 'video' },
+  { id: "NUkGXGPs8Pk", title: "Stephen Hawking'den korkutan kehanet", originalTitle: "Stephen Hawking'den korkutan kehanet | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 3215, published: '2023-08-22', format: 'video' },
+  { id: "WARCckd3UL8", title: "Din ve bilim ilişkisi", originalTitle: "Din ve Bilim İlişkisi | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 2730, published: '2024-04-08', format: 'video' },
+  { id: "X_0CQnJco2o", title: "Gezegenlerin hareketi insanları etkiler mi?", originalTitle: "Gezegenlerin hareketi insanları etkiler mi? | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 3156, published: '2024-06-20', format: 'video' },
+  { id: "yj7zLdGA74k", title: "İnsan zihni ve evren arasındaki ilişki", originalTitle: "İnsan zihni ve evren arasındaki ilişki | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 3053, published: '2023-07-09', format: 'video' },
+  { id: "GCPMZjS_tgw", title: "Yapay zeka insan gibi düşünebilir mi?", originalTitle: "Yapay zeka insan gibi düşünebilir mi? | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 3146, published: '2023-04-10', format: 'video' },
+  { id: "k6H4j6KtT5I", title: "Evren ve bilim", originalTitle: "Evren ve Bilim | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 2948, published: '2023-03-27', format: 'video' },
+  { id: "X1Fll7WdAVQ", title: "İnsan zihninin zaman ve mekan algısı", originalTitle: "İnsan zihninin zaman ve mekan algısı | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 3026, published: '2022-05-06', format: 'video' },
+  { id: "UbwiDMTeZdA", title: "Evreni anlamada fizik biliminin rolü", originalTitle: "Evreni anlamada fizik biliminin rolü | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 2793, published: '2022-04-29', format: 'video' },
+  { id: "IAvF9grmvzM", title: "Modern kozmoloji ve din", originalTitle: "Modern kozmoloji ve din | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 2876, published: '2022-04-20', format: 'video' },
+  { id: "AwPr9uoM3oM", title: "Evren ve bilim ilişkisi", originalTitle: "Evren ve bilim ilişkisi | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 2962, published: '2025-02-18', format: 'video' },
+  { id: "xC-o087bouQ", title: "Evren gerçekten sonsuz mudur?", originalTitle: "Evren gerçekten sonsuz mudur? | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 3056, published: '2025-04-02', format: 'video' },
+  { id: "_aT8jl-qy5s", title: "Evrenin oluşum ve gelişim süreci", originalTitle: "Evrenin Oluşum ve Gelişim Süreci | Prof. Dr. Emre Onur Kahya | Fatih Ergenekon | Muhakeme", lang: 'tr', with: ["Fatih Ergenekon"], channel: "EKOTÜRK TV", programme: "Muhakeme", group: 'muhakeme', durationSeconds: 3178, published: '2025-06-23', format: 'video' },
+  { id: "5_JWbA8hU6w", title: "Zaman nedir nasıl geçer?", originalTitle: "Zaman Nedir Nasıl Geçer? Okan Bayülgen ile Muhabbet Kralı", lang: 'tr', with: ["Okan Bayülgen"], channel: 'Haber Global', programme: 'Muhabbet Kralı', group: 'interviews', durationSeconds: 6039, published: '2022-05-30', format: 'video' },
+  { id: "uS4WaHeeRxQ", title: "Fizik mühendisi atom bombası sahnelerini izliyor!", originalTitle: "FİZİK MÜHENDİSİ ATOM BOMBASI SAHNELERİNİ İZLİYOR!", lang: 'tr', channel: 'Literat', group: 'literat', durationSeconds: 1128, published: '2024-05-22', format: 'video' },
+  { id: "rXjrqzaE464", title: "Fizik mühendisi, zamanda yolculuk sahnelerini izliyor!", originalTitle: "FİZİK MÜHENDİSİ, ZAMANDA YOLCULUK SAHNELERİNİ İZLİYOR!", lang: 'tr', channel: 'Literat', group: 'literat', durationSeconds: 852, published: '2024-11-06', format: 'video' },
 ]);
+
+/**
+ * Blocks of the "other channels" section, in display order: television programmes first, the lighter Literat
+ * format last. Within a block the most watched come first; `visible` rows are shown and the rest fold away.
+ */
+export const otherGroups: readonly {
+  id: OtherGroupId; title: { en: string; tr: string }; url?: string; note: { en: string; tr: string };
+  /** Show channel and programme on each row (blocks that mix programmes). */
+  labelRows: boolean; visible?: number;
+}[] = [
+  { id: 'haberturk', title: { en: 'Habertürk', tr: 'Habertürk' }, url: 'https://www.youtube.com/@haberturktv', labelRows: true,
+    note: { en: 'Başka Meseleler with Mesut Yar and Habertürk Manşet; segments of Başka Meseleler on HT Bilim Tarih Felsefe.', tr: 'Mesut Yar ile Başka Meseleler ve Habertürk Manşet; Başka Meseleler kesitleri HT Bilim Tarih Felsefe kanalında.' } },
+  { id: 'muhakeme', title: { en: 'Muhakeme · EKOTÜRK TV', tr: 'Muhakeme · EKOTÜRK TV' }, url: 'https://www.youtube.com/playlist?list=PLbB3LzyLbpBQg2AY6sZUmBnPYa7XCC3iM', labelRows: false, visible: 6,
+    note: { en: 'A regular guest of Fatih Ergenekon, 2022–2025.', tr: 'Fatih Ergenekon’un konuğu olarak, 2022–2025.' } },
+  { id: 'taslaman', title: { en: 'Caner Taslaman', tr: 'Caner Taslaman' }, url: 'https://www.youtube.com/@Caner.Taslaman', labelRows: false,
+    note: { en: 'Tv8 programmes with Prof. Dr. Caner Taslaman (2026) and earlier conversations.', tr: 'Prof. Dr. Caner Taslaman ile Tv8 programları (2026) ve önceki sohbetler.' } },
+  { id: 'interviews', title: { en: 'Interviews', tr: 'Söyleşiler' }, labelRows: true,
+    note: { en: 'BloombergHT, A Haber, Emre Dorman, and Okan Bayülgen on Haber Global (one of four guests).', tr: 'BloombergHT, A Haber, Emre Dorman ve Haber Global’de Okan Bayülgen (dört konuktan biri olarak).' } },
+  { id: 'vav', title: { en: 'Vav TV', tr: 'Vav TV' }, url: 'https://www.youtube.com/@vavtv', labelRows: true,
+    note: { en: 'Asıl Mesele (2021) and Bilim ve Ötesi (2023).', tr: 'Asıl Mesele (2021) ve Bilim ve Ötesi (2023).' } },
+  { id: 'literat', title: { en: 'Literat', tr: 'Literat' }, url: 'https://www.youtube.com/@Literatsf', labelRows: false,
+    note: { en: 'I comment on the physics in film and TV scenes.', tr: 'Film ve dizi sahnelerindeki fiziği yorumluyorum.' } },
+];
+
+/** The other-channel videos of each block, most watched first. */
+export const otherChannelGroups = () => otherGroups.map((group) => ({
+  ...group,
+  videos: byViews(otherChannels.filter((video) => video.group === group.id)),
+}));
 
 const sum = (list: readonly Video[]) => list.reduce((total, video) => total + video.views, 0);
 

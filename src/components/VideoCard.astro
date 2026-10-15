@@ -4,8 +4,8 @@ import { formatDuration, formatMonth, formatViews, watchUrl, type Video } from '
 import type { Lang } from '../i18n';
 import { ui } from '../i18n/ui';
 
-interface Props { video: Video; variant?: 'banner' | 'feature' | 'row' | 'clip'; programme?: string; headingLevel?: 'h3' | 'h4'; lang?: Lang }
-const { video, variant = 'row', programme = 'Teke Tek Bilim', headingLevel = 'h3', lang = 'en' } = Astro.props;
+interface Props { video: Video; variant?: 'banner' | 'feature' | 'row' | 'clip'; programme?: string; headingLevel?: 'h3' | 'h4'; lang?: Lang; /** Channel or programme shown on a row, for blocks that mix them. */ source?: string }
+const { video, variant = 'row', programme = 'Teke Tek Bilim', headingLevel = 'h3', lang = 'en', source } = Astro.props;
 const u = ui[lang];
 const Heading = headingLevel;
 const url = watchUrl(video);
@@ -39,7 +39,7 @@ const glyph = video.glyph ?? (video.theme ? themeGlyph[video.theme] ?? 'orbit' :
     <Heading class="video__title"><a href={url} lang={video.lang} target="_blank" rel="noopener">{video.title}<span class="visually-hidden" lang={lang}> — {u.watchOnYouTube}</span></a></Heading>
     {video.with && variant !== 'row' && <p class="video__with">{u.with} {video.with.join(', ')}</p>}
     {variant === 'row' ? (
-      <p class="video__meta"><span>{formatViews(video.views, lang)} {u.views}</span><span>{formatDuration(video.durationSeconds, lang)}</span><span><time datetime={date}>{formatMonth(date, lang)}</time>{video.aired && <span class="video__aired"> ({u.aired})</span>}</span></p>
+      <p class="video__meta">{source && <span class="video__source" lang="tr">{source}</span>}<span>{formatViews(video.views, lang)} {u.views}</span><span>{formatDuration(video.durationSeconds, lang)}</span><span><time datetime={date}>{formatMonth(date, lang)}</time>{video.aired && <span class="video__aired"> ({u.aired})</span>}</span></p>
     ) : (
       <p class="video__meta">
         <span><Icon name="eye" size={14} />{formatViews(video.views, lang)} {u.views}</span>

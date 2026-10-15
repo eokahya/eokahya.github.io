@@ -184,6 +184,10 @@ a.press__title:hover { color: var(--coral); }
 .talk-details summary:hover { border-color: var(--accent); }
 .talk-details summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .talk-details .talk-list { margin-top: 1rem; }
+.other-more { margin-top: 0.9rem; }
+.other-more summary { min-height: 40px; padding: 0.4rem 1rem; font-size: 0.85rem; }
+.other-more[open] summary { margin-bottom: 0.2rem; }
+.video__source { color: var(--text-2); }
 @media (max-width: 640px) {
   .project-list li, .talk-list li { grid-template-columns: 1fr; }
   .project__period, .talk__date { text-align: left; padding-top: 0; }
