@@ -152,6 +152,11 @@ Kaynaklar, 2 Ekim 2026'da tarayıcıda ve kamuya açık YouTube izleme sayfalar�
 - **15 Ekim 2026 okuması (121 video, izleme sayfaları):** Teke Tek Bilim 6.502.576; kişisel kanal 26.990; diğer kanallar 1.689.501 (Habertürk 448.581, Muhakeme 22.808, Caner Taslaman 30.882, Söyleşiler 132.683, Vav TV 9.355, Literat 1.045.192) → YouTube toplamı **8.219.067**.
 - **Instagram (15 Ekim 2026, kullanıcının bildirdiği):** `Dd_hKMlO3Zm` 557K → **675K**; `DdyJ3LbO8RP` **1M** olarak kalır. Instagram toplamı 1.968.900. Genel toplam 10.187.967 → sitede aşağı yuvarlanarak **"10,1 milyon+"**.
 
+### Güncelleme — 19 Ekim 2026
+
+- **YouTube (121 video, izleme sayfaları):** Teke Tek Bilim 6.627.769; kişisel kanal 27.009; diğer kanallar 1.696.249 → YouTube toplamı **8.351.027**.
+- **Instagram (kullanıcının bildirdiği):** `Dd_hKMlO3Zm` 675K → **698K**; `DdyJ3LbO8RP` **1M** olarak kalır. Instagram toplamı 1.991.900. Genel toplam 10.342.927 → sitede aşağı yuvarlanarak **"10,3 milyon+"**.
+
 ## Özgeçmişler (CV) — 2 Ekim 2026
 
 Kullanıcının kendi özgeçmiş dosyaları bu sürümün birincil kaynağıdır ve sitede **olduğu gibi** yayımlanır:
