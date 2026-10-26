@@ -157,6 +157,11 @@ Kaynaklar, 2 Ekim 2026'da tarayıcıda ve kamuya açık YouTube izleme sayfalar�
 - **YouTube (121 video, izleme sayfaları):** Teke Tek Bilim 6.627.769; kişisel kanal 27.009; diğer kanallar 1.696.249 → YouTube toplamı **8.351.027**.
 - **Instagram (kullanıcının bildirdiği):** `Dd_hKMlO3Zm` 675K → **698K**; `DdyJ3LbO8RP` **1M** olarak kalır. Instagram toplamı 1.991.900. Genel toplam 10.342.927 → sitede aşağı yuvarlanarak **"10,3 milyon+"**.
 
+### Güncelleme — 26 Ekim 2026
+
+- **YouTube (121 video, izleme sayfaları):** Teke Tek Bilim 6.931.325; kişisel kanal 27.034; diğer kanallar 1.702.231 → YouTube toplamı **8.660.590**.
+- **Instagram (kullanıcının bildirdiği):** `Dd_hKMlO3Zm` 698K → **768K**; `DdyJ3LbO8RP` **1M** olarak kalır. Instagram toplamı 2.061.900. Genel toplam 10.722.490 → sitede aşağı yuvarlanarak **"10,7 milyon+"**.
+
 ## Özgeçmişler (CV) — 2 Ekim 2026
 
 Kullanıcının kendi özgeçmiş dosyaları bu sürümün birincil kaynağıdır ve sitede **olduğu gibi** yayımlanır:

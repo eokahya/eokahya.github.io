@@ -42,7 +42,7 @@ npm run serve          # dist/ klasörünü http://127.0.0.1:4173 adresinde suna
 | Yayınlar (doğrulanmış snapshot; `selected: true` ana sayfada gösterilir) | `src/data/publications.ts` |
 | MYZ 310E: syllabus, kurallar, haftalık plan, rubrikler, duyurular | `src/data/course.ts` |
 | Haftalık ders notu PDF'leri | `public/teaching/myz-310e/2026-fall/notes/week-03.pdf` gibi |
-| 1–3. hafta ders notlarının LaTeX kaynakları, şekil betiği ve derleme betiği | `course-notes/myz-310e-2026-fall/` (`build.sh` PDF'leri `notes/` klasörüne kopyalar) |
+| 1–4. hafta ders notlarının LaTeX kaynakları, şekil betiği ve derleme betiği | `course-notes/myz-310e-2026-fall/` (`build.sh` PDF'leri `notes/` klasörüne kopyalar) |
 | Teke Tek Bilim / YouTube video listesi ve izlenme snapshot'ı | `src/data/outreach.ts` |
 | Menü, düğme ve ortak arayüz metinleri (EN ve TR) | `src/i18n/ui.ts` |
 | Ana sayfa metinleri (EN ve TR) | `src/i18n/copy/home.ts` |

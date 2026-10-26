@@ -212,12 +212,12 @@ for (const name of engines) {
     record(name, 'course: eligibility rule stated with 12/30 AND both presentations', /12\/30/.test(text) && /AND complete both project presentations/.test(text) && /not to the overall course grade/.test(text));
     const noteLinks = await page.$$eval('a[href*="/notes/"]', (anchors) => anchors.map((a) => a.getAttribute('href') ?? ''));
     const noteWeeks = await page.$$eval('.notes__row.has-notes .notes__week', (cells) => cells.map((cell) => cell.textContent?.trim()));
-    record(name, 'course: lecture notes for weeks 1-3 only, open + download per PDF', (await page.locator('.notes__empty').count()) === 11 && noteLinks.length === 10 && new Set(noteLinks).size === 5 && noteWeeks.join() === 'Week 1,Week 2,Week 3', `${noteLinks.length} links; ${noteWeeks.join()}`);
+    record(name, 'course: lecture notes for weeks 1-4 only, open + download per PDF', (await page.locator('.notes__empty').count()) === 10 && noteLinks.length === 18 && new Set(noteLinks).size === 9 && noteWeeks.join() === 'Week 1,Week 2,Week 3,Week 4', `${noteLinks.length} links; ${noteWeeks.join()}`);
     const noteBodies = await Promise.all([...new Set(noteLinks)].map(async (href) => {
       const response = await page.request.get(new URL(href, base + '/').href);
       return response.status() === 200 && (response.headers()['content-type'] ?? '').includes('pdf') && (await response.body()).subarray(0, 5).toString() === '%PDF-';
     }));
-    record(name, 'course: every lecture-note link serves a real PDF', noteBodies.length === 5 && noteBodies.every(Boolean), noteBodies.join());
+    record(name, 'course: every lecture-note link serves a real PDF', noteBodies.length === 9 && noteBodies.every(Boolean), noteBodies.join());
     record(name, 'course: no animated scene on teaching pages', (await page.locator('canvas').count()) === 0);
     const pdf = await page.request.get(base + '/teaching/myz-310e/2026-fall/myz-310e-syllabus.pdf');
     record(name, 'course: syllabus PDF is served', pdf.status() === 200 && (pdf.headers()['content-type'] ?? '').includes('pdf') && (await pdf.body()).subarray(0, 5).toString() === '%PDF-');

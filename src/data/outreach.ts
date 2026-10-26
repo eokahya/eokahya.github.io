@@ -53,7 +53,7 @@ export const outreachSnapshot = {
 
 /** Instagram shows view counts only to signed-in users: these figures are entered by hand. */
 export const instagramSnapshot = {
-  checkedOn: '2026-10-19',
+  checkedOn: '2026-10-26',
   source: 'The Instagram app (reels tab of @teketektv), as reported by the author',
 } as const;
 
@@ -81,7 +81,7 @@ export const conversations: readonly Video[] = byViews(withViews([
 /** Short clips cut from the conversations above, most watched first. */
 export const clips: readonly Video[] = byViews(withViews([
   { id: "Jb4xXribPwk", title: "Evren hızlanarak genişler mi?", originalTitle: "Evren hızlanarak genişler mi? / Prof. Dr. Emre Onur Kahya & Emrah Safa Gürkan - Teke Tek Bilim", lang: 'tr', with: ["Emrah Safa Gürkan"], durationSeconds: 90, published: '2025-08-24', theme: 'cosmos', glyph: 'expansion', format: 'short', instagram: { url: 'https://www.instagram.com/teketektv/reel/DNulCieWIA5/', views: 206_000 } },
-  { id: "bvol2_D9gmo", title: "Yapay zekanın fişi çekilebilir mi?", originalTitle: "Yapay zekanın fişi çekilebilir mi? / Prof. Dr. Emre Onur Kahya & Fatih Altaylı", lang: 'tr', with: ["Fatih Altaylı"], durationSeconds: 75, published: '2026-09-27', theme: 'ai', format: 'short', instagram: { url: 'https://www.instagram.com/teketektv/reel/Dd_hKMlO3Zm/', views: 698_000 } },
+  { id: "bvol2_D9gmo", title: "Yapay zekanın fişi çekilebilir mi?", originalTitle: "Yapay zekanın fişi çekilebilir mi? / Prof. Dr. Emre Onur Kahya & Fatih Altaylı", lang: 'tr', with: ["Fatih Altaylı"], durationSeconds: 75, published: '2026-09-27', theme: 'ai', format: 'short', instagram: { url: 'https://www.instagram.com/teketektv/reel/Dd_hKMlO3Zm/', views: 768_000 } },
   { id: "aCB1NGFv5bg", title: "Yapay zeka Hugging Face'i nasıl hackledi?", originalTitle: "Yapay zeka Hugging Face'i nasıl hackledi? / Prof. Dr. Emre Onur Kahya & Fatih Altaylı", lang: 'tr', with: ["Fatih Altaylı"], durationSeconds: 108, published: '2026-09-27', theme: 'ai', format: 'short', instagram: { url: 'https://www.instagram.com/teketektv/reel/DdyJ3LbO8RP/', views: 1_000_000 } },
   { id: "THYGEmgNYBM", title: "Einstein & Newton fiziği farkı", originalTitle: "Einstein & Newton fiziği farkı / Prof. Dr. Emre Onur Kahya & Emrah Safa Gürkan - Teke Tek Bilim", lang: 'tr', with: ["Emrah Safa Gürkan"], durationSeconds: 90, published: '2025-08-24', theme: 'history', glyph: 'curve', format: 'short', instagram: { url: 'https://www.instagram.com/teketektv/reel/DN7cFl9DA_A/', views: 87_900 } },
   { id: "oWuN0gZTxKQ", title: "Kozmik merdivende sapmayı nasıl bulabiliyoruz?", originalTitle: "Kozmik merdivende sapmayı nasıl bulabiliyoruz? / Prof. Dr. Bora Işıldak & Prof. Dr. Emre Onur Kahya", lang: 'tr', with: ["Prof. Dr. Bora Işıldak"], durationSeconds: 60, published: '2025-04-13', theme: 'cosmos', glyph: 'ladder', format: 'short' },

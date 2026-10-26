@@ -21,9 +21,9 @@ Notlar:
 - Bir notu kaldırmak için dosyayı açıp çöp kutusu simgesiyle silin ve commit edin; bağlantı listeden kalkar.
 - Sunum ve klinik haftalarına (7–14) da not eklenebilir.
 
-### 1a. İlk üç haftanın LaTeX notları (`course-notes/`)
+### 1a. İlk dört haftanın LaTeX notları (`course-notes/`)
 
-1–3. haftalardaki beş not, `course-notes/myz-310e-2026-fall/` klasöründeki LaTeX kaynaklarından üretilir (konu sırası Université de Montréal IFT 6390'ı izler; metin, örnekler, alıştırmalar ve şekiller özgündür). Bir notu değiştirmek için ilgili `.tex` dosyasını düzenleyin ve şu komutu çalıştırın (Python 3 + numpy + matplotlib ve `brew install tectonic` gerekir):
+1–4. haftalardaki dokuz not, `course-notes/myz-310e-2026-fall/` klasöründeki LaTeX kaynaklarından üretilir (konu sırası Université de Montréal IFT 6390'ı izler; metin, örnekler, alıştırmalar ve şekiller özgündür). Bir notu değiştirmek için ilgili `.tex` dosyasını düzenleyin ve şu komutu çalıştırın (Python 3 + numpy + matplotlib ve `brew install tectonic` gerekir):
 
 ```bash
 ./course-notes/myz-310e-2026-fall/build.sh

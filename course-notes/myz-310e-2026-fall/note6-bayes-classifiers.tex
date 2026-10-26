@@ -1,0 +1,213 @@
+\documentclass[11pt]{article}
+\usepackage{myz310e-notes}
+\hypersetup{pdftitle={Generative classifiers: the Bayes classifier and naive Bayes},pdfauthor={Emre Onur Kahya},pdfsubject={MYZ 310E Machine Learning in Physics, Fall 2026, lecture note 6 (week 4)}}
+
+\begin{document}
+\NoteTitle{6}{4}{Generative classifiers: the Bayes\\ classifier and naive Bayes}{Generative classifiers}{%
+A classifier can be built from density estimators: model how the data of each class are distributed, then let
+Bayes' rule turn those densities into class probabilities. This note develops that recipe, shows that Gaussian class
+densities produce linear or quadratic decision boundaries, explains the strong independence assumption of naive Bayes,
+and compares the generative route with the discriminative one taken in Note~9. The same reasoning underlies the
+likelihood-ratio tests of experimental physics and the use of today's generative models as classifiers.}
+
+\section{From scores to decisions}\label{sec:scores}
+
+Most classifiers first compute real-valued \emph{scores} and then decide. In the binary case a single
+\emph{discriminant function} $g(\x)$ is compared with a threshold: predict class~1 if $g(\x) > \tau$. Common choices
+are $\tau = 0$ for an unbounded score and $\tau = \tfrac12$ when $g(\x)$ estimates $P(Y = 1 \mid \x)$. With $m$
+classes the model outputs a vector of scores $\vect{g}(\x) \in \R^m$ and predicts $f(\x) = \argmax_c g_c(\x)$; for
+$m = 2$ this is the sign of $g_2(\x) - g_1(\x)$. When the scores are non-negative and sum to one they can be read as
+class probabilities, and Note~1, Section~4, showed that predicting the most probable class minimises the expected
+classification error. The question of this note is how to obtain such probabilities.
+
+\section{The Bayes classifier}\label{sec:bayes}
+
+Write the posterior with Bayes' rule (Note~2, Section~1.1):
+\begin{equation}\label{eq:bayes}
+  P(Y = c \mid \X = \x) = \frac{p(\x \mid Y = c)\, P(Y = c)}{\sum_{c'=1}^{m} p(\x \mid Y = c')\, P(Y = c')} .
+\end{equation}
+The \emph{class-conditional density} $p(\x \mid Y = c)$ says what examples of class $c$ look like; the \emph{prior}
+$P(Y = c)$ says how common the class is. The \emph{Bayes classifier} estimates both from the training set and plugs
+the estimates into \eqref{eq:bayes}:
+\begin{enumerate}
+\item split $\Dtrain$ by class into subsets of sizes $n_1, \dots, n_m$;
+\item fit a density estimator $\hat p_c(\x)$ to each subset;
+\item estimate priors by class frequencies, $\hat P_c = n_c / n$;
+\item predict $f(\x) = \argmax_c \hat p_c(\x)\, \hat P_c$, or report the normalised posteriors.
+\end{enumerate}
+The denominator of \eqref{eq:bayes} is the same for every class, so it matters only when probabilities, not just
+decisions, are needed. Any density estimator can be used in step~2 --- a Gaussian (Note~2), a histogram (Note~3), a kernel
+density estimate (Note~5) or a deep generative model --- and the classifier inherits its capacity and its weaknesses.
+With kernel density estimates the Bayes classifier is close to the Parzen-window classifier of Note~5; with $d$ large,
+it inherits the curse of dimensionality of Note~3.
+
+\paragraph{Compute in log space} Densities in high dimension underflow (Note~2, Section~6). Work with
+$s_c(\x) = \log \hat p_c(\x) + \log \hat P_c$; the decision is $\argmax_c s_c$, and the posteriors are
+$\exp(s_c - s_{\max}) / \sum_{c'} \exp(s_{c'} - s_{\max})$, the softmax of the log-scores with the largest subtracted
+first.
+
+\paragraph{The role of the prior} In two-class form, \eqref{eq:bayes} reads
+\[
+  \underbrace{\frac{P(Y = 1 \mid \x)}{P(Y = 0 \mid \x)}}_{\text{posterior odds}}
+  = \underbrace{\frac{p(\x \mid Y = 1)}{p(\x \mid Y = 0)}}_{\text{likelihood ratio } \Lambda(\x)}
+  \times \underbrace{\frac{P(Y = 1)}{P(Y = 0)}}_{\text{prior odds}} .
+\]
+The data enter only through the likelihood ratio; the prior shifts the threshold. Figure~\ref{fig:prior} shows two
+unit-variance Gaussian classes two and a half standard deviations apart: with equal priors the boundary sits half-way,
+at $x = 1.25$; if the signal makes up 1\% of the data, it moves to $x \approx 3.1$, and most of the signal is
+classified as background. This is correct --- it minimises the number of errors --- but it may not be what we want,
+which is why decisions with unequal costs move the threshold again (Exercise~E2). Because the two factors separate,
+a classifier trained with one class balance can be corrected for another by rescaling its odds, provided the
+class-conditional densities are unchanged~\cite{saerens2002}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\linewidth]{figures/prior_shift.pdf}
+\caption{The same class-conditional densities (left) give different posteriors (right) under different priors. The
+decision boundary is where the posterior crosses $\tfrac12$.}
+\label{fig:prior}
+\end{figure}
+
+\begin{physics}{the Neyman--Pearson lemma and learned likelihood ratios}
+In a search for a rare process the prior is tiny and largely unknown, so physicists rank events by the likelihood
+ratio $\Lambda(\x)$ itself. The Neyman--Pearson lemma states that, for any fixed rate of falsely accepted background,
+the test that accepts events with large $\Lambda(\x)$ has the highest signal efficiency. The class densities are
+rarely known in closed form, but a well-calibrated classifier trained on simulated signal and background events
+estimates $P(Y = 1 \mid \x)$, and the identity above turns it back into $\Lambda(\x)$. This ``likelihood-ratio trick''
+lets neural networks stand in for intractable likelihoods in parameter inference~\cite{cranmer2015}.
+\end{physics}
+
+\section{Gaussian class densities}\label{sec:gaussian}
+
+Let each class be Gaussian, $p(\x \mid Y = c) = \Normal(\x; \vmu_c, \Sigma_c)$, with parameters fitted by the class
+means and covariances (Note~2, Section~6). The log-score is
+\[
+  s_c(\x) = -\tfrac12 (\x - \vmu_c)\T \Sigma_c^{-1} (\x - \vmu_c) - \tfrac12 \log\lvert\Sigma_c\rvert + \log P_c
+  + \text{const},
+\]
+a quadratic function of $\x$, so the boundary $s_1(\x) = s_0(\x)$ is a quadric: an ellipse, a parabola or a
+hyperbola in two dimensions. This is \emph{quadratic discriminant analysis} (QDA).
+
+If all classes share one covariance $\Sigma$ (estimated by pooling the classes), the quadratic terms
+$-\tfrac12 \x\T \Sigma^{-1} \x$ are identical and cancel in every comparison. What remains is linear:
+\begin{equation}\label{eq:lda}
+  s_1(\x) - s_0(\x) = \vect{w}\T\x + b, \qquad \vect{w} = \Sigma^{-1}(\vmu_1 - \vmu_0), \qquad
+  b = -\tfrac12 \big(\vmu_1\T\Sigma^{-1}\vmu_1 - \vmu_0\T\Sigma^{-1}\vmu_0\big) + \log\frac{P_1}{P_0} .
+\end{equation}
+This is \emph{linear discriminant analysis} (LDA): the decision boundary is a hyperplane. With equal priors the rule
+assigns $\x$ to the class whose mean is nearest in Mahalanobis distance; if moreover $\Sigma = \sigma^2 I$, to the
+nearest mean in Euclidean distance --- the nearest-centroid classifier of Note~9. Figure~\ref{fig:bayesgauss} shows
+both cases.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\linewidth]{figures/bayes_gaussians.pdf}
+\caption{Gaussian Bayes classifiers fitted to 200 points per class (indigo and amber), errors on $10^4$ fresh points.
+Left: shared covariance gives a straight boundary. Centre: a compact class inside a broad one needs the quadratic
+boundary of QDA. Right: the two classes have the same mean and variances and differ only in the sign of their
+correlation; naive Bayes cannot see the difference.}
+\label{fig:bayesgauss}
+\end{figure}
+
+\paragraph{Counting parameters} QDA in $d$ dimensions estimates $m$ covariance matrices of $d(d+1)/2$ entries each;
+LDA one; a diagonal model $md$ variances. For $d = 100$ and $m = 10$ these are about 50\,000, 5\,000 and 1\,000
+numbers. More flexible is not automatically better: with few examples per class the shared, shrunk covariance of LDA
+often generalises best, an instance of the capacity trade-off of Note~4.
+
+\section{Naive Bayes}\label{sec:naive}
+
+The \emph{naive Bayes} classifier assumes that, within each class, the features are independent:
+\begin{equation}\label{eq:naive}
+  p(\x \mid Y = c) = \prod_{j=1}^d p_j(x_j \mid Y = c), \qquad
+  s_c(\x) = \log P_c + \sum_{j=1}^d \log \hat p_{c,j}(x_j) .
+\end{equation}
+Instead of one density in $d$ dimensions, it estimates $d$ densities in one dimension --- a task with no curse of
+dimensionality, for which histograms or kernel estimates work well. Training is a single pass over the data, and
+features of different types (counts, categories, real values) can be mixed freely.
+
+The price is capacity. The model cannot represent any interaction between features within a class: in the right-hand
+panel of Figure~\ref{fig:bayesgauss}, where the classes differ only through the correlation between $x_1$ and $x_2$,
+naive Bayes has 48.6\% test error, no better than guessing, while a Gaussian Bayes classifier with full covariances
+reaches 20.9\% on the same data. Two warnings follow. ``Bayes classifier'' and ``naive Bayes'' are not synonyms: naive
+Bayes is the special case with factorised class densities, and its capacity is low, whereas a Bayes classifier with a
+flexible density estimator can have very high capacity. And naive Bayes is often a better \emph{classifier} than its
+\emph{probabilities} suggest: correlated evidence is counted several times, so its posteriors are overconfident even
+when its decisions are good.
+
+\paragraph{Text and counts} For a document represented by word counts $n_j$ (Note~1, Section~3), the multinomial
+naive Bayes model gives $s_c = \log P_c + \sum_j n_j \log \pi_{c,j}$, where $\pi_{c,j}$ is the frequency of word $j$
+in class $c$. A word never seen in a class would get $\pi_{c,j} = 0$ and veto the class forever --- the zero-count
+problem of Note~2, Exercise~E1. Adding a pseudo-count, $\hat\pi_{c,j} = (n_{c,j} + \alpha)/(n_c + \alpha V)$ with
+vocabulary size $V$, removes it (\emph{Laplace smoothing}).
+
+\begin{modern}{a baseline that refuses to die}
+Spam filters of the early 2000s were naive Bayes classifiers on word counts, and the method remains a strong baseline
+for text: on sentiment and topic benchmarks, naive Bayes features combined with a linear classifier rivalled far more
+complex models of the time~\cite{wang2012}. Today the first thing to try on a small labelled text dataset is a linear
+classifier on embeddings from a pre-trained model (Note~9); comparing against naive Bayes on raw counts shows how much
+the representation actually adds.
+\end{modern}
+
+\section{Generative and discriminative classifiers}\label{sec:gendisc}
+
+The Bayes classifier is \emph{generative}: it models how the inputs of each class are generated, i.e.\ the joint
+distribution $P(\X, Y) = p(\x \mid Y)\,P(Y)$, and derives $P(Y \mid \x)$ from it. Equivalently one may estimate the
+joint distribution directly and normalise, $P(Y = c \mid \x) = P(\x, c) / \sum_{c'} P(\x, c')$. A
+\emph{discriminative} classifier, such as logistic regression (Note~9), models $P(Y \mid \x)$ directly and never
+describes the inputs. The trade-off is classical. Generative models make stronger assumptions, need fewer examples
+to reach their best performance, handle missing features by marginalisation, and can flag inputs with low
+$p(\x)$ as unusual; discriminative models spend all their capacity on the decision and usually win when data are
+plentiful. For naive Bayes against logistic regression, the generative model approaches its (higher) asymptotic error
+faster, the discriminative one reaches a lower error eventually~\cite{ng2002}. LDA and logistic regression make the
+point sharply: both produce a linear boundary $\vect{w}\T\x + b$, but LDA reads $\vect{w}$ off fitted Gaussians via
+\eqref{eq:lda}, while logistic regression fits $\vect{w}$ to the labels.
+
+\begin{modern}{generative models as classifiers}
+Every model that assigns a likelihood to data can be turned into a classifier by \eqref{eq:bayes}. A text-to-image
+diffusion model (Note~2, Section~5) estimates how well an image fits each candidate caption; choosing the caption with
+the best fit gives a zero-shot image classifier with surprisingly strong results, including robustness to some
+distribution shifts~\cite{li2023}. Language models are used the same way when the probability of each label
+text, given the input, is compared. These are Bayes classifiers with billions of parameters in the density estimator.
+\end{modern}
+
+\begin{keyidea}[Summary]
+The Bayes classifier fits a density to each class and a prior, and combines them with Bayes' rule; posterior odds equal
+the likelihood ratio times the prior odds. Gaussian class densities give quadratic boundaries (QDA), or linear ones when
+the covariance is shared (LDA), which reduces to nearest centroid in the simplest case. Naive Bayes assumes independent
+features within each class: one-dimensional estimates, no curse, low capacity and overconfident probabilities.
+Generative classifiers model the inputs; discriminative ones model only the decision.
+\end{keyidea}
+
+\begin{exercises}
+\item Derive \eqref{eq:lda} from the Gaussian log-scores with a shared covariance. Show that for $\Sigma = \sigma^2 I$
+and equal priors the boundary is the perpendicular bisector of the segment joining $\vmu_0$ and $\vmu_1$.
+\item Missing a signal event costs $C_1$ and accepting a background event costs $C_0$. Show that the decision minimising
+the expected cost is to predict signal when $\Lambda(\x) > (C_0 P_0)/(C_1 P_1)$. Where is the boundary of
+Figure~\ref{fig:prior} for $P_1 = 0.01$ and $C_1 = 100\,C_0$?
+\item For two one-dimensional Gaussian classes with different variances, show that the decision region of the class
+with the smaller variance is an interval. When is it empty?
+\item Implement a Gaussian naive Bayes and a full-covariance Gaussian Bayes classifier and reproduce the right-hand
+panel of Figure~\ref{fig:bayesgauss}. Then rotate the data by $45^\circ$: what happens to naive Bayes, and why?
+\item A spam filter uses multinomial naive Bayes with $V = 20\,000$ words. How many parameters does it estimate per
+class? A message contains a word seen only in legitimate mail. Compute the effect on the log-odds with and without
+Laplace smoothing ($\alpha = 1$).
+\item A classifier was trained on simulated events with equal numbers of signal and background but will be applied to
+data in which signal is 0.1\% of events. Write the corrected posterior in terms of the classifier output $g(\x)$.
+\end{exercises}
+
+\paragraph{Further reading} Bishop~\cite{bishop2006}, sections~4.1.4 and 4.2 (Fisher's discriminant and
+probabilistic generative models); Hastie, Tibshirani and Friedman~\cite{hastie2009}, sections~4.3 and 6.6.3; Murphy~\cite{murphy2022}, chapter~9.
+
+\begin{thebibliography}{99}\small
+\bibitem{bishop2006} C.~M. Bishop, \emph{Pattern Recognition and Machine Learning}, Springer (2006).
+\bibitem{cranmer2015} K.~Cranmer, J.~Pavez and G.~Louppe, Approximating likelihood ratios with calibrated discriminative classifiers, arXiv:1506.02169 (2015).
+\bibitem{hastie2009} T.~Hastie, R.~Tibshirani and J.~Friedman, \emph{The Elements of Statistical Learning}, 2nd ed., Springer (2009).
+\bibitem{li2023} A.~C. Li, M.~Prabhudesai, S.~Duggal, E.~Brown and D.~Pathak, Your diffusion model is secretly a zero-shot classifier, \emph{ICCV} (2023).
+\bibitem{murphy2022} K.~P. Murphy, \emph{Probabilistic Machine Learning: An Introduction}, MIT Press (2022).
+\bibitem{ng2002} A.~Y. Ng and M.~I. Jordan, On discriminative vs.\ generative classifiers: a comparison of logistic regression and naive Bayes, \emph{NeurIPS} (2002).
+\bibitem{saerens2002} M.~Saerens, P.~Latinne and C.~Decaestecker, Adjusting the outputs of a classifier to new a priori probabilities: a simple procedure, \emph{Neural Comput.}\ 14, 21--41 (2002).
+\bibitem{wang2012} S.~Wang and C.~D. Manning, Baselines and bigrams: simple, good sentiment and topic classification, \emph{ACL} (2012).
+\end{thebibliography}
+
+\SourceNote
+\end{document}

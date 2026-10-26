@@ -1,0 +1,211 @@
+\documentclass[11pt]{article}
+\usepackage{myz310e-notes}
+\hypersetup{pdftitle={Linear regression and regularisation: least squares, ridge and lasso},pdfauthor={Emre Onur Kahya},pdfsubject={MYZ 310E Machine Learning in Physics, Fall 2026, lecture note 8 (week 4)}}
+\newcommand{\Xt}{\tilde X}
+\newcommand{\xt}{\tilde{\x}}
+\newcommand{\w}{\vect{w}}
+\newcommand{\y}{\vect{y}}
+
+\begin{document}
+\NoteTitle{8}{4}{Linear regression and regularisation:\\ least squares, ridge and lasso}{Linear regression}{%
+Linear regression is the simplest model that is learned by empirical risk minimisation and the building block of
+every neural network: a single linear neuron. This note derives the least-squares solution and its geometry, shows
+when it becomes unstable, and introduces the two classical regularisers --- ridge ($L_2$) and lasso ($L_1$) --- with
+their closed-form or iterative solutions and their Bayesian reading. Linear probes of language-model activations and
+the sparse discovery of physical laws illustrate how much this small model still does.}
+
+\section{The model}\label{sec:model}
+
+A linear (strictly, affine) regressor predicts
+\[
+  f_\theta(\x) = \w\T\x + b = w_1 x_1 + \dots + w_d x_d + b, \qquad \theta = (\w, b),\ \w \in \R^d,\ b \in \R .
+\]
+Each input has a weighted influence on the output: $w_j$ is the change in the prediction when $x_j$ grows by one unit,
+all else fixed. In neural-network language this is a single output neuron connected to $d$ input neurons by
+\emph{synaptic weights} $w_j$, with a \emph{bias} $b$ and no non-linearity. It is a good habit to absorb the bias by
+prepending a constant feature: with $\xt = (1, x_1, \dots, x_d)\T$ and $\tilde{\w} = (b, w_1, \dots, w_d)\T$ we have
+$f(\x) = \tilde{\w}\T\xt$. Stacking the $\xt_i\T$ as rows gives the $n \times (d+1)$ matrix $\Xt$, the design matrix of
+Note~1 with a column of ones in front, and the targets form $\y \in \R^n$. We drop the tildes on $\w$ when no confusion
+arises.
+
+The model is linear in its \emph{parameters}, not necessarily in the original measurements: $\x$ may contain
+logarithms, products or powers of raw quantities. Polynomial regression (Note~4) is linear regression on the features
+$(x, x^2, \dots, x^p)$, a point Note~9 develops.
+
+\section{Least squares}\label{sec:ls}
+
+With the squared loss the empirical risk (up to the factor $1/n$) is
+\[
+  J(\w) = \sum_{i=1}^n (\w\T\xt_i - y_i)^2 = \norm{\Xt\w - \y}^2 .
+\]
+It is a convex quadratic in $\w$ with gradient $\nabla J = 2\Xt\T(\Xt\w - \y)$. Setting it to zero gives the
+\emph{normal equations}
+\begin{equation}\label{eq:normal}
+  \Xt\T\Xt\, \w = \Xt\T\y, \qquad \hat{\w} = (\Xt\T\Xt)^{-1}\Xt\T\y \quad\text{if } \Xt\T\Xt \text{ is invertible.}
+\end{equation}
+Note~2, Section~3, showed that minimising squared error is maximum likelihood under Gaussian noise, so $\hat{\w}$ is
+also the maximum-likelihood estimate of that model.
+
+\paragraph{Geometry} The fitted values $\hat{\y} = \Xt\hat{\w}$ lie in the column space of $\Xt$, the set of all
+predictions the model can make. The normal equations say $\Xt\T(\y - \hat{\y}) = \vect{0}$: the residual is orthogonal
+to every column, so $\hat{\y}$ is the orthogonal projection of $\y$ onto that space, the closest point to the
+observations. One consequence: with a constant column, the residuals sum to zero.
+
+\paragraph{Computing it} Never form the inverse in \eqref{eq:normal}. Solve the least-squares problem with a QR or
+singular value decomposition (\texttt{np.linalg.lstsq}), at a cost of $O(nd^2)$; squaring $\Xt$ into $\Xt\T\Xt$ squares its
+condition number and loses half the significant digits. For very large $n$ or $d$, gradient descent (Note~7) needs only
+$O(nd)$ work per pass, and its learning rate is limited by the largest eigenvalue of $2\Xt\T\Xt/n$; mini-batch gradients
+make it work on data that do not fit in memory.
+
+\section{When least squares is unstable}\label{sec:unstable}
+
+The solution is unique only if the columns of $\Xt$ are linearly independent, and it is reliable only if they are far
+from dependent.
+
+\begin{itemize}
+\item \emph{Collinear features.} If two inputs measure almost the same thing, the data cannot tell how to split the
+weight between them: $w_1 + w_2$ is well determined, $w_1 - w_2$ is not. Figure~\ref{fig:collinear} shows 300 repetitions
+of an experiment with $x_2 = x_1 + $ small noise: least-squares estimates of $w_1$ scatter with a standard deviation of
+2.05 around the true value~1, along a line of nearly constant $w_1 + w_2$. Predictions inside the data remain fine;
+interpretations and predictions away from the data do not.
+\item \emph{More features than examples.} If $d + 1 > n$, $\Xt\T\Xt$ is singular and infinitely many $\w$ fit the training
+data exactly. \texttt{lstsq} then returns the one of minimum norm --- the implicit preference behind the double-descent
+curve of Note~4, Section~8.
+\end{itemize}
+
+\begin{figure}[h]
+\centering
+\begin{minipage}[c]{0.42\linewidth}
+\includegraphics[width=\linewidth]{figures/collinear.pdf}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.54\linewidth}
+\caption{Estimates of $(w_1, w_2)$ from 300 datasets of 30 points with nearly collinear inputs and true weights
+$(1, 1)$. Least squares (grey) spreads along the poorly determined direction $w_1 - w_2$; ridge regression with
+$\lambda = 3$ (amber) stays close to the truth: standard deviation of $w_1$ falls from 2.05 to 0.05, at the price of a
+small bias (mean 0.95).}
+\label{fig:collinear}
+\end{minipage}
+\end{figure}
+
+\section{Ridge regression}\label{sec:ridge}
+
+Add the weight-decay penalty of Note~4, Section~7:
+\begin{equation}\label{eq:ridge}
+  J_\lambda(\w) = \norm{\Xt\w - \y}^2 + \lambda \sum_{j=1}^d w_j^2 ,
+\end{equation}
+leaving the bias unpenalised (shifting all targets by a constant should shift $b$, not shrink it). Setting the gradient
+to zero gives
+\[
+  \hat{\w}_\lambda = (\Xt\T\Xt + \lambda \check I)^{-1}\Xt\T\y ,
+\]
+where $\check I$ is the $(d+1)\times(d+1)$ identity with its first diagonal entry, the one for the bias, set to zero. For
+$\lambda > 0$ the matrix is positive definite, so the solution is unique even when $d > n$~\cite{hoerl1970}.
+
+\paragraph{What ridge does} Centre the inputs and targets (which removes the bias) and write the singular value
+decomposition $X = U S V\T$ with singular values $s_1 \ge s_2 \ge \dots$. Then
+\[
+  \hat{\y}_\lambda = \sum_j \vect{u}_j\, \frac{s_j^2}{s_j^2 + \lambda}\, \vect{u}_j\T\y .
+\]
+Least squares ($\lambda = 0$) keeps every direction of the data; ridge shrinks each one by $s_j^2/(s_j^2 + \lambda)$:
+directions in which the inputs vary a lot are kept, directions of little variation --- where the estimate was noise,
+as for $w_1 - w_2$ in Figure~\ref{fig:collinear} --- are suppressed. The sum $\sum_j s_j^2/(s_j^2 + \lambda)$ is the
+\emph{effective number of parameters}, which decreases continuously from $d$ to $0$ as $\lambda$ grows: the
+effective capacity of Note~4, Section~5, made exact. Because the penalty treats all $w_j$ alike, features must be put on
+comparable scales first (Note~5, Section~5); otherwise $\lambda$ penalises a coefficient merely for its units.
+
+\section{The lasso and sparse models}\label{sec:lasso}
+
+Replacing the squared penalty with absolute values gives the \emph{lasso}~\cite{tibshirani1996},
+\[
+  J_\lambda(\w) = \norm{\Xt\w - \y}^2 + \lambda \sum_{j=1}^d |w_j| .
+\]
+The $L_1$ penalty has a kink at zero, and for large enough $\lambda$ many coefficients become exactly zero: the lasso
+selects features. There is no closed form, but coordinate descent is simple and fast: updating one $w_j$ with the others
+fixed is a one-dimensional problem whose solution is a \emph{soft threshold} --- the least-squares value moved towards
+zero by $\lambda/2$ (in units of $\norm{X_{:,j}}^2$, the squared norm of column $j$), and set to zero if it would cross it. The \emph{elastic net} adds
+both penalties, keeping the sparsity of the lasso while behaving better with groups of correlated features~\cite{zou2005}.
+
+Figure~\ref{fig:paths} follows the coefficients of eight correlated features, of which three matter, as $\lambda$ grows.
+Ridge shrinks all of them smoothly and none reaches zero. The lasso removes the irrelevant ones first: eight non-zero
+coefficients at $\lambda = 1$, five at $\lambda = 10$, four at $30$ and only the three true ones at $\lambda = 100$. Which
+$\lambda$ to use is decided on validation data (Note~4, Section~7).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\linewidth]{figures/reg_paths.pdf}
+\caption{Regularisation paths for $n = 60$ examples with eight standardised, correlated features; coloured lines are
+the three features with non-zero true weights $(2, -1.5, 1)$, grey lines the five irrelevant ones.}
+\label{fig:paths}
+\end{figure}
+
+\section{The Bayesian reading}\label{sec:bayesian}
+
+Model the targets as $y_i = \w\T\xt_i + \varepsilon_i$ with Gaussian noise of variance $\sigma^2$, and put a prior on
+the weights. The \emph{maximum a posteriori} (MAP) estimate maximises $p(\w \mid \text{data}) \propto p(\text{data}
+\mid \w)\, p(\w)$, i.e.\ minimises
+\[
+  \frac{1}{2\sigma^2}\norm{\Xt\w - \y}^2 - \log p(\w) .
+\]
+A Gaussian prior $w_j \sim \Normal(0, \tau^2)$ gives $-\log p(\w) = \norm{\w}^2/(2\tau^2) + $ const, i.e.\ ridge
+regression with $\lambda = \sigma^2/\tau^2$: strong regularisation means a narrow prior relative to the noise. A Laplace
+prior $p(w_j) \propto e^{-|w_j|/\beta}$ gives the lasso with $\lambda = 2\sigma^2/\beta$; its sharp peak at zero is
+what produces exact zeros. A regulariser is a prior belief about the parameters, made explicit.
+
+\begin{modern}{linear probes read out what a network knows}
+Ridge regression is the standard instrument for asking what information a trained network's activations contain: record
+the activation vector $\x$ of some layer for many inputs, regress a quantity of interest on it, and evaluate on held-out
+inputs. Applied to the activations of large language models reading the names of places and historical events, such
+\emph{linear probes} predict latitude, longitude and dates well, suggesting that these quantities are represented along
+roughly linear directions~\cite{gurnee2024}. A good probe fit shows that information is \emph{present}, not that the
+network \emph{uses} it --- the distinction between probes and causal tests that week~6 of this course takes up.
+\end{modern}
+
+\begin{physics}{discovering equations by sparse regression}
+To find the law $\dot{\vect{z}} = F(\vect{z})$ behind a measured trajectory, build a large library of candidate terms ---
+$1, z_1, z_2, z_1^2, z_1 z_2, \sin z_1, \dots$ --- evaluated along the data, and regress the measured derivatives on it with
+a sparsity-promoting method. Most coefficients vanish, and the few that remain form a readable equation. With this approach
+(``sparse identification of nonlinear dynamics'') the Lorenz equations were recovered from simulated trajectories~\cite{brunton2016}.
+Linear regression on non-linear features, with a sparsity prior playing the role of Occam's razor, becomes a tool for
+model discovery.
+\end{physics}
+
+\begin{keyidea}[Summary]
+Linear regression predicts $\w\T\x + b$; least squares solves the normal equations, i.e.\ projects the targets onto the
+column space of the design matrix, and is the maximum-likelihood fit under Gaussian noise. It becomes unstable with
+collinear features and undetermined with $d \ge n$. Ridge adds $\lambda\norm{\w}^2$, shrinks poorly determined directions
+and always has a unique closed-form solution; the lasso adds $\lambda\norm{\w}_1$ and sets coefficients exactly to zero.
+In Bayesian terms they are MAP estimates under Gaussian and Laplace priors.
+\end{keyidea}
+
+\begin{exercises}
+\item Derive the normal equations from $\nabla J = \vect{0}$ and show that with a column of ones the residuals sum to zero.
+Show that in one dimension the slope is $\widehat{\Cov}(x, y)/\widehat{\Var}(x)$.
+\item Derive the ridge solution, including the matrix $\check I$. Show that $\Xt\T\Xt + \lambda\check I$ is positive definite
+for every $\lambda > 0$, even when $d > n$. (Consider $\vect{v}\T(\Xt\T\Xt + \lambda\check I)\vect{v}$ separately for $\vect{v}$ with
+and without non-zero weight components.)
+\item Using the SVD, show that the ridge fitted values are $\sum_j \vect{u}_j s_j^2/(s_j^2 + \lambda)\, \vect{u}_j\T\y$ for
+centred data, and compute the effective number of parameters for singular values $(10, 3, 1, 0.1)$ and $\lambda = 1$.
+\item Show that the minimiser of $(w - a)^2 + \lambda|w|$ is $\operatorname{sign}(a)\max(|a| - \lambda/2, 0)$, and explain
+why the $L_2$ penalty never produces exact zeros.
+\item Reproduce Figure~\ref{fig:collinear}. Then fit least squares with gradient descent from $\w = \vect{0}$ and stop after
+$k$ steps: compare the spread of the estimates with that of ridge. Which $k$ behaves like $\lambda = 3$?
+\item The period $T$ of a pendulum is measured for several lengths $\ell$. Which linear regression, on which transformed
+variables, estimates the exponent in $T \propto \ell^{\alpha}$? What noise assumption does least squares then make?
+\end{exercises}
+
+\paragraph{Further reading} Hastie, Tibshirani and Friedman~\cite{hastie2009}, chapter~3; Bishop~\cite{bishop2006},
+chapter~3; for sparsity, Hastie, Tibshirani and Wainwright~\cite{hastie2015}.
+
+\begin{thebibliography}{99}\small
+\bibitem{bishop2006} C.~M. Bishop, \emph{Pattern Recognition and Machine Learning}, Springer (2006).
+\bibitem{brunton2016} S.~L. Brunton, J.~L. Proctor and J.~N. Kutz, Discovering governing equations from data by sparse identification of nonlinear dynamical systems, \emph{Proc.\ Natl.\ Acad.\ Sci.\ USA} 113, 3932--3937 (2016).
+\bibitem{gurnee2024} W.~Gurnee and M.~Tegmark, Language models represent space and time, \emph{ICLR} (2024).
+\bibitem{hastie2009} T.~Hastie, R.~Tibshirani and J.~Friedman, \emph{The Elements of Statistical Learning}, 2nd ed., Springer (2009).
+\bibitem{hastie2015} T.~Hastie, R.~Tibshirani and M.~Wainwright, \emph{Statistical Learning with Sparsity: The Lasso and Generalizations}, CRC Press (2015).
+\bibitem{hoerl1970} A.~E. Hoerl and R.~W. Kennard, Ridge regression: biased estimation for nonorthogonal problems, \emph{Technometrics} 12, 55--67 (1970).
+\bibitem{tibshirani1996} R.~Tibshirani, Regression shrinkage and selection via the lasso, \emph{J.\ R.\ Stat.\ Soc.\ B} 58, 267--288 (1996).
+\bibitem{zou2005} H.~Zou and T.~Hastie, Regularization and variable selection via the elastic net, \emph{J.\ R.\ Stat.\ Soc.\ B} 67, 301--320 (2005).
+\end{thebibliography}
+
+\SourceNote
+\end{document}

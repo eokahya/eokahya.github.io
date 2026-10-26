@@ -1,0 +1,231 @@
+\documentclass[11pt]{article}
+\usepackage{myz310e-notes}
+\hypersetup{pdftitle={Optimisation: gradients, gradient descent and its stochastic variants},pdfauthor={Emre Onur Kahya},pdfsubject={MYZ 310E Machine Learning in Physics, Fall 2026, lecture note 7 (week 4)}}
+
+\begin{document}
+\NoteTitle{7}{4}{Optimisation: gradients, gradient\\ descent and its stochastic variants}{Optimisation}{%
+Training a model means minimising an objective over its parameters. This note reviews the calculus needed --- partial
+derivatives, gradients, the Hessian --- and develops gradient descent: the role of the learning rate and of
+conditioning, convex and non-convex landscapes, and the mini-batch stochastic gradients that make training on large
+datasets possible. Momentum, Newton's method and Adam complete the toolbox used to train every neural network,
+including the large language models whose training recipes close the note.}
+
+\section{Learning is optimisation}\label{sec:problem}
+
+The training phase of most algorithms in this course solves
+\[
+  \theta^* = \argmin_{\theta \in \R^p} J(\theta), \qquad
+  J(\theta) = \frac1n \sum_{i=1}^n L\big(f_\theta(\x_i), y_i\big) + \lambda\,\Omega(\theta),
+\]
+the regularised empirical risk of Note~4, Section~7, as a function of the $p$ parameters. Minimising the sum or the
+mean is the same problem; the mean keeps the scale independent of $n$. Picture $J$ as a landscape over parameter
+space: training means finding a low point.
+
+\section{Derivatives, gradients and curvature}\label{sec:calculus}
+
+For $J : \R^p \to \R$, the partial derivative $\partial J / \partial\theta_k$ measures the sensitivity of $J$ to a
+change of $\theta_k$ alone, the others held fixed. The \emph{gradient} collects them,
+\[
+  \nabla J(\theta) = \Big( \frac{\partial J}{\partial\theta_1}(\theta), \dots, \frac{\partial J}{\partial\theta_p}(\theta) \Big)\T \in \R^p ,
+\]
+and the matrix of second derivatives is the \emph{Hessian}, $H_{kl} = \partial^2 J / \partial\theta_k\partial\theta_l$.
+Taylor's theorem summarises what they mean:
+\begin{equation}\label{eq:taylor}
+  J(\theta + \vect{\delta}) = J(\theta) + \nabla J(\theta)\T\vect{\delta} + \tfrac12 \vect{\delta}\T H(\theta)\,\vect{\delta} + O(\norm{\vect{\delta}}^3) .
+\end{equation}
+Among all small steps of fixed length, the first-order term is most negative for $\vect{\delta}$ pointing along
+$-\nabla J$: the gradient points uphill, in the direction of steepest ascent, and is perpendicular to the contour
+lines of $J$. At a minimum the slope vanishes, $\nabla J(\theta^*) = \vect{0}$. A point with zero gradient is a local
+minimum if $H$ is positive definite, a local maximum if it is negative definite and a \emph{saddle point} if $H$ has
+eigenvalues of both signs.
+
+\paragraph{Closed form or search} Sometimes $\nabla J = \vect{0}$ can be solved analytically: the maximum-likelihood
+Gaussian (Note~2, Section~6) and linear and ridge regression (Note~8) are examples. Usually it cannot, and we must
+search. Trying all values on a grid is hopeless beyond a handful of parameters --- ten values per parameter and
+$p = 20$ already give $10^{20}$ evaluations, the curse of dimensionality of Note~3 once more --- so we follow the
+local slope instead.
+
+\section{Gradient descent}\label{sec:gd}
+
+Starting from an initial $\theta_0$ (random, or by a heuristic suited to the model), repeat
+\begin{equation}\label{eq:gd}
+  \theta_{t+1} = \theta_t - \eta\, \nabla J(\theta_t),
+\end{equation}
+where the \emph{learning rate} (step size) $\eta > 0$ is a hyperparameter. Stop when the updates no longer change
+$\theta$ appreciably, for instance when $\norm{\nabla J(\theta_t)} < \epsilon$, or earlier when the validation error
+stops improving (early stopping, Note~4, Section~7).
+
+\paragraph{What the learning rate does} Near a minimum, \eqref{eq:taylor} says $J$ is approximately quadratic,
+$J(\theta) \approx J^* + \frac12 (\theta - \theta^*)\T A (\theta - \theta^*)$ with $A$ the Hessian at $\theta^*$.
+Then \eqref{eq:gd} becomes $\theta_{t+1} - \theta^* = (I - \eta A)(\theta_t - \theta^*)$, and along each eigenvector of
+$A$ with eigenvalue $\lambda_i$ the error is multiplied by $1 - \eta\lambda_i$ at every step. Three consequences
+follow.
+\begin{itemize}
+\item Gradient descent converges only if $|1 - \eta\lambda_i| < 1$ for every $i$, i.e.\ $\eta < 2/\lambda_{\max}$; a
+larger step makes the steepest direction oscillate with growing amplitude.
+\item The flattest direction shrinks by $1 - \eta\lambda_{\min}$ per step, slow if $\lambda_{\min} \ll \lambda_{\max}$.
+\item With the best fixed step, the error decreases by a factor $(\kappa - 1)/(\kappa + 1)$ per step, where
+$\kappa = \lambda_{\max}/\lambda_{\min}$ is the \emph{condition number}. Elongated valleys are hard.
+\end{itemize}
+Figure~\ref{fig:gdpaths} shows a valley with $\kappa = 25$. With $\eta = 0.01$ the descent is stable but crawls; with
+$\eta = 0.075$, close to the limit $2/25 = 0.08$, it zigzags across the valley and makes steady progress. This is why
+features are standardised before training (Note~5, Section~5): very different feature scales stretch the valley.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\linewidth]{figures/gd_paths.pdf}
+\caption{Forty steps on $J(\theta) = \frac12(\theta_1^2 + 25\,\theta_2^2)$ from the same start. After 40 steps
+$J = 18$ for $\eta = 0.01$, $0.08$ for $\eta = 0.075$, and $5 \times 10^{-10}$ with momentum (Section~\ref{sec:beyond}).}
+\label{fig:gdpaths}
+\end{figure}
+
+\paragraph{Schedules} A fixed step is rarely ideal: large steps make fast early progress, small steps settle into
+the minimum. A classical schedule is $\eta_t = \eta_0\, t_0 / (t_0 + t)$, with $\eta_0$ and $t_0$ hyperparameters.
+Modern deep-learning practice uses a short linear \emph{warm-up} from a small value, which avoids instabilities while
+the parameters are still random, followed by a slow decay, often along a half cosine.
+
+\section{Convex and non-convex objectives}\label{sec:convex}
+
+A function is \emph{convex} if the chord between any two points of its graph lies above the graph; for twice
+differentiable $J$, if $H$ is positive semi-definite everywhere. Every local minimum of a convex function is global,
+so gradient descent with a suitable step reaches the global minimum from any start. Least squares, ridge regression,
+logistic regression and the linear support vector machine (Notes~8 and~9) all have convex objectives.
+
+Neural networks do not. Their landscapes have many stationary points, and where gradient descent ends depends on where
+it starts (Figure~\ref{fig:nonconvex}). In high dimension the picture is less bleak than this one-dimensional cartoon
+suggests: most stationary points with high loss are saddle points rather than poor local minima, because it is unlikely
+that all $p$ curvatures are positive at once, and the minima that training finds tend to have similar loss~\cite{dauphin2014}.
+Slow progress near saddles, rather than being trapped, is the more common difficulty.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.52\linewidth]{figures/nonconvex.pdf}
+\caption{Gradient descent from three starting points on a non-convex function ends in three different minima (open
+circles).}
+\label{fig:nonconvex}
+\end{figure}
+
+\section{Stochastic gradients}\label{sec:sgd}
+
+The gradient of a mean is the mean of the gradients:
+\[
+  \nabla J(\theta) = \frac1n \sum_{i=1}^n \nabla_\theta L\big(f_\theta(\x_i), y_i\big) \quad (+\,\lambda\nabla\Omega).
+\]
+\emph{Batch} gradient descent computes all $n$ terms before every update, which costs a full pass over the data per
+step. \emph{Mini-batch} gradient descent replaces the mean over $\Dtrain$ by the mean over a random subset $B$ of
+$n' \ll n$ examples:
+\[
+  \vect{g}_B(\theta) = \frac{1}{n'} \sum_{i \in B} \nabla_\theta L\big(f_\theta(\x_i), y_i\big), \qquad
+  \theta \leftarrow \theta - \eta\, \vect{g}_B(\theta) .
+\]
+The case $n' = 1$ is \emph{stochastic} (online) gradient descent, SGD; $n' = n$ recovers the batch method. If $B$ is
+drawn at random, $\vect{g}_B$ is an unbiased estimate of $\nabla J$ whose variance falls like $1/n'$. In practice the
+data are shuffled once per \emph{epoch} (one pass over $\Dtrain$) and cut into consecutive mini-batches.
+
+Figure~\ref{fig:sgd} compares the three on logistic regression with $n = 2000$. After one epoch, batch gradient descent
+has taken one step; mini-batch descent with $n' = 32$ has taken 63 and is already within $0.013$ of the optimal loss.
+With a constant step, however, the stochastic methods do not converge: they fluctuate in a band whose width is set by
+the gradient noise and the learning rate. Pure SGD, the noisiest, ends further from the optimum after 20 epochs than
+batch descent. Mini-batches are the compromise used in practice, and they are also what parallel hardware wants: the
+$n'$ gradients are computed together as matrix products on a GPU, so a mini-batch of 256 costs little more time than
+a single example. Decreasing the learning rate removes the noise floor at the end of training.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.6\linewidth]{figures/sgd.pdf}
+\caption{Excess training loss of logistic regression ($d = 20$, $n = 2000$) against the number of passes over the data,
+with constant learning rates. Mini-batch descent reaches $0.0018$ after 20 epochs; batch descent $0.010$; SGD stays
+around $0.02$.}
+\label{fig:sgd}
+\end{figure}
+
+\section{Beyond plain gradient descent}\label{sec:beyond}
+
+\paragraph{Momentum} Accumulate a velocity and move with it,
+$\vect{v}_{t+1} = \beta\,\vect{v}_t - \eta\nabla J(\theta_t)$, $\theta_{t+1} = \theta_t + \vect{v}_{t+1}$, with
+$0 \le \beta < 1$. Components of the gradient that keep their sign add up; those that alternate, as across a valley,
+cancel. With well-chosen $\eta$ and $\beta$ the convergence factor on a quadratic improves from
+$(\kappa - 1)/(\kappa + 1)$ to $(\sqrt\kappa - 1)/(\sqrt\kappa + 1)$~\cite{polyak1964}: in Figure~\ref{fig:gdpaths}
+momentum reaches $J \approx 10^{-9}$ in the same forty steps.
+
+\paragraph{Newton's method} Minimise the quadratic model \eqref{eq:taylor} exactly:
+$\theta \leftarrow \theta - H^{-1}\nabla J$. On a quadratic objective it converges in one step whatever the condition
+number, and near a minimum it converges quadratically. But forming and solving with the $p \times p$ Hessian costs
+$O(p^2)$ memory and $O(p^3)$ time, it is unreliable far from a minimum or near saddles, and it does not combine well with
+noisy mini-batch gradients. Quasi-Newton methods such as L-BFGS build a low-rank curvature estimate from successive
+gradients and are excellent for medium-sized, deterministic problems; logistic regression is often trained with
+Newton's method itself.
+
+\paragraph{Adaptive methods} Adam keeps exponential moving averages of the gradient and of its element-wise square, and
+divides the first by the square root of the second~\cite{kingma2015}. Each parameter thus gets its own step size,
+which compensates for very different gradient scales across a network. AdamW applies weight decay directly to the
+parameters instead of through the gradient, which matters for adaptive methods~\cite{loshchilov2019}; it is the
+default optimiser for transformers.
+
+\paragraph{Where the gradients come from} For a neural network with millions of parameters, $\nabla J$ is computed by
+reverse-mode \emph{automatic differentiation} --- backpropagation --- at a cost of a small constant times one evaluation
+of $J$, exactly, not by finite differences~\cite{baydin2018}. This is the subject of the rest of week~4.
+
+\paragraph{Constraints} When parameters must satisfy constraints (non-negative, summing to one, inside a ball), one can
+project onto the feasible set after each step, reparameterise (a softmax always sums to one) or use Lagrange
+multipliers. Linear and quadratic programmes form a well-understood class; the support vector machine of Note~9 is a
+quadratic programme.
+
+\begin{physics}{optimisers as mechanics}
+Gradient descent with small steps follows the \emph{gradient flow} $\dot\theta = -\nabla J(\theta)$: overdamped motion
+of a particle in the potential $J$. Momentum restores inertia --- Polyak's ``heavy ball'', $m\ddot\theta + \gamma\dot\theta
+= -\nabla J$, discretised --- which is why it rolls through narrow valleys instead of zigzagging. The noise of
+mini-batch gradients acts like a temperature: SGD resembles Langevin dynamics, and adding properly scaled Gaussian
+noise to the updates turns it into a sampler of the posterior distribution of the parameters~\cite{welling2011}.
+\end{physics}
+
+\begin{modern}{how a large language model is trained}
+The recipe for GPT-3, typical of large models, uses every idea above~\cite{brown2020}: Adam with $\beta_1 = 0.9$ and
+$\beta_2 = 0.95$, the gradient norm clipped at 1.0 to tame rare large steps, a linear warm-up over the first 375 million
+tokens followed by cosine decay of the learning rate, weight decay of 0.1, and mini-batches that grow to about
+3.2 million tokens. The objective is the next-token cross-entropy (Note~2, Section~2), and each update is a mini-batch
+gradient step of Section~\ref{sec:sgd}, on $1.75 \times 10^{11}$ parameters.
+\end{modern}
+
+\begin{keyidea}[Summary]
+The gradient points uphill and vanishes at minima; the Hessian describes curvature. Gradient descent steps against the
+gradient with learning rate $\eta < 2/\lambda_{\max}$, and its speed is limited by the condition number. Convex
+objectives have a single basin; neural networks do not, but saddles rather than bad minima are the usual obstacle.
+Mini-batch stochastic gradients trade exactness for many cheap steps and leave a noise floor that a decaying learning
+rate removes. Momentum, Newton and Adam reshape the steps; automatic differentiation supplies the gradients.
+\end{keyidea}
+
+\begin{exercises}
+\item For $J(\theta) = \frac12 \theta\T A\theta - \vect{b}\T\theta$ with $A$ symmetric positive definite, find
+$\nabla J$, $H$ and $\theta^*$. Show that gradient descent with $\eta = 2/(\lambda_{\max} + \lambda_{\min})$ reduces
+the error by $(\kappa - 1)/(\kappa + 1)$ per step, and that Newton's method converges in one step.
+\item Rescale the second coordinate of the problem in Figure~\ref{fig:gdpaths} by a factor 5. What is the new condition
+number, and what does this say about standardising features?
+\item Show that the mini-batch gradient is unbiased and that its covariance is $\frac{1}{n'}$ times that of a single-example
+gradient when the batch is drawn with replacement.
+\item Implement batch, mini-batch and stochastic gradient descent for logistic regression and reproduce
+Figure~\ref{fig:sgd}. Then use a decaying learning rate $\eta_t = \eta_0/(1 + t/t_0)$ for SGD and report the excess loss
+after 20 epochs.
+\item Find the stationary points of $J(\theta_1, \theta_2) = \theta_1^2 - \theta_2^2 + \frac12\theta_2^4$ and classify
+them with the Hessian. Starting at $(1, 0)$, where does gradient descent go? And starting at $(1, 10^{-6})$?
+\item Estimate the memory needed to store the Hessian of a model with $p = 10^8$ parameters in 32-bit floats, and compare
+with storing the parameters and the two moment estimates of Adam.
+\end{exercises}
+
+\paragraph{Further reading} Goodfellow, Bengio and Courville~\cite{goodfellow2016}, chapters~4 and~8; Bottou, Curtis
+and Nocedal~\cite{bottou2018} for stochastic optimisation in machine learning.
+
+\begin{thebibliography}{99}\small
+\bibitem{baydin2018} A.~G. Baydin, B.~A. Pearlmutter, A.~A. Radul and J.~M. Siskind, Automatic differentiation in machine learning: a survey, \emph{J.\ Mach.\ Learn.\ Res.}\ 18(153), 1--43 (2018).
+\bibitem{bottou2018} L.~Bottou, F.~E. Curtis and J.~Nocedal, Optimization methods for large-scale machine learning, \emph{SIAM Rev.}\ 60, 223--311 (2018).
+\bibitem{brown2020} T.~Brown \emph{et al.}, Language models are few-shot learners, \emph{NeurIPS} (2020).
+\bibitem{dauphin2014} Y.~N. Dauphin \emph{et al.}, Identifying and attacking the saddle point problem in high-dimensional non-convex optimization, \emph{NeurIPS} (2014).
+\bibitem{goodfellow2016} I.~Goodfellow, Y.~Bengio and A.~Courville, \emph{Deep Learning}, MIT Press (2016).
+\bibitem{kingma2015} D.~P. Kingma and J.~Ba, Adam: a method for stochastic optimization, \emph{ICLR} (2015).
+\bibitem{loshchilov2019} I.~Loshchilov and F.~Hutter, Decoupled weight decay regularization, \emph{ICLR} (2019).
+\bibitem{polyak1964} B.~T. Polyak, Some methods of speeding up the convergence of iteration methods, \emph{USSR Comput.\ Math.\ Math.\ Phys.}\ 4(5), 1--17 (1964).
+\bibitem{welling2011} M.~Welling and Y.~W. Teh, Bayesian learning via stochastic gradient Langevin dynamics, \emph{ICML} (2011).
+\end{thebibliography}
+
+\SourceNote
+\end{document}
