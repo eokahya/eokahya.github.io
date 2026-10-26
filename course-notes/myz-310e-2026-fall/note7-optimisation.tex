@@ -164,7 +164,7 @@ default optimiser for transformers.
 
 \paragraph{Where the gradients come from} For a neural network with millions of parameters, $\nabla J$ is computed by
 reverse-mode \emph{automatic differentiation} --- backpropagation --- at a cost of a small constant times one evaluation
-of $J$, exactly, not by finite differences~\cite{baydin2018}. This is the subject of the rest of week~4.
+of $J$, exactly, not by finite differences~\cite{baydin2018}. Backpropagation is the subject of week~5.
 
 \paragraph{Constraints} When parameters must satisfy constraints (non-negative, summing to one, inside a ball), one can
 project onto the feasible set after each step, reparameterise (a softmax always sums to one) or use Lagrange

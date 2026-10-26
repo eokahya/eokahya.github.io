@@ -10,7 +10,7 @@ A linear classifier separates classes with a hyperplane. Many algorithms learn o
 discriminant analysis, least squares, the perceptron, logistic regression, support vector machines --- and they differ
 only in which hyperplane they choose. This note develops their geometry and their training, explains why a hyperplane
 is often not enough, and shows the oldest way around it: map the inputs non-linearly and classify linearly in the new
-space. Learning that map instead of fixing it is what a neural network does, the subject of the rest of week~4.}
+space. Learning that map instead of fixing it is what a neural network does, the subject of week~5.}
 
 \section{What makes a classifier linear}\label{sec:def}
 
@@ -210,8 +210,8 @@ products, like the dual SVM, can work in very high or even infinite-dimensional 
 $\phi$ (kernel SVM, kernel logistic regression).
 \item \textbf{Learn it}: let $\phi$ have its own parameters and fit them together with $\w$. A multilayer perceptron
 does exactly this, $f(\x) = \w\T a(V\x + \vect{c}) + b$, with a learned matrix $V$ and an element-wise non-linearity
-$a$: a linear classifier on features that are themselves trained by gradient descent (Note~7). This is where week~4
-continues.
+$a$: a linear classifier on features that are themselves trained by gradient descent (Note~7). This is where week~5
+begins.
 \end{enumerate}
 
 \begin{physics}{feature engineering, the physicist's way}
