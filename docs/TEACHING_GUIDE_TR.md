@@ -23,7 +23,7 @@ Notlar:
 
 ### 1a. İlk dört haftanın LaTeX notları (`course-notes/`)
 
-1–4. haftalardaki dokuz not, `course-notes/myz-310e-2026-fall/` klasöründeki LaTeX kaynaklarından üretilir (konu sırası Université de Montréal IFT 6390'ı izler; metin, örnekler, alıştırmalar ve şekiller özgündür). Bir notu değiştirmek için ilgili `.tex` dosyasını düzenleyin ve şu komutu çalıştırın (Python 3 + numpy + matplotlib ve `brew install tectonic` gerekir):
+1–4. haftalardaki on not, `course-notes/myz-310e-2026-fall/` klasöründeki LaTeX kaynaklarından üretilir (konu sırası Université de Montréal IFT 6390'ı izler; metin, örnekler, alıştırmalar ve şekiller özgündür). Bir notu değiştirmek için ilgili `.tex` dosyasını düzenleyin ve şu komutu çalıştırın (Python 3 + numpy + matplotlib ve `brew install tectonic` gerekir):
 
 ```bash
 ./course-notes/myz-310e-2026-fall/build.sh
@@ -40,6 +40,7 @@ Tek kaynak `src/data/course.ts` dosyasıdır. Ders sayfası, "Assessment at a gl
 - Değişmez kurallar `assessment` altında: arasınav 30, iki sunum toplam 30, final makalesi 40; finale giriş şartı arasınavda en az %40 (30 üzerinden 12) **ve** iki sunumun tamamlanması. Testler bu kuralları denetler; yanlışlıkla değişirse derleme durur.
 - Provizyonel tercihler `planning` altında: 15+15 bölünmesi, hafta pencereleri, rubrikler, 4–6 sayfa makale biçimi. `...Provisional: true` bayrakları sayfada "provisional" ibaresini gösterir.
 - Saat, derslik ve ofis saatleri belli olduğunda `timetable` metnini güncelleyin. Takvim tarihleri hiçbir yerde uydurulmamıştır.
+- Proje okuma listesi `readingList` altındadır (ders sayfasında "Reading list" bölümü ve PDF syllabus). Her kaynak bir gruba aittir (`start`, `anthropic`, `foundations`, `recent`, `methods`, `tools`); her maddede başlık, yazarlar, yıl, yayın yeri, bağlantı ve tek-iki cümlelik açıklama bulunur, isteğe bağlı `citations` alanı Semantic Scholar atıf sayısıdır. Bağlantıya `utm_` gibi izleme parametreleri koymayın (test durdurur). Listeyi güncellediğinizde `checkedOn` tarihini de değiştirin.
 
 ## 3. Duyuru eklemek
 

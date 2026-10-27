@@ -96,6 +96,19 @@
 .rubric-title { margin-top: 2.4rem !important; }
 .rubrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 1.6rem 2rem; margin-top: 0.4rem; align-items: start; }
 
+/* project reading list */
+.reading-group { margin-top: 1.6rem; }
+.reading-group h3 { font-size: 1.15rem; }
+.reading { list-style: none; margin: 0.8rem 0 0; padding: 0; display: grid; gap: 0.2rem; }
+.reading__item { display: grid; gap: 0.2rem; padding: 0.75rem 0; border-top: 1px solid var(--line); }
+.reading__item:first-child { border-top: 0; }
+.reading__title { font-family: var(--font-display); font-size: 1.05rem; line-height: 1.35; }
+.reading__meta { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.02em; color: var(--text-3); }
+.reading__desc { font-size: 0.9rem; color: var(--text-2); max-width: 46rem; }
+.reading__url { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-3); word-break: break-all; }
+.course--print .reading__item { break-inside: avoid; }
+.course--print .reading-group h3, .course--print .reading-group > .muted { break-after: avoid; break-inside: avoid; }
+
 /* resources & announcements */
 .resources { list-style: none; margin: 1.4rem 0 1.2rem; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; }
 .resources a { display: grid; align-content: start; gap: 0.35rem; height: 100%; padding: 1rem 1.1rem; border: 1px solid var(--line); border-radius: var(--radius-sm); text-decoration: none; transition: border-color 0.25s; }

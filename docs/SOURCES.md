@@ -102,6 +102,14 @@ Her satır **2026-10-02** tarihinde kontrol edildi. “Crossref” publisher-dep
 
 All profile and course resource URLs returned HTTP 200 in the direct link check on 2026-10-02 (the GitHub profile after one transient 504).
 
+### Proje okuma listesi — 2026-10-27
+
+- `course.readingList` (ders sayfası, "Reading list: mechanistic interpretability"): 48 kaynak, altı grup. Goodfire yazısı (https://www.goodfire.com/blog/accelerating-interpretability; paylaşılan bağlantıdaki `utm_*` izleme parametreleri kaldırıldı; T. McGrath ve M. Papillon, 26 Ekim 2026) eğitmenin isteğiyle eklendi.
+- Her başlık, yazar listesi, tarih ve yayın yeri kaynağın kendi sayfasında (transformer-circuits.pub, arXiv özet sayfası, Distill, NeurIPS proceedings, ACL Anthology, OpenReview) kontrol edildi; açıklamalar özgün kısa özetlerdir, kaynak metinden alıntı yoktur.
+- Atıf sayıları Semantic Scholar Graph API'den 27 Ekim 2026'da alındı (arXiv kimliğiyle sorgu). Amnesic Probing için TACL kaydı, Vig ve ark. için NeurIPS kaydı kullanıldı. Semantic Scholar'ın yıl alanı yanlış olduğunda (ör. Scaling Monosemanticity 2024, Belinkov 2022) yayın yeri yılı esas alındı. Atıf sayısı alınamayan veya araç/rehber olan maddelerde sayı gösterilmez; tahmin yapılmadı.
+- Yayın yerleri: emin olunamayan durumda yalnızca arXiv yazıldı (Open Problems, Persona Vectors).
+- 52 ders bağlantısının tamamı (okuma listesi + kaynaklar) 2026-10-27'de HTTP 200 döndürdü.
+
 ---
 
 # Ek doğrulamalar (bu sürüm, 2 Ekim 2026)

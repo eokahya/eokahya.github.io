@@ -20,7 +20,7 @@ const numberWords = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seve
 const foundationsWord = numberWords[foundations] ?? String(foundations);
 const sections = [
   ['overview', 'Overview'], ['syllabus', 'Syllabus'], ['weekly-schedule', 'Weekly schedule'], ['lecture-notes', 'Lecture notes'],
-  ['project-guide', 'Project guide'], ['assessment', 'Assessment'], ['resources', 'Resources'], ['announcements', 'Announcements'],
+  ['project-guide', 'Project guide'], ['reading-list', 'Reading list'], ['assessment', 'Assessment'], ['resources', 'Resources'], ['announcements', 'Announcements'],
 ] as const;
 const phaseLabel: Record<CourseWeek['phase'], string> = { foundations: 'Foundations', midterm: 'Midterm', presentation: 'Presentation', clinic: 'Clinic', writing: 'Writing' };
 const fileSize = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`);
@@ -161,6 +161,28 @@ const uploaded = new Set(notes.map((note) => note.week));
           <h3>Research integrity and tool use</h3>
           <p>{course.integrity}</p>
         </div>
+      </section>
+
+      <section id="reading-list" class="course-section" aria-labelledby="reading-title">
+        <h2 id="reading-title">Reading list: mechanistic interpretability</h2>
+        <p class="muted">{course.readingList.intro}</p>
+        {course.readingList.groups.map((group) => (
+          <section class="reading-group" aria-labelledby={`reading-${group.id}`}>
+            <h3 id={`reading-${group.id}`}>{group.title}</h3>
+            {group.note && <p class="muted small">{group.note}</p>}
+            <ol class="reading" role="list">
+              {group.items.map((item) => (
+                <li class="reading__item">
+                  <a class="reading__title" href={item.url}>{item.title}</a>
+                  <span class="reading__meta">{item.authors} · {item.venue} · {item.year}{item.citations !== undefined && ` · ${item.citations.toLocaleString('en-GB')} citations`}</span>
+                  <span class="reading__desc">{item.description}</span>
+                  {print && <span class="reading__url">{item.url}</span>}
+                </li>
+              ))}
+            </ol>
+          </section>
+        ))}
+        <p class="muted small">Links checked and citation counts taken from Semantic Scholar on <time datetime={course.readingList.checkedOn}>{longDate(course.readingList.checkedOn)}</time>. Third-party pages open on their original websites.</p>
       </section>
 
       <section id="assessment" class="course-section" aria-labelledby="assessment-title" data-assessment>

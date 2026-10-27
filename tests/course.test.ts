@@ -51,3 +51,26 @@ test('the complete 14-week schedule contains six foundation weeks and two presen
   assert.equal(course.announcements.length, 0);
   assert.equal(course.weeks[13]?.phase, 'writing');
 });
+
+test('project reading list: grouped, verified-looking links without tracking parameters', () => {
+  const { readingList } = course;
+  assert.match(readingList.checkedOn, /^\d{4}-\d{2}-\d{2}$/);
+  assert.ok(readingList.groups.length >= 3);
+  const urls: string[] = [];
+  for (const group of readingList.groups) {
+    assert.ok(group.items.length > 0, group.id);
+    for (const item of group.items) {
+      assert.match(item.url, /^https:\/\//, item.title);
+      assert.doesNotMatch(item.url, /[?&](utm_|fbclid|gclid)/, item.title);
+      assert.ok(item.year >= 2010 && item.year <= Number(readingList.checkedOn.slice(0, 4)), item.title);
+      assert.ok(item.title.trim() && item.authors.trim() && item.venue.trim(), item.title);
+      assert.ok(item.description.length > 20 && item.description.length < 400, item.title);
+      if (item.citations !== undefined) assert.ok(Number.isInteger(item.citations) && item.citations > 0, item.title);
+      urls.push(item.url);
+    }
+  }
+  assert.equal(new Set(urls).size, urls.length, 'each link appears once');
+  const ids = readingList.groups.map((group) => group.id);
+  assert.equal(new Set(ids).size, ids.length, 'group ids are unique');
+  assert.ok(urls.includes('https://www.goodfire.com/blog/accelerating-interpretability'), 'Goodfire essay is linked');
+});
