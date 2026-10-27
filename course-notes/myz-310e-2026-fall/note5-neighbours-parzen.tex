@@ -1,15 +1,25 @@
 \documentclass[11pt]{article}
 \usepackage{myz310e-notes}
+\usepackage{needspace}
 \hypersetup{pdftitle={Neighbourhood methods: nearest neighbours, Parzen windows and distances},pdfauthor={Emre Onur Kahya},pdfsubject={MYZ 310E Machine Learning in Physics, Fall 2026, lecture note 5 (week 3)}}
+
+% Note-local float placement: let tall algorithms share pages with text instead of forming float pages.
+\renewcommand{\topfraction}{0.92}
+\renewcommand{\bottomfraction}{0.6}
+\renewcommand{\textfraction}{0.06}
+\renewcommand{\floatpagefraction}{0.85}
+\setcounter{topnumber}{3}
+\setcounter{totalnumber}{4}
 
 \begin{document}
 \NoteTitle{5}{3}{Neighbourhood methods: nearest\\ neighbours, Parzen windows and distances}{Neighbourhood methods}{%
 Neighbourhood methods predict at a point by letting nearby training examples vote. They need no training, make no
-assumption about the shape of the target function, and handle classification, regression and density estimation
-with one formula. This note develops $k$-nearest neighbours and Parzen windows (kernel smoothing and kernel density
+assumption about the shape of the target function, and handle classification and regression with one
+weighted-average formula, whose denominator --- the total weight near the query --- is itself a density estimate. This note develops $k$-nearest neighbours and Parzen windows (kernel smoothing and kernel density
 estimation), discusses the distances they rely on, and shows that the same ideas power retrieval in today's AI
-systems and the attention mechanism of transformers. Model selection follows Note~4; the geometry of high dimension
-follows Note~3.}
+systems and the attention mechanism of transformers. A small dataset of eight points is followed through every
+method by hand; each algorithm is given as pseudocode with its running time. Model selection follows Note~4; the
+geometry of high dimension follows Note~3.}
 
 \section{Let the neighbours vote}\label{sec:knn}
 
@@ -22,7 +32,8 @@ prediction averages their targets. All three tasks fit one formula,
 \end{equation}
 with a task-dependent target encoding $\vect{t}_i$ and read-out:
 \begin{itemize}
-\item \textbf{regression}: $\vect{t}_i = y_i$ and $f(\x) = \bar{\vect{y}}(\x)$, the mean target of the neighbours;
+\item \textbf{regression}: $\vect{t}_i = y_i$ and $f(\x) = \bar{\vect{y}}(\x)$, the mean target of the neighbours
+(with several real outputs, $\vect{t}_i$ is the vector of targets and the average is taken component by component);
 \item \textbf{classification with $m$ classes}: $\vect{t}_i = \mathrm{onehot}(y_i) \in \{0,1\}^m$, so
 $\bar{\vect{y}}(\x)$ is the vector of class frequencies among the neighbours --- an estimate of $P(Y = \cdot \mid
 \X = \x)$ --- and $f(\x) = \argmax_c \bar y_c(\x)$, the majority vote;
@@ -34,29 +45,126 @@ plentiful, large where they are sparse. No cell is ever empty.
 
 Neighbourhood methods are called \emph{non-parametric}: they assume nothing about the form of $f$, and their
 ``parameters'' are the training set itself, which must be stored. Their hyperparameters --- $k$ and the distance ---
-are chosen on validation data as in Note~4.
+are chosen on validation data as in Note~4. They are also called \emph{lazy} (or memory-based) learners: all the work
+is postponed until a query arrives.
 
+\subsection{One formula, three read-outs}\label{sec:oneformula}
+
+Equation~\eqref{eq:weighted} looks more general than ``average the neighbours'', so let us check that it is the same
+thing. Exactly $k$ of the weights equal one and the others are zero, so $\sum_i w_i(\x) = k$ and
+\[
+  \bar{\vect{y}}(\x) = \frac{1}{k} \sum_{i \in N_k(\x)} \vect{t}_i .
+\]
+\begin{itemize}
+\item \emph{Regression.} The mean is not an arbitrary choice: it is the constant $c$ that fits the neighbours best in
+squared error. Setting the derivative of $J(c) = \sum_{i \in N_k(\x)} (y_i - c)^2$ to zero,
+\[
+  J'(c) = -2 \sum_{i \in N_k(\x)} (y_i - c) = 0 \quad\Longrightarrow\quad c = \frac{1}{k}\sum_{i \in N_k(\x)} y_i .
+\]
+This is the local, finite-sample version of the statement of Note~1, Section~4, that $\E[Y \mid \X = \x]$ minimises
+the expected squared error.
+\item \emph{Classification.} Component $c$ of the average of one-hot vectors is $\bar y_c = k_c / k$, where $k_c$ is the
+number of neighbours of class $c$. These numbers are non-negative and sum to one, so they form a probability vector,
+our estimate $\hat P(Y = c \mid \X = \x) = k_c/k$. The $\argmax$ picks the most frequent class, which is also the
+constant prediction that misclassifies the fewest neighbours.
+\item \emph{Binary classification with $\pm 1$ labels.} With $k_+$ positive and $k_- = k - k_+$ negative
+neighbours, $\bar y = (k_+ - k_-)/k = (2k_+ - k)/k$, which is positive exactly when $k_+ > k/2$: the sign rule is the
+majority vote again, and $(1 + \bar y)/2 = k_+/k$ is the estimated probability of the positive class.
+\end{itemize}
+
+\subsection{A worked example}\label{sec:toy}
+
+Figure~\ref{fig:toy}, inside the box below, shows the small dataset used throughout this note: eight points in the plane, each with a class
+(A or B) and, for regression, a real target $y_i$ written in parentheses. The query is $\x = (2, 2)$. Squared distances
+suffice for ranking, since the square root is increasing. The table is sorted by distance, not by index (so $\x_7$
+comes before $\x_6$).
+
+\begin{worked}{$k$-NN by hand for $k = 1, 3, 5$}
+\begin{minipage}[c]{0.47\linewidth}
+\centering
+\includegraphics[width=0.95\linewidth]{figures/n5_toy.pdf}
+\captionof{figure}{The running example: class A (circles), class B (squares), targets $y_i$ in parentheses, query
+$\x = (2,2)$ (star). The grey rings pass through the first, third and fifth nearest neighbours.}
+\label{fig:toy}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.5\linewidth}
+\centering\small
+\begin{tabular}{@{}cccccc@{}}
+\toprule
+$i$ & $\x_i$ & class & $y_i$ & $\norm{\x_i - \x}^2$ & rank \\
+\midrule
+1 & $(2,3)$ & A & 5 & 1 & 1 \\
+2 & $(1,1)$ & B & 2 & 2 & 2--3 \\
+3 & $(3,1)$ & B & 3 & 2 & 2--3 \\
+4 & $(0,3)$ & A & 4 & 5 & 4--5 \\
+5 & $(4,3)$ & A & 6 & 5 & 4--5 \\
+7 & $(0,0)$ & B & 1 & 8 & 6 \\
+6 & $(3,5)$ & A & 7 & 10 & 7--8 \\
+8 & $(5,1)$ & B & 4 & 10 & 7--8 \\
+\bottomrule
+\end{tabular}
+\end{minipage}
+
+\medskip
+For instance $\norm{\x_6 - \x}^2 = (3-2)^2 + (5-2)^2 = 10$. Reading the sorted list from the top:
+\begin{itemize}
+\item $k = 1$: the nearest point is $\x_1$ (class A). Prediction A, with $\hat P(\mathrm{A} \mid \x) = 1$;
+regression $f(\x) = 5$.
+\item $k = 3$: neighbours $\{1, 2, 3\}$ with classes A, B, B. Votes A\,:\,B $= 1 : 2$, prediction B,
+$\hat P(\mathrm{A} \mid \x) = 1/3$; regression $f(\x) = (5 + 2 + 3)/3 = 10/3 \approx 3.33$.
+\item $k = 5$: neighbours $\{1, \dots, 5\}$. Votes $3 : 2$, prediction A, $\hat P(\mathrm{A} \mid \x) = 3/5$;
+regression $f(\x) = (5 + 2 + 3 + 4 + 6)/5 = 4$.
+\end{itemize}
+The query sits between the classes, and the answer flips twice as $k$ grows. Nothing is wrong: $k$ is a hyperparameter,
+and only validation data can tell which value generalises (Section~\ref{sec:choosek}).
+\end{worked}
+
+\subsection{Ties}\label{sec:ties}
+
+Two kinds of ties occur, and an implementation must decide both.
+\begin{itemize}
+\item \emph{Distance ties}: several points are at the same distance as the $k$-th neighbour. In the example, $\x_4$ and
+$\x_5$ are both at squared distance 5, so ``the four nearest neighbours'' is not well defined. Common conventions
+are to keep the point with the smaller index (what a stable sort does) or to include all tied points, letting the
+neighbourhood grow slightly.
+\item \emph{Vote ties}: two classes receive the same number of votes. With $k = 4$ in the example, whichever of
+$\x_4$, $\x_5$ is kept, the votes are A\,:\,B $= 2 : 2$.
+\end{itemize}
+For two classes an odd $k$ prevents vote ties; with $m \ge 3$ classes no $k > 1$ does (two classes can tie at
+$k = 2$, three can share $k = 3$ votes equally). Three common rules for vote ties, applied to $k = 4$:
+\begin{enumerate}
+\item \emph{drop the farthest neighbour} and vote again with $k - 1$, repeating if needed: here $k = 3$ gives B;
+\item \emph{prefer the tied class with the nearest member}: $\x_1$ (A) is nearer than any B point, so A;
+\item \emph{weight the votes by inverse distance}, $w_i = 1/\norm{\x_i - \x}$ for $i \in N_k(\x)$: A collects
+$1/1 + 1/\sqrt{5} = 1.447$ and B collects $2/\sqrt{2} = 1.414$, so A.
+\end{enumerate}
+Different rules give different answers on a genuinely ambiguous query; what matters is to fix one and use it
+consistently. Rule~1 is the one used in Algorithms~\ref{alg:knn} and~\ref{alg:knnloo} below. Rule~3, distance-weighted
+$k$-NN (a one-line change of Algorithm~\ref{alg:knn}), is a first step towards the soft weights of
+Section~\ref{sec:parzen}.
+
+\noindent\begin{minipage}[c]{0.6\linewidth}
 \paragraph{Decision regions} For $k = 1$, each training point owns the region of space closer to it than to any
 other point, its \emph{Voronoi cell}. The classifier predicts the label of the cell's owner, so the decision boundary
 is made of pieces of perpendicular bisectors between differently labelled neighbours (Figure~\ref{fig:voronoi}). It
 can be arbitrarily complex: one mislabelled point carves out its own island.
-
-\begin{figure}[h]
+\end{minipage}\hfill
+\begin{minipage}[c]{0.36\linewidth}
 \centering
-\includegraphics[width=0.36\linewidth]{figures/voronoi.pdf}
-\caption{The 1-NN classifier for 14 points. Thin lines: Voronoi cells; thick line: decision boundary; shading:
-predicted class.}
+\includegraphics[width=0.85\linewidth]{figures/voronoi.pdf}
+\captionof{figure}{The 1-NN classifier for 14 points. Thin lines: Voronoi cells; thick line: decision boundary;
+shading: predicted class.}
 \label{fig:voronoi}
-\end{figure}
+\end{minipage}
 
 \paragraph{The choice of $k$} Figure~\ref{fig:knnk} shows $k$-NN on 300 points from two interleaved half-moons.
 With $k = 1$ the training error is zero and the boundary follows every noisy point; the test error is 9.2\%. With
 $k = 15$ the boundary is smooth and training and test errors agree at about 6\%. With $k = 151$, half the training set
 votes everywhere, the boundary is too simple to follow the moons and both errors rise to about 19\%. Small $k$ means
 low bias and high variance; large $k$ the reverse (Note~4, Section~6). In the limit $k = n$ every query receives the
-overall majority class.
+overall majority class (and, in regression, the overall mean target).
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{figures/knn_k.pdf}
 \caption{$k$-NN classification of 300 training points; errors on the training set and on 3000 test points.}
@@ -66,120 +174,610 @@ overall majority class.
 \paragraph{What theory guarantees} With enough data, nearest neighbours are close to the query and the method
 approaches the ideal. As $n \to \infty$, the error of $1$-NN is at most twice the Bayes error (for two classes,
 $R^* \le R_{1\text{-NN}} \le 2R^*(1 - R^*)$)~\cite{cover1967}, and $k$-NN is \emph{consistent} --- its risk converges to
-the Bayes risk for every distribution --- if $k \to \infty$ while $k/n \to 0$~\cite{stone1977}. The catch is the rate:
-in $d$ dimensions the distance to the nearest neighbour shrinks only like $n^{-1/d}$, and Note~3 showed what that
-means for $d = 100$.
+the Bayes risk for every distribution --- if $k \to \infty$ while $k/n \to 0$~\cite{stone1977}. The two conditions
+have a plain meaning: $k \to \infty$ makes the vote an average over many points (variance $\to 0$), and $k/n \to 0$
+makes the neighbourhood shrink around $\x$ (bias $\to 0$). The catch is the rate: in $d$ dimensions the distance to
+the nearest neighbour shrinks only like $n^{-1/d}$ --- a ball of radius $r$ around $\x$ holds about $n r^d$ of the
+points (up to a constant), and setting this equal to 1 gives $r \sim n^{-1/d}$ --- and Note~3, Section~3, showed what
+that means for $d = 100$.
 
 \section{Computing neighbours}\label{sec:compute}
 
-The algorithm is short. Training stores $X \in \R^{n \times d}$ and the targets. Prediction for a batch of queries
-computes all squared distances with the matrix identity of Note~1, Section~6, selects the $k$ smallest per row and
-averages:
+The algorithm is short (Algorithm~\ref{alg:knn}). Training stores $X \in \R^{n \times d}$ and the targets. Prediction
+computes the distances from the query to all training points, selects the $k$ smallest and reads out the vote or the
+mean.
 
+\begin{algorithm}[htbp]
+\caption{$k$-nearest neighbours, brute force: classification and regression}
+\label{alg:knn}
+\begin{algorithmic}[1]
+\Require training inputs $\x_1, \dots, \x_n \in \R^d$, targets $y_1, \dots, y_n$ (classes $1..m$ or real numbers),
+number of neighbours $k \le n$
+\Function{Train}{$\Dtrain$}
+  \State store $X$ and $\vect{y}$ \Comment{nothing is fitted}
+\EndFunction
+\Function{Neighbours}{$\x, k$}
+  \For{$i = 1, \dots, n$}
+    \State $\delta_i \gets \norm{\x_i - \x}^2$ \Comment{squared distance: same ranking, no square root}
+  \EndFor
+  \State $N \gets$ indices of the $k$ smallest $\delta_i$, sorted by $\delta_i$ \Comment{partial selection}
+  \State \Return $N$
+\EndFunction
+\Function{Classify}{$\x$}
+  \State $(i_1, \dots, i_k) \gets \Call{Neighbours}{\x, k}$
+  \State $v_c \gets 0$ for $c = 1, \dots, m$; \ $\hat c \gets$ none \Comment{$\hat c$: current leader}
+  \For{$r = 1, \dots, k$}
+    \State $v_{y_{i_r}} \gets v_{y_{i_r}} + 1$ \Comment{weighted variant: add $1/\norm{\x_{i_r} - \x}$ (rule 3)}
+    \State \textbf{if} $\hat c$ is none \textbf{or} $v_{y_{i_r}} > v_{\hat c}$ \textbf{then} $\hat c \gets y_{i_r}$
+    \Comment{strict ``$>$'': tie rule 1}
+  \EndFor
+  \State \Return $\hat c$ \Comment{$v_c/k$ estimates $P(Y = c \mid \X = \x)$}
+\EndFunction
+\Function{Regress}{$\x$}
+  \State $N \gets \Call{Neighbours}{\x, k}$
+  \State \Return $\frac{1}{k} \sum_{i \in N} y_i$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+The leader $\hat c$ changes only when a class strictly overtakes it, so among classes tied at the end it keeps the one
+that reached the winning count first. This is exactly tie rule~1 of Section~\ref{sec:ties}. Indeed, the leader always
+holds a maximal count, and it changes only at a step where another class becomes the \emph{unique} maximum. Let
+$r \le k$ be the last step at which a single class holds the maximal count (step 1 always qualifies). At step $r$ that
+class is the leader, and since no class becomes the unique maximum afterwards, the leader never changes again. Tie
+rule~1 drops the farthest neighbours until the tie disappears, which takes it back to the same step $r$ and the same
+class. In the weighted variant (rule~3) the counts $v_c$ become sums of inverse distances; a neighbour at distance
+zero is handled first by returning its class directly. In numpy, a batch of queries is handled with the distance matrix of
+Note~1, Section~6:
+
+\noindent\begin{minipage}{\linewidth}
 \begin{verbatim}
 def knn_classify(Xtr, ytr, Xq, k, m):        # ytr: integer labels 0..m-1
-    D = sq_distances(Xq, Xtr)                 # (q, n), Note 1
+    D = sq_distances(Xq, Xtr)                 # (n_q, n), Note 1
     idx = np.argpartition(D, k - 1, axis=1)[:, :k]   # k nearest, unordered
-    votes = np.eye(m)[ytr[idx]].sum(axis=1)   # (q, m) class counts
-    return votes.argmax(axis=1)
+    votes = np.eye(m)[ytr[idx]].sum(axis=1)   # (n_q, m) class counts
+    return votes.argmax(axis=1)               # ties: smallest class index
 \end{verbatim}
+\end{minipage}
 
-Partial selection (\texttt{argpartition}) finds the $k$ smallest of $n$ numbers in $O(n)$ time; a full sort would
-cost $O(n \log n)$.
+Partial selection (\texttt{argpartition}, ``quickselect'') finds the $k$ smallest of $n$ numbers in $O(n)$ average
+time; a full sort would cost $O(n \log n)$, and a heap of size $k$ costs $O(n \log k)$. Note that this short version
+breaks vote ties by class index, a different (and cruder) convention than Algorithm~\ref{alg:knn}.
 
+\begin{runtime}{$k$-NN, brute force (Algorithm~\ref{alg:knn})}
+Notation: $n$ training examples, $d$ features, $m$ classes, $k$ neighbours, $n_q$ queries.
+\begin{itemize}
+\item \emph{Training}: $O(1)$, or $O(nd)$ to copy the data. Nothing is computed.
+\item \emph{Prediction per query}: $O(nd)$ for the $n$ distances (each a sum of $d$ squares), $O(n)$ for the
+selection (plus $O(k \log k)$ to sort the $k$ winners), $O(k + m)$ for the vote or the mean. Total
+$O(nd + k\log k + m)$, which is $O(nd + m)$ in the usual case $k \log k \le nd$: the distances dominate.
+\item \emph{Memory}: $O(nd)$ for the stored training set, $O(n)$ working space per query; a batch of $n_q$ queries
+needs the $n_q \times n$ distance matrix, so large batches are processed in chunks.
+\item \emph{Distance-weighted variant} (rule~3): $k$ extra square roots and divisions, so the cost is unchanged.
+\item \emph{In practice}: the $O(n_q nd)$ distance computation is one matrix product (Note~1, Section~6), which BLAS
+libraries and GPUs execute at close to peak speed. Still, with $n = 10^6$ and $d = 100$, one query costs $10^8$
+multiply--adds and the stored data take 400\,MB in 32-bit floats: training is free, prediction is expensive --- the
+opposite of most models.
+\end{itemize}
+\end{runtime}
+
+\subsection{Choosing \texorpdfstring{$k$}{k} by leave-one-out}\label{sec:choosek}
+
+Any of the validation schemes of Note~4, Section~4, can select $k$. For $k$-NN, leave-one-out cross-validation is
+unusually cheap. Leaving $\x_i$ out and predicting it from the rest only requires the neighbours of $\x_i$ among the
+other points, i.e.\ its own row of the distance matrix $D$ with the diagonal entry $D_{ii}$ removed. Moreover, once
+the $k_{\max}$ nearest neighbours of $\x_i$ are sorted, the predictions for \emph{all} $k = 1, \dots, k_{\max}$ follow by walking down
+the list once and updating the running vote (Algorithm~\ref{alg:knnloo}). One pass gives the whole validation curve.
+
+\begin{algorithm}[htbp]
+\caption{Leave-one-out choice of $k$ for $k$-NN classification}
+\label{alg:knnloo}
+\begin{algorithmic}[1]
+\Require training set $\{(\x_i, y_i)\}_{i=1}^n$ with classes $1..m$; largest candidate $k_{\max} \le n - 1$
+\Ensure the $k \in \{1, \dots, k_{\max}\}$ with the smallest leave-one-out error, and all the error estimates
+\State $e_k \gets 0$ for $k = 1, \dots, k_{\max}$
+\For{$i = 1, \dots, n$}
+  \State $\delta_j \gets \norm{\x_j - \x_i}^2$ for all $j$; \ $\delta_i \gets \infty$ \Comment{leave $\x_i$ out}
+  \State $(j_1, \dots, j_{k_{\max}}) \gets$ indices of the $k_{\max}$ smallest $\delta_j$, sorted
+  \State $v_c \gets 0$ for all $c$; \ $\hat c \gets$ none
+  \For{$r = 1, \dots, k_{\max}$} \Comment{prediction with $k = r$ neighbours}
+    \State $v_{y_{j_r}} \gets v_{y_{j_r}} + 1$
+    \State \textbf{if} $\hat c$ is none \textbf{or} $v_{y_{j_r}} > v_{\hat c}$ \textbf{then} $\hat c \gets y_{j_r}$
+    \State $e_r \gets e_r + \ind{\hat c \ne y_i}$
+  \EndFor
+\EndFor
+\State \Return $k^* = \argmin_k e_k$ and the error estimates $e_k / n$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{runtime}{leave-one-out choice of $k$ (Algorithm~\ref{alg:knnloo})}
+For each of the $n$ points: $O(nd)$ distances, $O(n + k_{\max} \log k_{\max})$ selection and sorting, $O(k_{\max})$
+for the running vote. Total $O(n^2 d + nk_{\max}\log k_{\max})$ time --- the cost of predicting the $n$ training points
+once --- for the whole curve $k = 1, \dots, k_{\max}$. Memory $O(nd + n + k_{\max})$ if rows are computed one at a
+time. Without the running vote, trying each $k$ separately would multiply the cost by $k_{\max}$. For $n$ beyond about $10^5$ the $n^2$ factor bites, and a single
+validation split (cost $O(n_{\mathrm{val}}\, n d)$) or approximate neighbours are used instead.
+\end{runtime}
+
+\needspace{16\baselineskip}
+\begin{worked}{leave-one-out choice of $k$ on the eight points}
+Run Algorithm~\ref{alg:knnloo} on the data of Figure~\ref{fig:toy} (classes only) with $k_{\max} = 3$. For each
+left-out point the table lists its three nearest other points (distances computed from the coordinates in the table
+of Figure~\ref{fig:toy}; distance ties broken by the smaller index, as a stable sort does) and the running leader
+$\hat c$ after $r = 1, 2, 3$ neighbours.
 \begin{center}\small
-\begin{tabular}{@{}lll@{}}
+\begin{tabular}{@{}ccccccc@{}}
 \toprule
- & Brute force & Approximate index (e.g.\ graph-based) \\
+left out & class & neighbours (class) & $k = 1$ & $k = 2$ & $k = 3$ & errors \\
 \midrule
-Memory & $O(nd)$ & $O(nd)$ plus the index \\
-Training & none (store the data) & build the index, roughly $O(n \log n)$ distance evaluations \\
-Prediction per query & $O(nd)$ & roughly $O(d \log n)$, returns \emph{most} true neighbours \\
+$\x_1$ & A & $\x_4$ (A), $\x_5$ (A), $\x_2$ (B) & A & A & A & --- \\
+$\x_2$ & B & $\x_7$ (B), $\x_3$ (B), $\x_1$ (A) & B & B & B & --- \\
+$\x_3$ & B & $\x_2$ (B), $\x_8$ (B), $\x_1$ (A) & B & B & B & --- \\
+$\x_4$ & A & $\x_1$ (A), $\x_2$ (B), $\x_7$ (B) & A & A & B & $k = 3$ \\
+$\x_5$ & A & $\x_1$ (A), $\x_3$ (B), $\x_6$ (A) & A & A & A & --- \\
+$\x_6$ & A & $\x_1$ (A), $\x_5$ (A), $\x_4$ (A) & A & A & A & --- \\
+$\x_7$ & B & $\x_2$ (B), $\x_4$ (A), $\x_3$ (B) & B & B & B & --- \\
+$\x_8$ & B & $\x_3$ (B), $\x_5$ (A), $\x_1$ (A) & B & B & A & $k = 3$ \\
 \bottomrule
 \end{tabular}
 \end{center}
+Take $\x_4$: after $r = 1$, $v_{\mathrm A} = 1$ and the leader is A; after $r = 2$, $v_{\mathrm B} = 1$ ties but does not
+exceed $v_{\mathrm A}$, so A stays; after $r = 3$, $v_{\mathrm B} = 2 > 1$ and the leader becomes B, a mistake. The
+error counts are $e_1 = 0$, $e_2 = 0$, $e_3 = 2$, i.e.\ leave-one-out errors $0$, $0$ and $2/8 = 0.25$, and the
+$\argmin$ returns $k^* = 1$. Two remarks. With tie rule~1, $k = 2$ always predicts like $k = 1$ (a $1:1$ tie falls
+back to the nearest point), so $e_2 = e_1$ on every dataset. And distance ties matter on such small data: for $\x_5$
+the points $\x_3$, $\x_6$, $\x_8$ are all at squared distance 5; keeping $\x_3$ and $\x_8$ instead would give B at
+$k = 3$ and a third error.
+\end{worked}
 
-Training is free and prediction is expensive --- the opposite of most models. Exact tree structures such as $k$-d
-trees prune the search in low dimension but degrade to brute force as $d$ grows, another face of the curse. Large
-systems therefore accept \emph{approximate} neighbours: graph-based indices such as HNSW~\cite{malkov2020} and
-compressed vector codes on GPUs~\cite{johnson2021} make collections of billions of vectors searchable, at the price
-of occasionally missing a true neighbour.
+\subsection{Exact search with \texorpdfstring{$k$}{k}-d trees}\label{sec:kdtree}
+
+\noindent\begin{minipage}[c]{0.62\linewidth}
+In low dimension, most of the $n$ distance computations are wasted: points far from the query cannot be neighbours.
+A \emph{$k$-d tree}~\cite{bentley1975,friedman1977} (``$k$-dimensional tree''; in our notation that $k$ is $d$, unrelated to
+the number of neighbours) organises the
+training points so that whole groups can be skipped. Each node splits its points at the median of one coordinate,
+cycling through the coordinates with depth; the leaves are small boxes holding a few points
+(Figure~\ref{fig:kdtree}). To find the nearest neighbour, descend to the leaf containing the query, take the best
+point found there as a candidate, and walk back up: the far side of a split need only be searched if the ball around
+the query whose radius is the current best distance crosses the splitting plane (Algorithm~\ref{alg:kdtree}).
+\end{minipage}\hfill
+\begin{minipage}[c]{0.34\linewidth}
+\centering
+\includegraphics[width=0.9\linewidth]{figures/n5_kdtree.pdf}
+\captionof{figure}{A $k$-d tree on 24 points, leaf size 2. The ball of radius the best distance in the
+query's leaf crosses one splitting line: both shaded cells are searched, and the true nearest neighbour (circled)
+lies in the other one.}
+\label{fig:kdtree}
+\end{minipage}
+
+\begin{algorithm}[htbp]
+\caption{$k$-d tree: construction and nearest-neighbour search}
+\label{alg:kdtree}
+\begin{algorithmic}[1]
+\Function{Build}{$P$, depth} \Comment{$P$: a set of training points; leaf size $b$}
+  \If{$|P| \le b$} \Return \Call{Leaf}{$P$} \EndIf
+  \State $j \gets \text{depth} \bmod d$ \Comment{or the coordinate of largest spread}
+  \State $P_L \gets$ the $\lfloor |P|/2 \rfloor$ points with smallest $x_j$, $P_R \gets$ the rest
+  \Comment{$O(|P|)$ by selection}
+  \State $s \gets$ midway between the largest $x_j$ in $P_L$ and the smallest in $P_R$
+  \Comment{rank split: no empty side}
+  \State $L \gets \Call{Build}{P_L, \text{depth} + 1}$; \ $R \gets \Call{Build}{P_R, \text{depth} + 1}$
+  \State \Return \Call{Node}{$j, s, L, R$}
+\EndFunction
+\Function{Search}{node, $\vect{q}$, best} \Comment{query $\vect{q}$; best $= (\rho, \x)$: best distance so far, initially $(\infty, \text{none})$}
+  \If{node is a leaf}
+    \State \Return the better of best and the nearest point of the leaf \Comment{brute force on $\le b$ points}
+  \EndIf
+  \State $(j, s) \gets$ split coordinate and split value stored in node
+  \State (near, far) $\gets$ (left, right) \textbf{if} $q_j < s$ \textbf{else} (right, left)
+  \State best $\gets \Call{Search}{\text{near}, \vect{q}, \text{best}}$
+  \If{$|q_j - s| < \rho$} \Comment{the ball around $\vect{q}$ crosses the plane $x_j = s$}
+    \State best $\gets \Call{Search}{\text{far}, \vect{q}, \text{best}}$
+  \EndIf
+  \State \Return best
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+The pruning test is safe because the distance from $\vect{q}$ to any point on the far side is at least
+$|q_j - s|$: one coordinate difference never exceeds the full Euclidean distance. For $k > 1$ neighbours the candidate
+becomes a list of the $k$ best points and $\rho$ the distance to the worst of them.
+
+\begin{worked}{a $k$-d tree on the eight points}
+\emph{Build} with leaf size $b = 2$. The root splits on $x_1$: the four smallest values ($\x_4, \x_7$ at 0, $\x_2$ at
+1, $\x_1$ at 2) go left, the rest ($\x_3, \x_6$ at 3, $\x_5$ at 4, $\x_8$ at 5) go right, and $s = 2.5$. Both
+children split on $x_2$ at $s = 2$ (midway between 1 and 3), giving four leaves:
+$\{\x_7, \x_2\}$ and $\{\x_1, \x_4\}$ on the left, $\{\x_3, \x_8\}$ and $\{\x_5, \x_6\}$ on the right.
+
+\emph{Search} for the query $\vect{q} = (0.5, 2.5)$. At the root $q_1 = 0.5 < 2.5$, so go left; there $q_2 = 2.5 \ge 2$,
+so go to the leaf $\{\x_1, \x_4\}$: distances $\sqrt{2.5} = 1.58$ and $\sqrt{0.5} = 0.71$, so $\rho = 0.71$
+(candidate $\x_4$). Back at the left node, $|q_2 - 2| = 0.5 < 0.71$: the ball crosses the line $x_2 = 2$, and the
+leaf $\{\x_7, \x_2\}$ is searched (distances 2.55 and 1.58, no improvement). Back at the root, $|q_1 - 2.5| = 2 \ge
+0.71$: the whole right half is pruned. Answer $\x_4$ after 4 distance computations instead of 8. The running query
+$(2, 2)$ is the unlucky case: it lies on both lines $x_2 = 2$ and only 0.5 from $x_1 = 2.5$, so with $\rho = 1$ (from
+$\x_1$) no branch can be pruned and all 8 distances are computed.
+\end{worked}
+
+\begin{runtime}{$k$-d tree (Algorithm~\ref{alg:kdtree})}
+\emph{Building}: the tree has depth $O(\log n)$ and each level does $O(n)$ work for the median selections, so
+$O(n \log n)$ time; $O(n)$ memory for the nodes on top of the $O(nd)$ data. \emph{Query}: in low dimension and for
+well-spread data a query visits $O(\log n)$ nodes on average and scans a few leaves of $b$ points, so it costs about
+$O(\log n + bd)$, or $O(d \log n)$ counting the distances computed on the way --- a huge gain over $O(nd)$. As $d$ grows, the ball around
+the query crosses more and more splitting planes; a common rule of thumb is that the tree helps only when
+$n \gg 2^d$. For $d$ of a few tens the search visits most leaves and becomes brute force with extra overhead --- the
+curse of dimensionality of Note~3 seen from the algorithmic side.
+\end{runtime}
+
+\subsection{Approximate search}
+
+Large systems therefore accept \emph{approximate} neighbours. Graph-based indices such as HNSW~\cite{malkov2020}
+link each point to a few near neighbours and answer a query by walking greedily through this graph
+(Algorithm~\ref{alg:greedy}); compressed vector codes on GPUs~\cite{johnson2021} shrink the memory so that billions of
+vectors fit. Empirically, building such an index costs about $O(n \log n)$ distance evaluations and a query about
+$O(d \log n)$ instead of $O(nd)$ (there is no worst-case guarantee). Memory is $O(nd)$ for raw vectors, or $n$ times
+the code size (a few tens of bytes) with compressed codes, plus the links of the graph (Table~\ref{tab:glance}). The
+price is that a true neighbour is occasionally missed: the index returns \emph{most} of the true neighbours, a
+fraction called the recall. We only describe these indices; their design and analysis go beyond this course.
+
+\begin{algorithm}[htbp]
+\caption{Greedy search in a neighbour graph (the core step of graph-based indices)}
+\label{alg:greedy}
+\begin{algorithmic}[1]
+\Require points $\x_1, \dots, \x_n$, each linked to a few near neighbours $G(i)$; an entry point $e$; query $\vect{q}$
+\State $c \gets e$
+\Loop
+  \State $j \gets \argmin_{i \in G(c)} \norm{\x_i - \vect{q}}$ \Comment{$|G(c)|$ distances, $O(|G(c)|\, d)$}
+  \State \textbf{if} $\norm{\x_j - \vect{q}} \ge \norm{\x_c - \vect{q}}$ \textbf{then} \Return $c$
+  \Comment{no neighbour is closer: stop}
+  \State $c \gets j$
+\EndLoop
+\end{algorithmic}
+\end{algorithm}
+
+\begin{runtime}{greedy graph search (Algorithm~\ref{alg:greedy})}
+Each step costs $O(Md)$ for a node with $M$ links; the number of steps is typically about $\log n$ in practice
+(hierarchical layers help), giving roughly $O(Md \log n)$ per query. Memory: the vectors plus $O(nM)$ links.
+Greedy search can stop at a local minimum that is not the true nearest neighbour, which is where the recall below one
+comes from; practical indices keep a list of several candidates instead of one.
+\end{runtime}
 
 \begin{modern}{nearest neighbours inside AI systems}
 Nearest-neighbour search in embedding space (Note~1, Section~3) is everywhere. \emph{Retrieval-augmented generation}
 embeds a question, retrieves the nearest passages from a document collection and gives them to a language model as
-context~\cite{lewis2020}; the ``vector databases'' behind such systems are approximate $k$-NN indices. A language
-model can also be improved without retraining by interpolating its next-token distribution with a $k$-NN estimate
-computed from a datastore of contexts~\cite{khandelwal2020} --- exactly the classification rule \eqref{eq:weighted}
-with tokens as classes. And self-supervised vision models are routinely evaluated by the accuracy of a $k$-NN
-classifier on their features: if a simple vote among neighbours works, the representation has organised the data
-well.
+context~\cite{lewis2020}; the ``vector databases'' behind such systems are approximate $k$-NN indices. Updating what
+the system knows then means adding vectors to the index, not retraining the model. A language model can also be
+improved without retraining by interpolating its next-token distribution with a $k$-NN estimate computed from a
+datastore of contexts~\cite{khandelwal2020}: the $k$ retrieved contexts vote for their next tokens with weights
+proportional to $\exp(-\text{squared distance})$, a distance-weighted $k$-NN vote with tokens as classes (the Gaussian
+weights of Section~\ref{sec:soft}, restricted to $N_k(\x)$). And self-supervised vision models are often evaluated by
+the accuracy of a $k$-NN classifier on their features~\cite{wu2018}: if a simple vote among neighbours works, the
+representation has organised the data well.
 \end{modern}
 
 \section{Parzen windows: soft neighbourhoods}\label{sec:parzen}
 
-\paragraph{Hard windows} Instead of the $k$ nearest points, let every point within a fixed radius $h$ vote:
-$w_i(\x) = \ind{d(\x_i, \x) < h}$ in \eqref{eq:weighted}. The neighbourhood now has fixed size and variable
-population; in sparse regions it may be empty, and a default prediction is needed, as for histograms.
+\subsection{Hard windows}\label{sec:hard}
 
-\paragraph{Soft windows} Better still, let \emph{all} training points vote with weights that decrease smoothly with
-distance, $w_i(\x) = K(\x_i, \x)$ for a \emph{kernel} $K$. The most common choice is the Gaussian (radial basis
-function) kernel
+Instead of the $k$ nearest points, let every point within a fixed radius $h$ (a radius, not a standard deviation) vote: $w_i(\x) = \ind{d(\x_i, \x) < h}$
+in \eqref{eq:weighted}. Equivalently $w_i(\x) = \ind{d(\x_i, \x)/h < 1}$: the distance is measured in units of the
+window size. The two methods mirror each other:
+\begin{center}\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & $k$-NN & hard Parzen window \\
+\midrule
+fixed & number of voters $k$ & radius $h$ \\
+varies with $\x$ & radius (distance to the $k$-th neighbour) & number of voters \\
+sparse region & large neighbourhood, still $k$ voters & few or no voters \\
+\bottomrule
+\end{tabular}
+\end{center}
+In sparse regions the window may be empty, and a default prediction is needed, as for histograms (Note~3,
+Section~1): the overall majority class or mean, or the prediction of the single nearest neighbour.
+
+\begin{algorithm}[htbp]
+\caption{Hard-window Parzen classifier and regressor}
+\label{alg:hard}
+\begin{algorithmic}[1]
+\Require training set $\{(\x_i, y_i)\}_{i=1}^n$, radius $h > 0$, a default prediction $f_0$
+\Function{Window}{$\x$}
+  \State \Return $N = \{i : \norm{\x_i - \x}^2 < h^2\}$ \Comment{one pass, $O(nd)$}
+\EndFunction
+\Function{ClassifyHard}{$\x$}
+  \State $N \gets \Call{Window}{\x}$; \ \textbf{if} $N = \emptyset$ \textbf{then} \Return $f_0$
+  \Comment{e.g.\ majority class or 1-NN}
+  \State $v_c \gets |\{i \in N : y_i = c\}|$ for $c = 1, \dots, m$
+  \State \Return $\argmax_c v_c$ \Comment{ties: class of the nearest member of $N$ (rule 2)}
+\EndFunction
+\Function{RegressHard}{$\x$}
+  \State $N \gets \Call{Window}{\x}$; \ \textbf{if} $N = \emptyset$ \textbf{then} \Return $f_0$
+  \Comment{e.g.\ overall mean}
+  \State \Return $\frac{1}{|N|} \sum_{i \in N} y_i$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{worked}{hard windows of four sizes}
+On the data of Figure~\ref{fig:toy} with query $\x = (2,2)$, a point votes when $\norm{\x_i - \x} < h$, i.e.\ when
+$\norm{\x_i - \x}^2 < h^2$:
+\begin{itemize}
+\item $h = 0.5$: $h^2 = 0.25$, and no point qualifies (the nearest has squared distance 1). The window is empty and
+the default rule decides.
+\item $h = 1.5$: $h^2 = 2.25$, voters $\{1, 2, 3\}$, the same as for $k = 3$: class B, regression $10/3 \approx 3.33$.
+\item $h = 2.5$: $h^2 = 6.25$, voters $\{1, \dots, 5\}$, the same as for $k = 5$: class A, regression $4$.
+\item $h = 3$: $h^2 = 9$ also admits $\x_7$ (class B, $y_7 = 1$): votes $3:3$, a tie, which tie rule~2 of
+Section~\ref{sec:ties} resolves in favour of the class of the nearest member, $\x_1$: A. Regression $21/6 = 3.5$.
+\end{itemize}
+At a different query the same $h$ could collect a different number of points; with $k$-NN the number is fixed.
+\end{worked}
+
+
+\subsection{Soft windows and the Nadaraya--Watson estimator}\label{sec:soft}
+
+Better still, let \emph{all} training points vote with weights that decrease smoothly with distance,
+$w_i(\x) = K(\x_i, \x)$ for a \emph{kernel} $K$. The hard window is the special case of a ``box'' kernel. The most
+common smooth choice is the Gaussian (radial basis function) kernel
 \[
   K_\sigma(\x_i, \x) = \exp\!\left( -\frac{\norm{\x - \x_i}^2}{2\sigma^2} \right),
 \]
-whose normalising constant cancels in the ratio \eqref{eq:weighted}. Regression with these weights,
+whose normalising constant $(2\pi\sigma^2)^{-d/2}$ would cancel in the ratio \eqref{eq:weighted} and is therefore
+omitted. Regression with these weights,
 \begin{equation}\label{eq:nw}
   f(\x) = \frac{\sum_i K_\sigma(\x_i, \x)\, y_i}{\sum_i K_\sigma(\x_i, \x)},
 \end{equation}
-is the Nadaraya--Watson estimator; classification uses one-hot targets and an $\argmax$, exactly as for $k$-NN. The
-width $\sigma$ plays the role of $k$ (Figure~\ref{fig:parzenclass}): small widths give fragmented regions that follow
-individual points, large widths give smooth boundaries that may miss structure.
+is the Nadaraya--Watson estimator~\cite{nadaraya1964,watson1964}; classification uses one-hot targets and an
+$\argmax$, exactly as for $k$-NN, so the score of class $c$ is
+\[
+  s_c(\x) = \frac{\sum_{i : y_i = c} K_\sigma(\x_i, \x)}{\sum_i K_\sigma(\x_i, \x)}, \qquad \sum_c s_c(\x) = 1 .
+\]
+For two classes with labels $y_i \in \{-1, +1\}$ the same read-out is the sign of the weighted mean label,
+\[
+  f(\x) = \operatorname{sign} \frac{\sum_i K_\sigma(\x_i, \x)\, y_i}{\sum_i K_\sigma(\x_i, \x)}
+  = \operatorname{sign}\big(s_{+1}(\x) - s_{-1}(\x)\big) .
+\]
 
-\begin{figure}[h]
+\paragraph{Where the formula comes from} The argument of Section~\ref{sec:oneformula} carries over with weights. The
+constant $c$ that best fits the data near $\x$, in a \emph{weighted} squared error, solves
+\[
+  \frac{d}{dc} \sum_{i=1}^n w_i (y_i - c)^2 = -2 \sum_{i=1}^n w_i (y_i - c) = 0
+  \quad\Longrightarrow\quad c = \frac{\sum_i w_i y_i}{\sum_i w_i},
+\]
+which is \eqref{eq:nw}. Nadaraya--Watson is therefore a \emph{locally weighted mean}: at every query a new weighted
+least-squares problem is solved, with weights centred on the query.
+
+\paragraph{Local linear regression} Replacing the constant $c$ by a linear function centred on the query gives
+\emph{local linear regression}: at each query $\x$ minimise
+\[
+  \sum_{i=1}^n w_i(\x) \big( y_i - b - \vect{\beta}\T(\x_i - \x) \big)^2
+\]
+over $b \in \R$ and $\vect{\beta} \in \R^d$, and predict $f(\x) = b$, the value of the local line at the query. This is
+a weighted least-squares problem in $d + 1$ unknowns, solved by the normal equations of Note~8, Section~2, with the
+weights inserted. It removes the first-order bias of Nadaraya--Watson, which is largest at the edges of the data,
+where all neighbours lie on one side of the query. The price is a new $(d+1) \times (d+1)$ linear system for every
+query: $O(nd^2 + d^3)$ per query instead of $O(nd)$. We mention it for completeness and do not use it further.
+
+\begin{worked}{Gaussian weights and the Nadaraya--Watson prediction}
+Same data and query $\x = (2,2)$, Gaussian kernel with $\sigma = 1$, so $w_i = e^{-\delta_i/2}$ with
+$\delta_i = \norm{\x_i - \x}^2$:
+\begin{center}\small
+\begin{tabular}{@{}lcccccccc@{}}
+\toprule
+$i$ & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 \\
+class, $y_i$ & A, 5 & B, 2 & B, 3 & A, 4 & A, 6 & A, 7 & B, 1 & B, 4 \\
+$\delta_i$ & 1 & 2 & 2 & 5 & 5 & 10 & 8 & 10 \\
+$w_i = e^{-\delta_i/2}$ & 0.607 & 0.368 & 0.368 & 0.082 & 0.082 & 0.007 & 0.018 & 0.007 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}
+\item Total weight $\sum_i w_i = 1.538$.
+\item Classification: class A collects $0.607 + 0.082 + 0.082 + 0.007 = 0.777$, class B collects
+$0.368 + 0.368 + 0.018 + 0.007 = 0.761$, so $s_{\mathrm{A}} = 0.777/1.538 = 0.505$ and $s_{\mathrm{B}} = 0.495$.
+Prediction A, by a hair: the query really is on the boundary.
+\item Regression: $\sum_i w_i y_i = 5(0.607) + 2(0.368) + 3(0.368) + 4(0.082) + 6(0.082) + 7(0.007) + 1(0.018) +
+4(0.007) = 5.785$, so $f(\x) = 5.785 / 1.538 = 3.76$.
+\end{itemize}
+With $\sigma = 0.5$ the weights become $e^{-2\delta_i}$: $0.135$ for $\x_1$, $0.018$ for $\x_2$ and $\x_3$, and less
+than $10^{-4}$ for the rest. Now $s_{\mathrm{A}} = 0.787$ and $f(\x) = 4.47$, close to the 1-NN answers (A and 5).
+Conversely, as $\sigma \to \infty$ every weight tends to 1: $s_{\mathrm{A}} \to 4/8 = 0.5$ and $f(\x)$ tends to the mean
+of all targets, $32/8 = 4$.
+\end{worked}
+
+The width $\sigma$ plays the role of $k$ (Figure~\ref{fig:parzenclass}): small widths give fragmented regions that
+follow individual points, large widths give smooth boundaries that may miss structure. In the limit $\sigma \to 0$ the
+nearest point dominates and the method becomes 1-NN (Question~C5); as $\sigma \to \infty$ it predicts the overall
+mean or majority. For regression, Figure~\ref{fig:regression} compares the two families: $k$-NN regression is a
+step function, since the neighbour set changes abruptly as the query moves, whereas the Gaussian weights change
+smoothly and so does the Nadaraya--Watson curve.
+
+\begin{figure}[htbp]
 \centering
-\includegraphics[width=0.72\linewidth]{figures/parzen_classifier.pdf}
+\includegraphics[width=0.6\linewidth]{figures/parzen_classifier.pdf}
 \caption{Parzen-window classification of 200 points with a narrow and a wide Gaussian kernel.}
 \label{fig:parzenclass}
 \end{figure}
 
-\paragraph{A numerical detail} For a query far from all data, or a small $\sigma$, every weight underflows to zero
-and \eqref{eq:nw} becomes $0/0$. Since the ratio is unchanged when all weights are multiplied by a constant, subtract
-the largest log-weight first:
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/n5_regression.pdf}
+\caption{Regression of 40 noisy points (dots) from a smooth function (dashed). Left: 1-NN interpolates the noise.
+Middle: 7-NN averages it out but is piecewise constant. Right: Nadaraya--Watson with a Gaussian kernel is smooth.}
+\label{fig:regression}
+\end{figure}
 
-\begin{verbatim}
-def parzen_regress(Xtr, ytr, Xq, sigma):
-    logW = -sq_distances(Xq, Xtr) / (2 * sigma**2)
-    W = np.exp(logW - logW.max(axis=1, keepdims=True))   # largest weight is 1
-    return (W @ ytr) / W.sum(axis=1)
-\end{verbatim}
+\paragraph{A word on names} ``Kernel'' here means a \emph{smoothing} kernel, a non-negative bump that sets the
+weights. Note~10, Section~3, uses the same word for a function $k(\x, \x')$ that computes an inner product in a feature space, and its Section~8 sets the two meanings side by side. The
+Gaussian kernel is both, which is why the two ideas are often confused; the methods built on them are different.
+
+\subsection{Computing the weights safely}\label{sec:lse}
+
+For a query far from all data, or a small $\sigma$, every weight can underflow to zero and \eqref{eq:nw} becomes
+$0/0$. Write $w_i = e^{a_i}$ with $a_i = -\norm{\x - \x_i}^2/(2\sigma^2)$ and let $a^* = \max_i a_i$. Multiplying
+numerator and denominator by $e^{-a^*}$ changes nothing,
+\[
+  f(\x) = \frac{\sum_i e^{a_i} y_i}{\sum_i e^{a_i}} = \frac{\sum_i e^{a_i - a^*} y_i}{\sum_i e^{a_i - a^*}},
+\]
+but now every exponent is $\le 0$ and the largest term equals $e^0 = 1$, so the denominator is at least 1: no
+overflow, no $0/0$. This is the \emph{log-sum-exp trick}; the same identity gives
+$\log \sum_i e^{a_i} = a^* + \log \sum_i e^{a_i - a^*}$, used for densities in Section~\ref{sec:kde}.
+
+\begin{algorithm}[htbp]
+\caption{Gaussian Parzen classifier and Nadaraya--Watson regressor (log-sum-exp form)}
+\label{alg:parzen}
+\begin{algorithmic}[1]
+\Require training set $\{(\x_i, y_i)\}_{i=1}^n$, width $\sigma > 0$
+\Function{Weights}{$\x$}
+  \For{$i = 1, \dots, n$}
+    \State $a_i \gets -\norm{\x - \x_i}^2 / (2\sigma^2)$ \Comment{log-weights}
+  \EndFor
+  \State $a^* \gets \max_i a_i$
+  \State $\omega_i \gets \exp(a_i - a^*)$ for all $i$ \Comment{largest $\omega_i$ is 1}
+  \State \Return $\omega$
+\EndFunction
+\Function{Regress}{$\x$}
+  \State $\omega \gets \Call{Weights}{\x}$
+  \State \Return $\sum_i \omega_i y_i \,/\, \sum_i \omega_i$
+\EndFunction
+\Function{Classify}{$\x$}
+  \State $\omega \gets \Call{Weights}{\x}$; \ $S \gets \sum_i \omega_i$
+  \State $s_c \gets 0$ for $c = 1, \dots, m$
+  \State $s_{y_i} \gets s_{y_i} + \omega_i / S$ for $i = 1, \dots, n$ \Comment{scores sum to one}
+  \State \Return $\argmax_c s_c$ and the scores $s$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{worked}{underflow and its cure}
+With $\sigma = 0.02$ on the running example, $a_i = -\delta_i / (2 \cdot 0.02^2) = -1250\, \delta_i$, so
+$a_1 = -1250$, $a_2 = a_3 = -2500$, and so on. In double precision $e^{-1250}$ is exactly $0$ (the smallest positive
+double is about $e^{-744}$), so the naive formula returns $0/0$, i.e.\ \texttt{nan}. After subtracting
+$a^* = -1250$ the weights are $1, e^{-1250}, \dots = 1, 0, \dots, 0$ and $f(\x) = y_1 = 5$: the 1-NN answer, which is
+indeed the correct limit for a very narrow kernel.
+\end{worked}
+
+
+\begin{runtime}{Parzen windows (Algorithms~\ref{alg:hard} and~\ref{alg:parzen})}
+\emph{Training}: none; memory $O(nd)$ for the stored data. \emph{Prediction per query}: $O(nd)$ for the distances,
+$O(n)$ for the $n$ comparisons (hard window) or the $n$ exponentials (Gaussian), and $O(n + m)$ to accumulate the
+class scores (each point adds to its own class). Total $O(nd + m)$, the same order as $k$-NN but without the
+selection step. The log-sum-exp trick adds one pass, $O(n)$. A batch of $n_q$ queries is again one $O(n_q nd)$ matrix
+product followed by element-wise operations, ideal for a GPU. For the hard window in low dimension, a $k$-d tree
+answers ``all points within radius $h$'' much faster than brute force. A Gaussian kernel can be truncated at a few
+$\sigma$, since $e^{-9/2} \approx 0.011$ at $3\sigma$, after which the same speed-up applies.
+\end{runtime}
 
 \begin{modern}{attention is kernel smoothing}
-The attention operation at the heart of every transformer~\cite{vaswani2017} computes, for a query vector $\vect{q}$,
-keys $\vect{k}_i$ and values $\vect{v}_i$,
+The attention operation at the heart of the transformer~\cite{vaswani2017} computes, for a query vector $\vect{q}$,
+keys $\vect{k}_i$ and values $\vect{v}_i$ of dimension $d_k$,
 \[
-  \mathrm{Attention}(\vect{q}) = \sum_i \frac{\exp(\vect{q}\T\vect{k}_i / \sqrt{d})}{\sum_j \exp(\vect{q}\T\vect{k}_j / \sqrt{d})}\, \vect{v}_i ,
+  \mathrm{Attention}(\vect{q}) = \sum_i \frac{\exp(\vect{q}\T\vect{k}_i / \sqrt{d_k})}{\sum_j \exp(\vect{q}\T\vect{k}_j / \sqrt{d_k})}\, \vect{v}_i ,
 \]
 which is \eqref{eq:nw} with an exponential kernel: each value votes with a weight set by the similarity of its key to
-the query~\cite{tsai2019}. When queries and keys have unit norm, $\exp(\vect{q}\T\vect{k}/\tau)$ is a Gaussian kernel
-in $\norm{\vect{q} - \vect{k}}$ (Exercise~E5). The ``subtract the maximum'' trick above is the same one used in every
-implementation of softmax. What a transformer adds is that keys, queries and values are \emph{learned} functions of the
-input, so the network learns which neighbours should vote.
+the query~\cite{tsai2019}. The keys play the role of the training inputs $\x_i$, the values that of the targets $y_i$.
+Write $\tau = \sqrt{d_k}$ for the temperature. When queries and keys have unit norm,
+$\exp(\vect{q}\T\vect{k}/\tau) = e^{1/\tau} \exp(-\norm{\vect{q} - \vect{k}}^2/(2\tau))$ is proportional to a Gaussian
+kernel of width $\sigma = \sqrt{\tau}$ in $\norm{\vect{q} - \vect{k}}$; the constant $e^{1/\tau}$ cancels in the ratio
+(Question~C3). The ``subtract the maximum'' trick of Section~\ref{sec:lse} is the one used in numerically
+stable softmax implementations. What a transformer adds is that keys, queries and values are \emph{learned}
+functions of the input, so the network learns which neighbours should vote.
 \end{modern}
 
 \section{Kernel density estimation}\label{sec:kde}
 
 For density estimation there are no targets: each training point contributes a small bump of probability, and the
-estimate is their average,
-\[
-  \hat p(\x) = \frac{1}{n}\sum_{i=1}^n K_h(\x - \x_i),
-\]
-where $K_h$ is itself a probability density of width $h$, typically the isotropic Gaussian $\Normal(\x; \x_i, h^2 I)$ of
-Note~2. Because each bump is non-negative and integrates to one, so does $\hat p$. Unlike a histogram, the estimate
-is smooth and does not depend on where bin edges happen to fall. The density panel of Note~1, Figure~1, was drawn this
-way.
+estimate is their average~\cite{rosenblatt1956,parzen1962},
+\begin{equation}\label{eq:kde}
+  \hat p(\x) = \frac{1}{n}\sum_{i=1}^n K_h(\x - \x_i), \qquad K_h(\vect{u}) = \frac{1}{h^d}\, K\!\left(\frac{\vect{u}}{h}\right),
+\end{equation}
+where $K \ge 0$ is a probability density with $\int K = 1$ (the kernel ``shape'') and $h > 0$ its width, the
+\emph{bandwidth}. (For discrete inputs, $K$ is a probability mass function and sums replace the integrals below.) The factor $h^{-d}$ keeps the area equal to one when the bump is stretched by $h$ in each of the $d$
+directions. The standard choice is the Gaussian $K(\vect{u}) = (2\pi)^{-d/2} e^{-\norm{\vect{u}}^2/2}$, for which
+$K_h(\x - \x_i) = \Normal(\x; \x_i, h^2 I)$, the isotropic Gaussian of Note~2, Section~4. The bandwidth $h$ plays the
+role of the width $\sigma$ of Section~\ref{sec:soft}: $K_h(\x - \x_i)$ is $K_\sigma(\x_i, \x)$ with $\sigma = h$, now
+multiplied by its normalising constant $(2\pi h^2)^{-d/2}$. (Do not confuse it with the radius $h$ of the hard window,
+although that window is the special case of a ``box'' kernel.) Unlike Nadaraya--Watson, KDE is not a ratio, so here
+the normalising constant matters.
 
-\begin{figure}[h]
+\paragraph{How KDE relates to the weighted mean} Equation~\eqref{eq:kde} is not an instance of the ratio
+\eqref{eq:weighted}: it is its \emph{denominator} on its own. With weights $w_i(\x) = K\big((\x - \x_i)/h\big)$,
+\[
+  \hat p(\x) = \frac{1}{n h^d} \sum_{i=1}^n w_i(\x) :
+\]
+the total weight that the data place near $\x$, normalised by the number of points and the volume of the window,
+measures how dense the data are there. For the hard window, $K$ is constant on the unit ball and zero outside, and
+$\hat p(\x)$ becomes the number of points within radius $h$ divided by $n$ times the volume of that ball: the
+histogram density of Note~3, Section~1, with the cell centred on the query.
+
+\paragraph{The estimate is a density} Each term is non-negative, so $\hat p \ge 0$. For the area, substitute
+$\vect{u} = (\x - \x_i)/h$ in each term, so that $d\x = h^d\, d\vect{u}$:
+\[
+  \int K_h(\x - \x_i)\, d\x = \int \frac{1}{h^d} K\!\left(\frac{\x - \x_i}{h}\right) d\x
+  = \int K(\vect{u})\, d\vect{u} = 1,
+  \qquad\text{hence}\qquad \int \hat p(\x)\, d\x = \frac{1}{n} \sum_{i=1}^n 1 = 1 .
+\]
+Unlike a histogram (Note~3, Section~1), the estimate is smooth and does not depend on where bin edges happen to fall.
+The density panel of Note~1, Figure~1, was drawn this way. Because $\hat p$ is a mixture of $n$ Gaussians with equal
+weights, it is also easy to \emph{sample} from: pick a training point at random and add Gaussian noise of standard
+deviation $h$ (Note~2, Section~5).
+
+\begin{worked}{a kernel density estimate by hand}
+Data $x_1, \dots, x_4 = 0, 1, 3, 4$ in one dimension, Gaussian kernel, so
+$\hat p(x) = \frac{1}{nh} \sum_i \varphi\big((x - x_i)/h\big)$ with $\varphi(u) = e^{-u^2/2}/\sqrt{2\pi}$. Useful
+values: $\varphi(0) = 0.3989$, $\varphi(0.5) = 0.3521$, $\varphi(1) = 0.2420$, $\varphi(1.5) = 0.1295$,
+$\varphi(2) = 0.0540$, $\varphi(4) = 0.0001$.
+\begin{center}\small
+\begin{tabular}{@{}lllll@{}}
+\toprule
+ & $u_i = (x - x_i)/h$ & $\sum_i \varphi(u_i)$ & $nh$ & $\hat p(x)$ \\
+\midrule
+$x = 1$, $h = 0.5$ & $2,\ 0,\ -4,\ -6$ & $0.4531$ & 2 & $0.227$ \\
+$x = 2$, $h = 0.5$ & $4,\ 2,\ -2,\ -4$ & $0.1082$ & 2 & $0.054$ \\
+$x = 1$, $h = 2$ & $0.5,\ 0,\ -1,\ -1.5$ & $1.1225$ & 8 & $0.140$ \\
+$x = 2$, $h = 2$ & $1,\ 0.5,\ -0.5,\ -1$ & $1.1882$ & 8 & $0.149$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{center}
+\includegraphics[width=0.92\linewidth]{figures/n5_kde_bumps.pdf}
+\captionof{figure}{The estimate of this example as a sum of bumps: each data point (tick) contributes
+$K_h(x - x_i)/n$ (grey), and $\hat p$ (indigo) is their sum. Dots: the values at $x = 1$ and $x = 2$ in the table.}
+\label{fig:kdebumps}
+\end{center}
+With $h = 0.5$ (Figure~\ref{fig:kdebumps}, left) the estimate has two humps, one over the pair $0, 1$ (maximum $0.242$ near $x \approx 0.52$) and one
+over the pair $3, 4$, and a deep valley at $x = 2$ in the gap ($0.227$ at $x = 1$ versus $0.054$ at $x = 2$, a ratio of
+about 4). With $h = 2$ the two values are almost equal, and $x = 2$ is in fact the single maximum of the estimate:
+the gap has been smoothed away. Which picture is right depends on the true density; Section~\ref{sec:bandwidth} shows
+how to let the data decide.
+\end{worked}
+
+\begin{algorithm}[htbp]
+\caption{Gaussian kernel density estimation: log-density and sampling}
+\label{alg:kde}
+\begin{algorithmic}[1]
+\Require data $\x_1, \dots, \x_n \in \R^d$, bandwidth $h > 0$
+\Function{LogDensity}{$\x$}
+  \For{$i = 1, \dots, n$}
+    \State $a_i \gets -\norm{\x - \x_i}^2/(2h^2) - \frac{d}{2}\log(2\pi h^2)$ \Comment{$a_i = \log K_h(\x - \x_i)$}
+  \EndFor
+  \State $a^* \gets \max_i a_i$
+  \State \Return $a^* + \log \sum_i \exp(a_i - a^*) - \log n$ \Comment{log-sum-exp; never $\log 0$}
+\EndFunction
+\Function{Sample}{}
+  \State draw $i$ uniformly from $\{1, \dots, n\}$ and $\vect{\varepsilon} \sim \Normal(\vect{0}, I_d)$
+  \State \Return $\x_i + h\, \vect{\varepsilon}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{runtime}{kernel density estimation (Algorithm~\ref{alg:kde})}
+\emph{Training}: none (store the data, $O(nd)$ memory). \emph{One density evaluation}: $O(nd)$, like one $k$-NN query.
+Evaluating on a grid of $G$ points costs $O(Gnd)$; in one dimension, binning the data and convolving with the kernel
+by the fast Fourier transform reduces this to roughly $O(n + G \log G)$. In any dimension the $G$ evaluations form
+one $G \times n$ distance matrix (one matrix product) followed by element-wise exponentials, ideal for a GPU.
+\emph{One sample}: $O(d)$, independent of $n$.
+\end{runtime}
+
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{figures/kde.pdf}
 \caption{Kernel density estimates (solid) of a two-peaked density with a uniform background (dashed), from $n = 20$
@@ -187,17 +785,179 @@ points (top; ticks mark the data) and $n = 1000$ points (bottom), for three band
 \label{fig:kde}
 \end{figure}
 
+\subsection{Bias, variance and the best bandwidth}\label{sec:kdebias}
+
 The bandwidth $h$ trades bias for variance (Figure~\ref{fig:kde}). A narrow kernel puts a spike on each data point;
-a wide kernel blurs the two peaks into one. More data allow a narrower kernel. For a Gaussian kernel in one dimension
-the normal-reference rule $h = 1.06\,\hat\sigma\, n^{-1/5}$ is a common starting point~\cite{silverman1986}; a more
-reliable choice maximises the log-likelihood of held-out data, or the leave-one-out log-likelihood (Note~4). With the
-best $h$ the mean squared error falls as $n^{-4/5}$ in one dimension --- faster than the $n^{-2/3}$ of histograms ---
-but only as $n^{-4/(d+4)}$ in $d$ dimensions: kernels soften the curse of dimensionality without lifting it.
+a wide kernel blurs the two peaks into one. More data allow a narrower kernel. The two effects can be computed.
+
+\paragraph{The average estimate is a smoothed density} The terms $Z_i = K_h(\x - \X_i)$ in \eqref{eq:kde} are
+independent and identically distributed when the data are, so $\E[\hat p(\x)] = \E[Z_1]$:
+\[
+  \E[\hat p(\x)] = \int K_h(\x - \vect{u})\, p(\vect{u})\, d\vect{u} = (K_h * p)(\x),
+\]
+the \emph{convolution} of the true density with the kernel. Whatever $n$ is, the estimator on average sees $p$
+through a blurred lens of width $h$; it is unbiased only in the limit $h \to 0$, where $K_h$ approaches a delta
+function.
+
+\paragraph{Size of the bias} In one dimension, substitute $u = x - ht$ (so $du = -h\,dt$ and
+$K_h(ht) = K(t)/h$). The minus sign is absorbed by swapping the limits: $u$ running from $-\infty$ to $+\infty$ means
+$t$ running from $+\infty$ to $-\infty$, and turning the integral back to increasing $t$ costs another minus sign.
+Then expand $p$ in a Taylor series around $x$:
+\[
+  \E[\hat p(x)] = \int K(t)\, p(x - ht)\, dt
+  = \int K(t) \Big[ p(x) - ht\, p'(x) + \tfrac{1}{2} h^2 t^2 p''(x) - \dots \Big] dt .
+\]
+Use $\int K = 1$, $\int t K(t)\, dt = 0$ for a symmetric kernel, and write $\sigma_K^2 = \int t^2 K(t)\, dt$ (equal to 1
+for the Gaussian):
+\[
+  \operatorname{bias}(x) = \E[\hat p(x)] - p(x) \approx \tfrac{1}{2}\, h^2 \sigma_K^2\, p''(x) .
+\]
+At a peak $p'' < 0$ and the estimate is too low; in a valley $p'' > 0$ and it is too high. Peaks are flattened and
+valleys filled in, by an amount growing like $h^2$ (Figure~\ref{fig:kdebiasloo}, left: the peak of height $0.54$ is
+reduced on average to $0.44$ with $h = 0.25$ and to $0.29$ with $h = 0.6$).
+
+\paragraph{Size of the variance} Since $\hat p$ is an average of $n$ independent terms,
+$\Var[\hat p(x)] = \Var(Z_1)/n \le \E[Z_1^2]/n$, and with the same substitution
+\[
+  \E[Z_1^2] = \int K_h(x - u)^2 p(u)\, du = \frac{1}{h} \int K(t)^2 p(x - ht)\, dt \approx \frac{p(x)\, R(K)}{h},
+  \qquad R(K) = \int K(t)^2\, dt .
+\]
+The inequality drops $(\E Z_1)^2/n \approx p(x)^2/n$, which is smaller than $p(x)R(K)/(nh)$ by a factor of order
+$h$. Hence $\Var[\hat p(x)] \approx p(x) R(K)/(nh)$: few points fall under a narrow kernel, and their number
+fluctuates.
+
+\paragraph{The best bandwidth} The mean squared error at $x$ is bias squared plus variance (Note~4, Section~6),
+\[
+  \mathrm{MSE}(h) \approx \tfrac{1}{4} \sigma_K^4\, p''(x)^2\, h^4 + \frac{p(x)\, R(K)}{n h} = A h^4 + \frac{B}{nh}.
+\]
+A simple derivative finds the minimum:
+\[
+  \frac{d\, \mathrm{MSE}}{dh} = 4 A h^3 - \frac{B}{n h^2} = 0 \quad\Longrightarrow\quad
+  h^* = \left( \frac{B}{4 A n} \right)^{1/5} \propto n^{-1/5},
+\]
+and inserting $h^*$ gives $\mathrm{MSE}(h^*) \propto n^{-4/5}$, because both terms scale alike:
+$A h^{*4} \propto n^{-4/5}$ and $B/(n h^*) \propto n^{-1} \cdot n^{1/5} = n^{-4/5}$. The bandwidth must shrink as $n$
+grows, to remove the bias, but slowly, so that $nh \to \infty$ and the variance vanishes too. The rate $n^{-4/5}$ is
+faster than the $n^{-2/3}$ of histograms in one dimension (Note~3, Section~1). Integrating over $x$ and assuming that
+$p$ is Gaussian with standard deviation $\sigma_p$ (the spread of the \emph{data}, not a kernel width) gives, for a
+Gaussian kernel, $h^* = (4/3)^{1/5} \sigma_p\, n^{-1/5} \approx 1.06\,\sigma_p\, n^{-1/5}$, the
+\emph{normal-reference rule} of Silverman~\cite{silverman1986}; in practice $\sigma_p$ is replaced by the sample
+standard deviation $\hat\sigma_p$.
+
+\paragraph{In $d$ dimensions} The bias is still of order $h^2$, but a kernel of width $h$ covers a volume $h^d$, so the
+variance becomes $B/(nh^d)$. Repeating the derivative for $Ah^4 + B/(nh^d)$ gives $h^* \propto n^{-1/(d+4)}$ and
+$\mathrm{MSE} \propto n^{-4/(d+4)}$. Ignoring constants, the accuracy that $n = 100$ points give in one dimension
+($100^{-4/5} \approx 0.025$) requires in $d = 10$ that $n^{-4/14} = 100^{-4/5}$, i.e.\
+$n = 100^{(4/5)(14/4)} = 100^{2.8} \approx 4 \times 10^5$ points. Kernels soften the
+curse of dimensionality without lifting it.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/n5_kde_bias_loo.pdf}
+\caption{Left: the true density of Figure~\ref{fig:kde} (dashed) and the average KDE, $K_h * p$, for two bandwidths:
+peaks are lowered and valleys raised. Right: mean log-likelihood of $n = 100$ points as a function of $h$, with each
+point included in its own estimate (grey, increases without limit as $h \to 0$) and left out (indigo, maximal at
+$h \approx 0.31$, dotted line); the dashed line marks the normal-reference rule, $h \approx 0.58$.}
+\label{fig:kdebiasloo}
+\end{figure}
+
+\subsection{Choosing the bandwidth from the data}\label{sec:bandwidth}
+
+The normal-reference rule is a quick starting point but assumes a single Gaussian bump; for the two-peaked density
+of Figure~\ref{fig:kdebiasloo} it gives $h \approx 0.58$, almost twice the best value, and blurs the peaks. A data-driven
+choice uses the principle of maximum likelihood (Note~2, Section~2), with care.
+
+\paragraph{Why the plain likelihood fails} Maximising the log-likelihood of the training points themselves,
+$\sum_i \log \hat p(x_i)$, does not work. The estimate at $x_i$ contains the term of $x_i$ itself, so in one dimension
+\[
+  \hat p(x_i) = \frac{1}{nh} \sum_{j} \varphi\!\left(\frac{x_i - x_j}{h}\right) \ge \frac{\varphi(0)}{nh},
+  \qquad\text{hence}\qquad \sum_{i=1}^n \log \hat p(x_i) \ge n \log \frac{\varphi(0)}{nh} \xrightarrow[h \to 0]{} +\infty .
+\]
+The likelihood is maximised by a spike on every training point, the extreme of overfitting (Figure~\ref{fig:kdebiasloo},
+right, grey curve).
+
+\paragraph{Leave-one-out likelihood} Evaluate each point with the estimate built from the \emph{other} $n-1$ points,
+\[
+  \hat p_{-i}(\x_i) = \frac{1}{n-1} \sum_{j \ne i} K_h(\x_i - \x_j), \qquad
+  L_{\mathrm{LOO}}(h) = \sum_{i=1}^n \log \hat p_{-i}(\x_i),
+\]
+and choose $h^* = \argmax_h L_{\mathrm{LOO}}(h)$. This is leave-one-out cross-validation (Note~4, Section~4) with the
+negative log-likelihood as the loss. Now a tiny $h$ is punished: $\hat p_{-i}(\x_i)$ is nearly zero unless another
+point sits right next to $\x_i$, and its logarithm tends to $-\infty$. A huge $h$ is punished too, because it spreads
+the probability thinly everywhere. The maximum lies in between. (If two data points coincide, as with rounded
+measurements, $L_{\mathrm{LOO}}(h) \to +\infty$ as $h \to 0$ again: remove duplicates, add jitter below the
+measurement resolution, or restrict $h$ from below.)
+
+\begin{worked}{leave-one-out bandwidth for four points}
+Data $0, 1, 3, 4$ as before. With $h = 1$, leaving out $x_1 = 0$, the other points are at distances $1, 3, 4$:
+\[
+  \hat p_{-1}(0) = \tfrac{1}{3}\big[\varphi(1) + \varphi(3) + \varphi(4)\big] = \tfrac{1}{3}(0.2420 + 0.0044 + 0.0001)
+  = 0.0822 ,
+\]
+and leaving out $x_2 = 1$ (distances $1, 2, 3$) gives $\tfrac{1}{3}(0.2420 + 0.0540 + 0.0044) = 0.1001$. By symmetry,
+$x_4$ behaves like $x_1$ and $x_3$ like $x_2$, so $L_{\mathrm{LOO}}(1) = 2\log 0.0822 + 2\log 0.1001 = -9.60$. The
+same computation for other bandwidths (each term now divided by $h$):
+\begin{center}\small
+\begin{tabular}{@{}ccccc@{}}
+\toprule
+$h$ & $\hat p_{-1}(0) = \hat p_{-4}(4)$ & $\hat p_{-2}(1) = \hat p_{-3}(3)$ & $L_{\mathrm{LOO}}(h)$ &
+$\sum_i \log \hat p(x_i)$, self included \\
+\midrule
+0.5 & 0.0360 & 0.0361 & $-13.29$ & $-5.94$ \\
+1 & 0.0822 & 0.1001 & $-9.60$ & $-7.14$ \\
+2 & 0.0893 & 0.1206 & $\mathbf{-9.06}$ & $-8.22$ \\
+4 & 0.0775 & 0.0867 & $-10.01$ & $-9.79$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Leave-one-out picks $h = 2$ among the candidates (a fine grid gives $h^* \approx 1.97$), while the self-included
+likelihood keeps improving as $h$ decreases, as the bound above predicts. The normal-reference rule, with the sample
+standard deviation $\hat\sigma_p = 1.83$, gives $1.06 \times 1.83 \times 4^{-1/5} = 1.47$, the same order.
+\end{worked}
+
+\begin{algorithm}[htbp]
+\caption{Bandwidth selection by leave-one-out log-likelihood}
+\label{alg:loo}
+\begin{algorithmic}[1]
+\Require data $\x_1, \dots, \x_n \in \R^d$; candidate bandwidths $h_1, \dots, h_H$
+\State $D_{ij} \gets \norm{\x_i - \x_j}^2$ for all $i, j$ \Comment{once, $O(n^2 d)$}
+\For{$\ell = 1, \dots, H$}
+  \State $L_\ell \gets 0$
+  \For{$i = 1, \dots, n$}
+    \State $a_j \gets -D_{ij}/(2h_\ell^2) - \frac{d}{2}\log(2\pi h_\ell^2)$ for all $j \ne i$ \Comment{$\log K_{h}(\x_i - \x_j)$}
+    \State $a^* \gets \max_{j \ne i} a_j$
+    \State $L_\ell \gets L_\ell + a^* + \log \sum_{j \ne i} \exp(a_j - a^*) - \log(n-1)$ \Comment{$\log \hat p_{-i}(\x_i)$}
+  \EndFor
+\EndFor
+\State \Return $h_{\ell^*}$ with $\ell^* = \argmax_\ell L_\ell$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{runtime}{leave-one-out bandwidth selection (Algorithm~\ref{alg:loo})}
+$O(n^2 d)$ for the pairwise distances, then $O(n^2)$ per candidate bandwidth: $O(n^2 d + Hn^2)$ in total. Storing
+$D$ costs $O(n^2)$ memory --- 800\,MB in double precision for $n = 10^4$ --- so for larger $n$ the rows are recomputed
+for every candidate ($O(Hn^2 d)$ time, $O(nd)$ memory), or the likelihood is evaluated on a random subset of points.
+Since $L_{\mathrm{LOO}}(h)$ is usually smooth with a single maximum, a coarse logarithmic grid of 10--20 values of $h$
+followed by a refinement suffices. All candidate bandwidths reuse the same matrix $D$, and each is a batch of
+element-wise operations on it, which vectorises well on a GPU.
+\end{runtime}
+
+\paragraph{From densities to classifiers} Estimating one density per class with a KDE and combining the
+estimates with class priors through Bayes' rule gives a classifier (Note~6, Section~2). With $n_c$ points in class
+$c$, one common bandwidth $h = \sigma$ and priors equal to the class frequencies $n_c/n$,
+\[
+  \hat P(c \mid \x) \propto \frac{n_c}{n} \cdot \frac{1}{n_c} \sum_{i : y_i = c} K_h(\x - \x_i)
+  = \frac{1}{n} \sum_{i : y_i = c} K_h(\x - \x_i) ,
+\]
+and after normalising over $c$ the constants $1/n$ and $(2\pi h^2)^{-d/2}$ cancel: the result is the score $s_c(\x)$
+of the Gaussian Parzen classifier of Section~\ref{sec:soft}.
 
 \begin{physics}{unbinned shapes}
 When a particle-physics analysis needs the distribution of an observable for signal or background, but has only a
 finite set of simulated events, kernel estimation provides a smooth, unbinned template; adaptive kernels whose width
-grows in the tails, where events are scarce, are standard in the field~\cite{cranmer2001}.
+grows in the tails, where events are scarce, are widely used~\cite{cranmer2001}. The adaptive width answers
+exactly the trade-off above: the relative error of the estimate, $\sqrt{\Var[\hat p(x)]}/p(x) \approx
+\sqrt{R(K)/(nh\,p(x))}$, is largest where $p$ is small, and a wider kernel there brings it down.
 \end{physics}
 
 \section{Distances}\label{sec:distances}
@@ -209,12 +969,16 @@ $\vect{a}, \vect{b}, \vect{c}$:
 \item symmetry: $d(\vect{a}, \vect{b}) = d(\vect{b}, \vect{a})$;
 \item triangle inequality: $d(\vect{a}, \vect{c}) \le d(\vect{a}, \vect{b}) + d(\vect{b}, \vect{c})$.
 \end{enumerate}
+The triangle inequality is what makes \emph{metric} search structures (ball trees, vantage-point trees) work: it lets
+an algorithm conclude that a point is far from the query without computing the distance, from the distances to a
+third point. The $k$-d tree of Section~\ref{sec:kdtree} needs less: only the fact that one coordinate difference never
+exceeds the Euclidean distance.
 
 \begin{minipage}[c]{0.6\linewidth}
 \paragraph{Minkowski distances} $d_p(\vect{a}, \vect{b}) = \big(\sum_j |a_j - b_j|^p\big)^{1/p}$ for $p \ge 1$. The
 cases $p = 1$ (Manhattan), $p = 2$ (Euclidean) and $p \to \infty$ ($\max_j |a_j - b_j|$) are the common ones. Their
-unit balls (Figure~\ref{fig:balls}) show what each considers ``equally far''. For $p < 1$ the formula still measures
-dissimilarity, but the triangle inequality fails (Exercise~E4).
+unit balls (Figure~\ref{fig:balls}) show what each considers ``equally far''. Always
+$d_\infty \le d_2 \le d_1$: the larger $p$, the more the distance is dominated by the largest coordinate difference.
 \end{minipage}\hfill
 \begin{minipage}[c]{0.36\linewidth}
 \centering
@@ -223,23 +987,185 @@ dissimilarity, but the triangle inequality fails (Exercise~E4).
 \label{fig:balls}
 \end{minipage}
 
-\paragraph{Similarities for other data} For embeddings, the \emph{cosine similarity} $\vect{a}\T\vect{b} /
-(\norm{\vect{a}}\norm{\vect{b}})$ ignores length and compares direction; for binary fingerprints, such as the
-substructure bit vectors used to search chemical databases, the Tanimoto (Jaccard) similarity
-$|\vect{a} \wedge \vect{b}| / |\vect{a} \vee \vect{b}|$ counts shared bits relative to bits set in either vector.
+\paragraph{When $p < 1$} The formula still measures dissimilarity, but it is no longer a metric. Take
+$\vect{a} = (0,0)$, $\vect{b} = (1,0)$, $\vect{c} = (1,1)$. Then $d_p(\vect{a}, \vect{b}) = d_p(\vect{b}, \vect{c}) = 1$
+for every $p$, while
+\[
+  d_p(\vect{a}, \vect{c}) = (1^p + 1^p)^{1/p} = 2^{1/p} .
+\]
+The triangle inequality requires $2^{1/p} \le 2$, i.e.\ $1/p \le 1$, i.e.\ $p \ge 1$. For $p = 1/2$ the detour through
+$\vect{b}$ has length 2 while the direct route has length $2^2 = 4$. Geometrically, the ``unit ball'' for $p < 1$
+(dotted in Figure~\ref{fig:balls}) is not convex: it is pinched towards the axes.
+
+\paragraph{Similarities for other data} For embeddings and documents, the cosine similarity of Note~1, Section~6,
+compares directions; as a neighbourhood measure one uses the \emph{cosine distance} $1 - \cos$, which is not a metric
+(it vanishes for $\vect{b} = 2\vect{a}$ and can violate the triangle inequality). For binary fingerprints, such as
+the substructure bit vectors used to search chemical databases, the Tanimoto (Jaccard) similarity
+$|\vect{a} \wedge \vect{b}| / |\vect{a} \vee \vect{b}|$ counts shared bits relative to bits set in either vector: for
+$\vect{a} = 11010$ and $\vect{b} = 10110$ two bits are shared and four are set in either, giving $2/4 = 0.5$. One minus
+the Tanimoto similarity is a metric on bit vectors.
+
+\needspace{10\baselineskip}
+\begin{worked}{four distances between the same two vectors}
+Let $\vect{a} = (1, 2, 2)$ and $\vect{b} = (4, 0, 3)$, so $\vect{a} - \vect{b} = (-3, 2, -1)$.
+\begin{itemize}
+\item $L_1$: $3 + 2 + 1 = 6$.
+\item $L_2$: $\sqrt{9 + 4 + 1} = \sqrt{14} \approx 3.74$.
+\item $L_\infty$: $\max(3, 2, 1) = 3$.
+\item Cosine: $\norm{\vect{a}} = 3$, $\norm{\vect{b}} = 5$, $\vect{a}\T\vect{b} = 4 + 0 + 6 = 10$, so the cosine
+similarity $\vect{a}\T\vect{b}/(\norm{\vect{a}}\,\norm{\vect{b}})$ is $10/15 = 2/3$ and the cosine distance
+$1 - 2/3 = 1/3$.
+\end{itemize}
+The ordering $3 \le 3.74 \le 6$ illustrates $d_\infty \le d_2 \le d_1$. Replacing $\vect{b}$ by $10\vect{b}$
+leaves the cosine similarity at $2/3$ but changes all three Minkowski distances (the Euclidean one becomes
+$\sqrt{2309} \approx 48.1$): cosine compares directions only.
+\end{worked}
 
 \paragraph{When Euclidean distance misleads} Three problems are common, each with a standard remedy.
 \begin{itemize}
 \item \emph{Units and scales.} A feature measured in GeV and another in radians contribute to the distance in
-proportions set by the units. Standardise each feature with the mean and standard deviation of the training set
-(Note~1, Section~5).
-\item \emph{Correlations and irrelevant features.} Correlated features count the same information twice, and
-irrelevant ones add noise to every distance. The Mahalanobis distance of Note~2 corrects for correlations; feature
-selection or a learned projection removes irrelevant directions.
-\item \emph{Invariances.} Two images of the same digit, shifted by two pixels, can be farther apart in pixel space
-than images of different digits. \emph{Tangent distance} handles this by minimising the distance over small
-transformations of one of the images~\cite{simard1993}.
+proportions set by the units. Standardise each feature, $z_j = (x_j - \hat\mu_j)/\hat\sigma_j$, with the mean
+$\hat\mu_j$ and standard deviation $\hat\sigma_j$ computed on the training set only and then applied unchanged to
+validation, test and future data (Note~1, Section~5; Algorithm~\ref{alg:standardise}).
+\item \emph{Correlations and irrelevant features.} Correlated features count the same information twice --- a
+duplicated feature doubles its weight in $\norm{\cdot}^2$ --- and irrelevant ones add noise to every distance. The
+Mahalanobis distance of Note~2, Section~4, corrects for correlations; feature selection or a learned projection
+removes irrelevant directions.
+\item \emph{Invariances.} Two calorimeter images of the same narrow jet, one displaced by a single cell, can be
+farther apart in pixel space than images of two different jets: the energy deposits no longer overlap. Invariant
+features (Note~1, Section~3) or a distance that ignores the transformation are needed; Section~\ref{sec:tangent}
+constructs such a distance.
 \end{itemize}
+
+\begin{algorithm}[htbp]
+\caption{Feature standardisation: fit on the training set, apply everywhere (an instance of the \textsc{Fit}/\textsc{Apply} step of Note~1, Section~5)}
+\label{alg:standardise}
+\begin{algorithmic}[1]
+\Function{Fit}{$\x_1, \dots, \x_n$} \Comment{training inputs only}
+  \For{$j = 1, \dots, d$}
+    \State $\hat\mu_j \gets \frac{1}{n} \sum_i x_{ij}$; \ $\hat\sigma_j \gets \big(\frac{1}{n} \sum_i (x_{ij} - \hat\mu_j)^2\big)^{1/2}$
+    \State \textbf{if} $\hat\sigma_j = 0$ \textbf{then} $\hat\sigma_j \gets 1$ \Comment{constant feature: avoid $0/0$}
+  \EndFor
+  \State \Return $\hat{\vmu}, \hat{\vect{\sigma}}$
+\EndFunction
+\Function{Apply}{$\x$; $\hat{\vmu}, \hat{\vect{\sigma}}$} \Comment{training, validation, test and new inputs alike}
+  \State \Return $\vect{z}$ with $z_j = (x_j - \hat\mu_j)/\hat\sigma_j$, $j = 1, \dots, d$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{runtime}{standardisation (Algorithm~\ref{alg:standardise})}
+\emph{Fit}: two passes over the training data, $O(nd)$ time. \emph{Apply}: $O(d)$ per vector (one subtraction and
+one division per feature). \emph{Memory}: $O(d)$ for $\hat{\vmu}$ and $\hat{\vect{\sigma}}$. Negligible next to
+any $k$-NN query, which is why there is no excuse to skip it.
+\end{runtime}
+
+\needspace{10\baselineskip}
+\begin{worked}{the nearest neighbour depends on the units}
+Two features: an energy $E$ and an angle $\theta$. Query $\x = (50\ \mathrm{GeV}, 0\ \mathrm{rad})$, candidates
+$\x_A = (52\ \mathrm{GeV}, 1.5\ \mathrm{rad})$ and $\x_B = (47\ \mathrm{GeV}, 0.1\ \mathrm{rad})$.
+\begin{itemize}
+\item Energy in GeV: $d(\x, \x_A) = \sqrt{2^2 + 1.5^2} = 2.5$ and $d(\x, \x_B) = \sqrt{3^2 + 0.1^2} = 3.002$.
+Nearest: A.
+\item Energy in TeV: $d(\x, \x_A) = \sqrt{0.002^2 + 1.5^2} \approx 1.500$ and
+$d(\x, \x_B) = \sqrt{0.003^2 + 0.1^2} \approx 0.100$. Nearest: B.
+\item Standardised, with training-set standard deviations $10\ \mathrm{GeV}$ and $1\ \mathrm{rad}$: the differences
+become $(0.2, 1.5)$ and $(-0.3, 0.1)$, so $d = 1.513$ and $0.316$. Nearest: B.
+\end{itemize}
+A change of units, which carries no physical information, changed the answer. Standardisation makes the result
+independent of units; whether it weights the features \emph{correctly} is a separate question, answered by validation
+or by learning the metric.
+\end{worked}
+
+\subsection{Invariances and tangent distance}\label{sec:tangent}
+
+\paragraph{Patterns live on low-dimensional manifolds} Let a pattern $\vect{a} \in \R^d$ (an image, a signal) undergo a
+transformation with $r$ continuous parameters $\vect{\alpha} \in \R^r$ --- a shift across the detector, a rotation, a
+change of scale or of line thickness --- written $F(\vect{a}; \vect{\alpha})$, with $F(\vect{a}; \vect{0}) =
+\vect{a}$. As $\vect{\alpha}$ varies, the transformed patterns trace an $r$-dimensional curved surface, a
+\emph{manifold}, inside the $d$-dimensional pixel space. That real data lie near such low-dimensional sets is the
+reason learning in high dimension is possible at all (Note~3, Section~4). It is also the reason Euclidean distance
+fails: it measures the straight chord between two points of $\R^d$ and ignores whether one can be moved into the other
+along its manifold. The distance we want is between the \emph{manifolds} of two patterns, $\min_{\vect{\alpha},
+\vect{\beta}} \norm{F(\vect{a}; \vect{\alpha}) - F(\vect{b}; \vect{\beta})}$, but that is a non-linear minimisation
+for every pair of points.
+
+\paragraph{Tangent distance} Simard, LeCun and Denker~\cite{simard1993} replace each manifold by its tangent plane at
+the pattern. A first-order Taylor expansion in $\vect{\alpha}$ gives
+\[
+  F(\vect{a}; \vect{\alpha}) \approx \vect{a} + T\vect{\alpha}, \qquad
+  T = \big[\vect{t}_1, \dots, \vect{t}_r\big] \in \R^{d \times r}, \qquad
+  \vect{t}_\ell = \frac{\partial F(\vect{a}; \vect{\alpha})}{\partial \alpha_\ell}\bigg|_{\vect{\alpha} = \vect{0}} ,
+\]
+where each \emph{tangent vector} $\vect{t}_\ell$ is the change of the pattern per unit of the $\ell$-th parameter. In
+practice it is a finite difference, $\vect{t}_\ell \approx (F(\vect{a}; \varepsilon \vect{e}_\ell) - \vect{a})/\varepsilon$;
+for a shift of a sampled signal by $s$ pixels to the right, $a_j(s) = a_{j - s}$, the central difference gives
+$t_j = (a_{j-1} - a_{j+1})/2$ (zero outside the signal). The \emph{one-sided tangent distance} from $\vect{a}$ to
+$\vect{x}$ is
+\[
+  d_{\mathrm{tan}}(\vect{a}, \x) = \min_{\vect{\alpha} \in \R^r} \norm{\vect{a} + T\vect{\alpha} - \x} .
+\]
+The vector $\vect{a} + T\vect{\alpha}$ is linear in $\vect{\alpha}$, so this is a least-squares problem with $r$
+unknowns (Note~8, Section~2): setting the gradient $2T\T(\vect{a} + T\vect{\alpha} - \x)$ to zero gives the normal
+equations
+\[
+  (T\T T)\, \vect{\alpha}^* = T\T (\x - \vect{a}), \qquad\text{and for one tangent vector}\qquad
+  \alpha^* = \frac{\vect{t}\T(\x - \vect{a})}{\vect{t}\T\vect{t}} .
+\]
+The \emph{two-sided} version also moves $\x$ along its own tangent plane, $\min_{\vect{\alpha}, \vect{\beta}}
+\norm{\vect{a} + T_{\vect{a}}\vect{\alpha} - \x - T_{\x}\vect{\beta}}$, with $2r$ unknowns; it is symmetric in its
+two arguments, which the one-sided version is not. Neither is a metric in the sense of the three axioms above (two
+different patterns can be at distance zero, and the triangle inequality can fail), and both are trustworthy only for \emph{small} transformations, where the plane is
+close to the manifold; images are often blurred slightly first so that the finite differences are meaningful.
+
+\begin{worked}{tangent distance for a shifted signal}
+Two training signals of length 5: a ``wide'' pulse $\vect{a} = (0, 1, 2, 1, 0)$ and a ``narrow'' spike
+$\vect{z} = (0, 0, 0, 2, 0)$. The query $\x = (0, 0, 1, 2, 1)$ is the wide pulse moved one sample to the right.
+\begin{itemize}
+\item Euclidean: $\x - \vect{a} = (0, -1, -1, 1, 1)$, so $\norm{\x - \vect{a}} = \sqrt{4} = 2$; $\x - \vect{z} =
+(0, 0, 1, 0, 1)$, so $\norm{\x - \vect{z}} = \sqrt{2} = 1.41$. 1-NN says ``narrow'': wrong.
+\item Tangent vector of $\vect{a}$ for a shift, $t_j = (a_{j-1} - a_{j+1})/2$: $\vect{t} = (-0.5, -1, 0, 1, 0.5)$.
+Then $\vect{t}\T\vect{t} = 2.5$ and $\vect{t}\T(\x - \vect{a}) = 0 + 1 + 0 + 1 + 0.5 = 2.5$, so $\alpha^* = 1$: the
+best move is one sample to the right, as it should be. The residual is $\vect{a} + \vect{t} - \x =
+(-0.5, 0, 1, 0, -0.5)$, so $d_{\mathrm{tan}}(\vect{a}, \x) = \sqrt{1.5} = 1.22$.
+\item Tangent vector of $\vect{z}$: $(0, 0, -1, 0, 1)$, orthogonal to $\x - \vect{z}$, so $\alpha^* = 0$ and
+$d_{\mathrm{tan}}(\vect{z}, \x) = 1.41$: shifting the spike does not help.
+\end{itemize}
+With tangent distance the query is nearer the wide pulse ($1.22 < 1.41$), and 1-NN is right. The residual is not zero
+although $\x$ \emph{is} an exact shift of $\vect{a}$: a one-sample shift is not small for this short signal, and the
+tangent plane is only a first-order approximation of the manifold.
+\end{worked}
+
+\begin{algorithm}[htbp]
+\caption{Nearest neighbour with one-sided tangent distance}
+\label{alg:tangent}
+\begin{algorithmic}[1]
+\Require training points $\x_1, \dots, \x_n \in \R^d$, each with its tangent matrix $T_i \in \R^{d \times r}$
+\Function{Prepare}{} \Comment{once, after the tangent vectors are computed}
+  \For{$i = 1, \dots, n$}
+    \State $G_i \gets T_i\T T_i$ and its Cholesky factor \Comment{$O(dr^2 + r^3)$; add $\epsilon I$ if singular}
+  \EndFor
+\EndFunction
+\Function{TanDist}{$i, \x$}
+  \State $\vect{g} \gets T_i\T(\x - \x_i)$ \Comment{$O(dr)$}
+  \State solve $G_i \vect{\alpha} = \vect{g}$ with the stored factor \Comment{$O(r^2)$}
+  \State \Return $\norm{\x_i + T_i\vect{\alpha} - \x}$ \Comment{$O(dr)$}
+\EndFunction
+\Function{NearestTan}{$\x$}
+  \State \Return $\argmin_i \Call{TanDist}{i, \x}$ \Comment{or the $k$ smallest, as in Algorithm~\ref{alg:knn}}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{runtime}{tangent distance (Algorithm~\ref{alg:tangent})}
+Notation: $r$ transformations (tangent vectors per point). \emph{Training}: computing the tangent vectors needs $r$
+transformed copies of each point, $O(ndr)$ if a transformation costs $O(d)$; \textsc{Prepare} adds
+$O(n(dr^2 + r^3))$. \emph{Memory}: $O(ndr)$ for the tangents (with the data, $r + 1$ times the raw data) plus $O(nr^2)$ for the
+factors. \emph{Prediction per query}: $O(n(dr + r^2))$, about $r$ times a Euclidean query. The two-sided version
+depends on the query's own tangents, so its $2r \times 2r$ system must be formed and solved for every pair:
+$O(n(dr^2 + r^3))$ per query. A common speed-up is to rank all points by the cheap Euclidean distance first and to
+compute the tangent distance only for the few hundred nearest.
+\end{runtime}
 
 \begin{modern}{learning the metric}
 Today the distance is usually learned. Contrastive methods train a network so that two transformed views of the same
@@ -253,57 +1179,214 @@ then works well for $k$-NN, retrieval and clustering.
 Komiske, Metodiev and Thaler defined the distance between two collider events as the minimal ``work'' needed to
 rearrange one event's energy flow into the other's --- an optimal-transport, or earth mover's, distance --- which
 respects the physical requirement that soft or collinear emissions should change it only slightly~\cite{komiske2019}.
-With this metric, a $k$-NN classifier on jets performs competitively, and geometric quantities of the space of events
+With this metric, even a simple $k$-NN classifier separates jet types well, and geometric quantities of the space of events
 become measurable. Choosing the distance is where the physics enters.
 \end{physics}
 
+\section{Neighbourhood methods at a glance}\label{sec:glance}
+
+Table~\ref{tab:glance} collects the costs derived above. All methods share the same profile --- no training, $O(nd)$
+memory, prediction linear in $n$ --- and differ in how the neighbourhood is defined and in what extra structure
+(a tree, an index) is bought to speed up the search.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Hyperparameters and costs of the methods of this note; $n$ examples, $d$ features, $m$ classes, $k_{\max}$
+candidate values of $k$, $H$ candidate bandwidths, $r$ tangent vectors per training point.}
+\label{tab:glance}
+\begin{tabular}{@{}L{0.22\linewidth}L{0.17\linewidth}L{0.18\linewidth}L{0.19\linewidth}L{0.13\linewidth}@{}}
+\toprule
+Method & Hyperparameters & Training & Prediction per query & Memory \\
+\midrule
+$k$-NN, brute force (Alg.~\ref{alg:knn}) & $k$, distance & none & $O(nd + k\log k + m)$ & $O(nd)$ \\
+$k$-NN with a $k$-d tree (Alg.~\ref{alg:kdtree}) & $k$, distance, leaf size & $O(n \log n)$ & about $O(d\log n)$ for small $d$; up to $O(nd)$ & $O(nd)$ $+\,O(n)$ tree \\
+$k$-NN, approximate index (Alg.~\ref{alg:greedy}) & $k$, distance, index settings & about $O(n \log n)$ distances & about $O(d \log n)$, approximate & $O(nd)$ or codes, $+$ links \\
+$k$-NN, tangent distance (Alg.~\ref{alg:tangent}) & $k$, transformations & $O(n(dr^2 + r^3))$ & $O(n(dr + r^2))$ & $O(ndr)$ \\
+Hard Parzen window (Alg.~\ref{alg:hard}) & radius $h$, distance & none & $O(nd + m)$ & $O(nd)$ \\
+Gaussian Parzen, Nadaraya--Watson (Alg.~\ref{alg:parzen}) & width $\sigma$ & none & $O(nd + m)$ & $O(nd)$ \\
+KDE (Alg.~\ref{alg:kde}) & bandwidth $h$ & none & $O(nd)$; sampling $O(d)$ & $O(nd)$ \\
+\midrule
+Choose $k$ by leave-one-out (Alg.~\ref{alg:knnloo}) & $k_{\max}$ & $O(n^2 d + nk_{\max} \log k_{\max})$ & --- & $O(nd)$ \\
+Choose $h$ by leave-one-out (Alg.~\ref{alg:loo}) & $h_1, \dots, h_H$ & $O(n^2 d + Hn^2)$ & --- & $O(n^2)$ for $D$, or $O(nd)$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\needspace{12\baselineskip}
 \begin{keyidea}[Summary]
 $k$-NN and Parzen windows predict by a weighted vote of training examples, with weights given by neighbourhood
-membership or by a kernel; the same formula serves regression, classification and, without targets, density
-estimation. They need no training, are consistent as $n \to \infty$, and have one main hyperparameter --- $k$ or the
-width --- that trades bias for variance. Prediction costs $O(nd)$ per query unless approximate search is used. Their
-weak point is the distance: it must reflect the problem's units, correlations and invariances, which is why modern
-systems learn the representation and then use simple neighbourhood methods on top of it.
+membership or by a kernel; the same formula --- the weighted mean that minimises a weighted squared error --- serves
+regression and classification, and its denominator, the total weight near the query, normalised by $n$ and the window
+volume, is the kernel density estimate. They need no training, are consistent as
+$n \to \infty$ provided the neighbourhood shrinks slowly enough ($k \to \infty$ with $k/n \to 0$, or $h \to 0$ with
+$nh^d \to \infty$), whereas 1-NN only reaches at most twice the Bayes error, and they have one main hyperparameter --- $k$, the radius or the bandwidth --- that trades bias for
+variance; for KDE the bias is $K_h * p - p \approx \tfrac{1}{2}h^2 \sigma_K^2 p''$ and the variance
+$\approx p R(K)/(nh)$, giving $h^* \propto n^{-1/5}$, and leave-one-out (never the plain training likelihood) selects
+$k$ or $h$ from data. Prediction costs $O(nd)$ per query unless a tree (low $d$) or an approximate index (high $d$)
+is used, and the log-sum-exp trick keeps kernel weights finite. Their weak point is the distance: it must reflect the
+problem's units, correlations and invariances (standardisation, Mahalanobis distance, tangent distance), which is
+why modern systems learn the representation and then use
+simple neighbourhood methods on top of it.
 \end{keyidea}
 
-\begin{exercises}
-\item Show that the 1-NN decision boundary between two training points of different classes lies on their
-perpendicular bisector. Sketch the Voronoi cells and the boundary for the four points $(0,0)$, $(2,0)$, $(0,2)$,
-$(2,2)$ labelled $+, -, -, +$.
-\item Implement \texttt{knn\_classify} and generate data of your own with two interleaved classes. Choose $k$ by
-5-fold cross-validation and plot the validation error against $k$. How does the selected $k$ change when you double
-$n$?
-\item Show that the kernel density estimate integrates to one, and that $\E[\hat p(\x)] = \int K_h(\x - \vect{u})\,
-p(\vect{u})\, d\vect{u}$. Conclude that for fixed $h$ the estimate stays biased however large $n$ is, and explain why
-$h$ must decrease with $n$, but not too fast.
-\item Find three points in $\R^2$ for which $d_{1/2}$ violates the triangle inequality.
+\begin{questions}
+\begin{conceptual}
+\item $k$-NN is called a ``lazy'' or non-parametric method. Explain what is stored after training, what training
+costs, and why predicting one query is expensive compared with a model that stores only a fixed vector
+$\vect{w} \in \R^d$ and predicts $\vect{w}\T\x$ at cost $O(d)$.
+\item What is the training error of 1-NN on a dataset in which no input appears twice? Why is this number useless
+for choosing $k$, and what should be used instead?
+\item Why can leave-one-out for $k$-NN produce the validation error for every $k = 1, \dots, k_{\max}$ in a single pass over
+the data, whereas for most models leave-one-out requires $n$ separate trainings?
+\item Explain how $k$ controls bias and variance in $k$-NN. What does $k$-NN predict when $k = n$, in classification
+and in regression?
+\item True or false, with a justification: ``For two classes, an odd $k$ removes every ambiguity from the $k$-NN
+rule.'' Does the answer change for three classes?
+\item Compare $k$-NN and the hard Parzen window: which one has a neighbourhood of fixed size and which one a fixed
+number of voters? Describe what each does for a query far from all training data and for a query in a very dense
+region.
+\item Describe the Gaussian Parzen classifier in the two limits $\sigma \to 0$ and $\sigma \to \infty$. Which
+classifier, or which constant prediction, does it become in each case?
+\item For a very narrow Gaussian kernel, a direct implementation of the Nadaraya--Watson formula returns
+\texttt{nan}. Explain why, and why subtracting the largest exponent from all exponents fixes the problem without
+changing the prediction.
+\item The normalising constant of the Gaussian kernel can be dropped in the Nadaraya--Watson estimator but not in
+kernel density estimation. Explain why.
+\item Why is $k$-NN regression a step function of the query, while Nadaraya--Watson with a Gaussian kernel gives a
+smooth curve (Figure~\ref{fig:regression})?
+\item A student chooses the KDE bandwidth by maximising the log-likelihood of the training points themselves. Which
+bandwidth will she obtain, and why? How does leave-one-out repair this?
+\item Explain the bias of a kernel density estimate in words: what happens to a sharp peak and to a valley of the
+true density when $h$ is large? Why does the variance grow when $h$ is small? The best bandwidth scales as
+$n^{-1/5}$: explain why it must decrease as $n$ grows, and why it must not decrease too fast.
+\item True or false, with a justification: (a) a kernel density estimate can take values larger than 1; (b) in exact
+arithmetic, a Gaussian KDE is never exactly zero; (c) a KDE integrates to one only if the bandwidth is chosen well.
+\item One feature is a length in metres (values between 0 and 1), another a mass in grams (values between 0 and
+1000). What goes wrong with Euclidean $k$-NN on the raw features? Propose a remedy and explain why its constants must
+be computed on the training set only.
+\item Is the cosine distance $1 - \cos(\vect{a}, \vect{b})$ a metric on $\R^d$? Which of the three metric axioms
+fail, and for which kind of pairs of vectors? Why can it nevertheless be a good choice for $k$-NN on text
+embeddings?
+\item What happens to Euclidean distances, and hence to $k$-NN, if (a) one feature is accidentally included twice,
+(b) twenty features of pure noise are appended?
+\item Why does a $k$-d tree speed up nearest-neighbour search in two dimensions but hardly help in $d = 100$? Relate
+your answer to the curse of dimensionality of Note~3.
+\item An approximate index returns, on average, 95\% of the true $k$ nearest neighbours. What is gained and what is
+lost compared with brute-force search? Why can greedy search in a neighbour graph miss the true nearest neighbour?
+\item What does the Cover--Hart result say about the 1-NN classifier as $n \to \infty$, and what does it \emph{not}
+say about a finite dataset in high dimension?
+\item In retrieval-augmented generation, which step is a nearest-neighbour search, and what are the ``training
+points''? Why is it attractive to update the document collection rather than retrain the language model?
+\item In what sense is the attention operation of a transformer a Nadaraya--Watson estimator? What plays the role of
+the training inputs, of the targets and of the kernel width?
+\item Images of one object under small shifts or rotations lie near a low-dimensional manifold in pixel space.
+Explain why the Euclidean distance between two such images can be large, what a tangent vector describes, and what
+tangent distance minimises. Why does it work only for small transformations?
+\item The kernel density estimate is not a weighted mean of targets. How is it nevertheless related to the
+Nadaraya--Watson formula? What does the denominator $\sum_i K_h(\x - \x_i)$ measure?
+\end{conceptual}
+
+\begin{calculations}
+\item Explain why the 1-NN decision boundary between two training points of different classes lies on their
+perpendicular bisector. Sketch the Voronoi cells and the decision boundary for the four points $(0,0)$, $(2,0)$,
+$(0,2)$, $(2,2)$ labelled $+, -, -, +$.
+\item One-dimensional training data: inputs $0, 1, 2, 4, 5, 7$ with classes $+, +, -, +, -, -$ and regression
+targets $1.0, 1.5, 2.5, 3.0, 2.0, 0.5$. For the query $x = 3.2$, list the distances, give the $k$-NN class for
+$k = 1, 3, 5$ and the $k$-NN regression value for $k = 3$.
+\item Training inputs $0, 1, 3$ with targets $2, 4, 1$. At the query $x = 1$, compute (a) the hard-window
+prediction with radius $h = 1.5$, (b) the Nadaraya--Watson prediction with the Gaussian kernel
+of width $\sigma = 1$, $e^{-(x - x_i)^2/(2\sigma^2)}$, (c) the limit of this prediction as $\sigma \to 0$.
+\item Data $-1, 0, 0, 2$ (the value 0 appears twice). Using $\varphi(0) = 0.399$, $\varphi(1) = 0.242$,
+$\varphi(2) = 0.054$, compute the Gaussian KDE with $h = 1$ at $x = 0$ and at $x = 1$. Repeat
+with the box kernel $K(u) = \frac{1}{2}\ind{|u| \le 1}$ and $h = 1$ (note the ``$\le$'': a point at distance
+exactly 1 counts; this box has width 2, whereas the one of Question~C1 has width 1; both integrate to one).
+\item For $\vect{a} = (2, -1, 0, 3)$ and $\vect{b} = (0, 1, 1, 1)$ compute $d_1$, $d_2$, $d_\infty$ and the cosine
+similarity. For the bit vectors $1101100$ and $0101110$ compute the Tanimoto similarity.
+\item The mean squared error of a KDE behaves like $\mathrm{MSE}(h) = Ah^4 + B/(nh)$ with $A, B > 0$. (a) Find the
+minimising $h^*$ by differentiation. (b) Show by substituting $h^*$ that the minimal MSE is proportional to
+$n^{-4/5}$. By what factor does $h^*$ change when $n$ is multiplied by 32, and by what factor does the minimal MSE
+change? (c) Repeat (a) for $Ah^4 + B/(nh^d)$.
+\item A retrieval system stores $10^7$ embeddings in $\R^{768}$ as 32-bit floats. How much memory do they take, and
+how many multiply--add operations does one brute-force query need? At $10^{12}$ multiply--adds per second, how many
+queries per second is that?
+\item Query $(300\ \mathrm{K}, 1.0\ \mathrm{bar})$; candidates $P = (305\ \mathrm{K}, 1.0\ \mathrm{bar})$ and
+$Q = (300\ \mathrm{K}, 3.0\ \mathrm{bar})$. Which candidate is nearer in raw units? Which after standardising with
+training standard deviations $10\ \mathrm{K}$ and $0.5\ \mathrm{bar}$?
+\item A training signal $\vect{a} = (0, 2, 2, 0)$ and a query $\x = (0, 0, 2, 2)$, the same signal shifted by one
+sample to the right. (a) Compute $\norm{\x - \vect{a}}$. (b) Compute the shift tangent vector $t_j = (a_{j-1} -
+a_{j+1})/2$, with $a_0 = a_5 = 0$. (c) Find $\alpha^* = \vect{t}\T(\x - \vect{a})/\vect{t}\T\vect{t}$ and the
+one-sided tangent distance $\norm{\vect{a} + \alpha^*\vect{t} - \x}$. Interpret $\alpha^*$, and explain why the
+result is not zero.
+\end{calculations}
+
+\begin{derivations}
+\item Let $K$ be the box kernel, $K(u) = 1$ for $|u| \le \frac{1}{2}$ and 0 otherwise, in one dimension. Show that the
+KDE integrates to one and that $\E[\hat p(x)] = \frac{1}{h}\int_{x - h/2}^{x + h/2} p(u)\, du$. Compute $\sigma_K^2$
+and $R(K)$, and deduce the approximate bias $h^2 p''(x)/24$ and variance $p(x)/(nh)$. Compare with the histogram of
+Note~3: what is gained by centring the window on $x$?
+\item Show that $d_p$ violates the triangle inequality for every $0 < p < 1$ (you may use the points of
+Section~\ref{sec:distances}), and that the set $\{\vect{a} \in \R^2 : d_p(\vect{a}, \vect{0}) \le 1\}$ is not convex
+for $p < 1$ by exhibiting two of its points whose midpoint lies outside it.
 \item Let $\norm{\vect{q}} = \norm{\vect{k}_i} = 1$. Show that $\exp(\vect{q}\T\vect{k}_i / \tau)$ is proportional
 to a Gaussian kernel in $\norm{\vect{q} - \vect{k}_i}$ and find its width. What happens to attention as
 $\tau \to 0$?
-\item A retrieval system stores $10^7$ embeddings in $\R^{768}$ as 32-bit floats. How much memory do they take, and
-how many multiply--add operations does one brute-force query need? At $10^{12}$ operations per second, how many queries
-per second is that?
-\end{exercises}
+\item Show that, for weights $w_i \ge 0$, (a) the weighted mean minimises $\sum_i w_i (y_i - c)^2$, (b) the weighted
+majority class minimises $\sum_i w_i \ind{y_i \ne c}$ over classes $c$, and (c) a weighted median minimises
+$\sum_i w_i |y_i - c|$. (A weighted median is a value $c$ such that the targets below $c$ and the targets above $c$
+each carry at most half of the total weight $\sum_i w_i$. The absolute value has no derivative at $y_i$, so instead
+of setting a derivative to zero, consider how $\sum_i w_i |y_i - c|$ changes as $c$ moves between two consecutive
+targets.) Which read-out is least sensitive to one wrong target?
+\item Assume the nearest training point to $\x$ is unique, with index $i^*$. Using the log-sum-exp form of
+Section~\ref{sec:lse}, show that the normalised Gaussian weights $\omega_i / \sum_j \omega_j$ tend to
+$\ind{i = i^*}$ as $\sigma \to 0$, so that the Gaussian Parzen classifier and regressor become 1-NN. Show also that
+all normalised weights tend to $1/n$ as $\sigma \to \infty$.
+\end{derivations}
+
+\begin{programming}
+\item Implement Algorithm~\ref{alg:knn} with numpy and generate data of your own with two interleaved classes.
+Choose $k$ by 5-fold cross-validation and by Algorithm~\ref{alg:knnloo}, and plot both validation curves against
+$k$. How does the selected $k$ change when you double $n$?
+\item Implement Algorithm~\ref{alg:parzen}. Reproduce the worked examples of Section~\ref{sec:soft} and
+Section~\ref{sec:lse} (including $\sigma = 0.02$, and the \texttt{nan} produced without the log-sum-exp trick). On
+noisy samples of $\sin(2\pi x)$, choose $k$ for $k$-NN regression and $\sigma$ for Nadaraya--Watson by validation and
+compare their test errors.
+\item Implement Algorithms~\ref{alg:kde} and~\ref{alg:loo}. Draw 100 points from a mixture of two Gaussians,
+reproduce the right panel of Figure~\ref{fig:kdebiasloo}, and compare the leave-one-out bandwidth with the
+normal-reference rule for well-separated and for overlapping components.
+\item Implement Algorithm~\ref{alg:kdtree} for the single nearest neighbour, verify it against brute force on random
+data, and count the leaves visited per query for $n = 10^4$ uniform points in $d = 2, 5, 10, 20$. At which $d$ does
+the tree stop paying off?
+\end{programming}
+\end{questions}
 
 \paragraph{Further reading} Hastie, Tibshirani and Friedman~\cite{hastie2009}, sections~2.3, 6.1--6.6 and 13.3;
-Silverman~\cite{silverman1986} for kernel density estimation.
+Bishop~\cite{bishop2006}, section~2.5; Silverman~\cite{silverman1986} for kernel density estimation and bandwidth
+selection.
 
 \begin{thebibliography}{99}\small
+\bibitem{bentley1975} J.~L. Bentley, Multidimensional binary search trees used for associative searching, \emph{Commun.\ ACM} 18, 509--517 (1975).
+\bibitem{bishop2006} C.~M. Bishop, \emph{Pattern Recognition and Machine Learning}, Springer (2006).
 \bibitem{chen2020} T.~Chen, S.~Kornblith, M.~Norouzi and G.~Hinton, A simple framework for contrastive learning of visual representations, \emph{ICML} (2020).
 \bibitem{cover1967} T.~M. Cover and P.~E. Hart, Nearest neighbor pattern classification, \emph{IEEE Trans.\ Inf.\ Theory} 13, 21--27 (1967).
 \bibitem{cranmer2001} K.~Cranmer, Kernel estimation in high-energy physics, \emph{Comput.\ Phys.\ Commun.}\ 136, 198--207 (2001).
+\bibitem{friedman1977} J.~H. Friedman, J.~L. Bentley and R.~A. Finkel, An algorithm for finding best matches in logarithmic expected time, \emph{ACM Trans.\ Math.\ Softw.}\ 3, 209--226 (1977).
 \bibitem{hastie2009} T.~Hastie, R.~Tibshirani and J.~Friedman, \emph{The Elements of Statistical Learning}, 2nd ed., Springer (2009).
 \bibitem{johnson2021} J.~Johnson, M.~Douze and H.~Jégou, Billion-scale similarity search with GPUs, \emph{IEEE Trans.\ Big Data} 7, 535--547 (2021).
 \bibitem{khandelwal2020} U.~Khandelwal \emph{et al.}, Generalization through memorization: nearest neighbor language models, \emph{ICLR} (2020).
 \bibitem{komiske2019} P.~T. Komiske, E.~M. Metodiev and J.~Thaler, Metric space of collider events, \emph{Phys.\ Rev.\ Lett.}\ 123, 041801 (2019).
 \bibitem{lewis2020} P.~Lewis \emph{et al.}, Retrieval-augmented generation for knowledge-intensive NLP tasks, \emph{NeurIPS} (2020).
 \bibitem{malkov2020} Y.~A. Malkov and D.~A. Yashunin, Efficient and robust approximate nearest neighbor search using hierarchical navigable small world graphs, \emph{IEEE Trans.\ Pattern Anal.\ Mach.\ Intell.}\ 42, 824--836 (2020).
+\bibitem{nadaraya1964} E.~A. Nadaraya, On estimating regression, \emph{Theory Probab.\ Appl.}\ 9, 141--142 (1964).
+\bibitem{parzen1962} E.~Parzen, On estimation of a probability density function and mode, \emph{Ann.\ Math.\ Statist.}\ 33, 1065--1076 (1962).
 \bibitem{radford2021} A.~Radford \emph{et al.}, Learning transferable visual models from natural language supervision, \emph{ICML} (2021).
+\bibitem{rosenblatt1956} M.~Rosenblatt, Remarks on some nonparametric estimates of a density function, \emph{Ann.\ Math.\ Statist.}\ 27, 832--837 (1956).
 \bibitem{silverman1986} B.~W. Silverman, \emph{Density Estimation for Statistics and Data Analysis}, Chapman \& Hall (1986).
 \bibitem{simard1993} P.~Simard, Y.~LeCun and J.~S. Denker, Efficient pattern recognition using a new transformation distance, \emph{NeurIPS} (1993).
 \bibitem{stone1977} C.~J. Stone, Consistent nonparametric regression, \emph{Ann.\ Statist.}\ 5, 595--620 (1977).
-\bibitem{tsai2019} Y.-H.~H. Tsai \emph{et al.}, Transformer dissection: a unified understanding of transformer's attention via the lens of kernel, \emph{EMNLP} (2019).
+\bibitem{tsai2019} Y.-H.~H. Tsai \emph{et al.}, Transformer dissection: an unified understanding for transformer's attention via the lens of kernel, \emph{Proc.\ EMNLP-IJCNLP}, 4344--4353 (2019).
 \bibitem{vaswani2017} A.~Vaswani \emph{et al.}, Attention is all you need, \emph{NeurIPS} (2017).
+\bibitem{watson1964} G.~S. Watson, Smooth regression analysis, \emph{Sankhy\=a A} 26, 359--372 (1964).
+\bibitem{wu2018} Z.~Wu, Y.~Xiong, S.~X. Yu and D.~Lin, Unsupervised feature learning via non-parametric instance discrimination, \emph{CVPR} (2018).
 \end{thebibliography}
 
 \SourceNote

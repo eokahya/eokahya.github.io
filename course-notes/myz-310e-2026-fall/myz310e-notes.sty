@@ -13,6 +13,7 @@
 \RequirePackage{xcolor,graphicx,booktabs,array,enumitem,caption,subcaption}
 \RequirePackage[most]{tcolorbox}
 \RequirePackage{algorithm,algpseudocode}
+\RequirePackage{float}
 \RequirePackage{fancyhdr,titlesec}
 \RequirePackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,calc,decorations.pathreplacing}
@@ -25,6 +26,7 @@
 \definecolor{teal}{HTML}{1A6F66}
 \definecolor{mute}{HTML}{5B5E69}
 \definecolor{paper}{HTML}{F6F4EE}
+\definecolor{slate}{HTML}{3E4A61}
 \color{ink}
 
 \makeatletter\def\verbatim@font{\small\ttfamily}\makeatother
@@ -86,13 +88,39 @@
   left=9pt,right=8pt,top=5pt,bottom=5pt,fonttitle=\bfseries\small,coltitle=teal,colbacktitle=teal!5,
   title={In physics --- #1},before skip=0.8em,after skip=0.8em}
 
+% Worked examples: \begin{worked}{title} ... \end{worked}
+\newtcolorbox{worked}[1]{enhanced,breakable,colback=slate!5,colframe=slate,boxrule=0pt,leftrule=2.2pt,arc=0pt,
+  left=9pt,right=8pt,top=5pt,bottom=5pt,fonttitle=\bfseries\small,coltitle=slate,colbacktitle=slate!5,
+  title={Worked example --- #1},before skip=0.8em,after skip=0.8em}
+% Running time of an algorithm: \begin{runtime}{algorithm name} ... \end{runtime}
+\newtcolorbox{runtime}[1]{enhanced,breakable,colback=white,colframe=slate!55,boxrule=0.5pt,arc=1.5pt,
+  left=8pt,right=8pt,top=4pt,bottom=4pt,fonttitle=\bfseries\small,coltitle=slate,colbacktitle=white,
+  title={Running time --- #1},before skip=0.7em,after skip=0.7em,fontupper=\small}
+
 \theoremstyle{definition}
 \newtheorem{definition}{Definition}
 \newtheorem{example}{Example}
 \theoremstyle{remark}
 \newtheorem*{remark}{Remark}
 
-% Exercises
+% End-of-note questions, sorted by kind:
+%   \begin{questions} \begin{conceptual}\item..\end{conceptual} \begin{calculations}..\end{calculations}
+%   \begin{derivations}..\end{derivations} \begin{programming}..\end{programming} \end{questions}
+\newcommand{\StudyIntro}{{\small\color{mute}Questions are sorted by kind. Parts~A and~B are of the kind used in the
+  midterm examination: they test understanding, interpretation and short calculations (at most simple derivatives),
+  not long proofs. Parts~C and~D go further and are recommended for practice and for the project.\par}}
+\newenvironment{questions}{\section*{Questions and exercises}\addcontentsline{toc}{section}{Questions and exercises}%
+  \StudyIntro}{}
+\newenvironment{conceptual}{\subsection*{A.\ Conceptual questions}%
+  \begin{enumerate}[label=\textbf{\color{indigo}A\arabic*.},leftmargin=2.4em,itemsep=0.45em]}{\end{enumerate}}
+\newenvironment{calculations}{\subsection*{B.\ Short calculations}%
+  \begin{enumerate}[label=\textbf{\color{indigo}B\arabic*.},leftmargin=2.4em,itemsep=0.45em]}{\end{enumerate}}
+\newenvironment{derivations}{\subsection*{C.\ Derivations}%
+  \begin{enumerate}[label=\textbf{\color{indigo}C\arabic*.},leftmargin=2.4em,itemsep=0.45em]}{\end{enumerate}}
+\newenvironment{programming}{\subsection*{D.\ Programming}%
+  \begin{enumerate}[label=\textbf{\color{indigo}D\arabic*.},leftmargin=2.4em,itemsep=0.45em]}{\end{enumerate}}
+
+% Exercises (older single-list form, kept for compatibility)
 \newcounter{exercise}
 \newenvironment{exercises}{\section*{Exercises}\addcontentsline{toc}{section}{Exercises}%
   \begin{enumerate}[label=\textbf{\color{indigo}E\arabic*.},leftmargin=2.2em,itemsep=0.5em]}{\end{enumerate}}

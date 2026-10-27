@@ -16,10 +16,12 @@ pairs=(
   "note6-bayes-classifiers:week-04--bayes-classifier-and-naive-bayes"
   "note7-optimisation:week-04--gradient-descent-and-optimisation"
   "note8-linear-regression:week-04--least-squares-ridge-and-lasso"
-  "note9-linear-classifiers:week-04--linear-classifiers-and-feature-maps"
+  "note9-linear-classifiers:week-04--linear-classifiers"
+  "note10-kernels:week-04--nonlinear-feature-maps-and-kernels"
 )
 
 python3 figures.py
+for extra in figures_note*.py; do [ -e "$extra" ] && python3 "$extra"; done
 mkdir -p build "$notes_dir"
 for pair in "${pairs[@]}"; do
   source_name=${pair%%:*}

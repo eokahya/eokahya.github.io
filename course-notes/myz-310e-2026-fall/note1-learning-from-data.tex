@@ -2,43 +2,92 @@
 \usepackage{myz310e-notes}
 \hypersetup{pdftitle={Learning from data: tasks, representations and notation},pdfauthor={Emre Onur Kahya},pdfsubject={MYZ 310E Machine Learning in Physics, Fall 2026, lecture note 1 (week 1)}}
 
+% A 3x3 binary image: \pixgrid{column/row, column/row, ...}, rows counted from the top, starting at 0.
+\newcommand{\pixgrid}[1]{\begin{tikzpicture}[scale=0.3,baseline=(current bounding box.center)]
+  \foreach \c/\r in {#1}{\fill[indigo!70] (\c,-\r) rectangle ++(1,1);}
+  \draw[mute,line width=0.3pt] (0,-2) grid (3,1);\end{tikzpicture}}
+
 \begin{document}
 \NoteTitle{1}{1}{Learning from data:\\ tasks, representations and notation}{Learning from data}{%
 Machine learning replaces hand-written rules by functions estimated from examples. This note fixes the vocabulary
-and notation used throughout the course: what a dataset is, how an observation becomes a vector, which kinds of
-learning problems exist and how success is measured. Later notes refer back to Section~\ref{sec:notation}
-(notation) and Table~\ref{tab:tasks} (tasks and losses) instead of repeating them.}
+and notation of the course: what a dataset is, how an image, a text or a collision event becomes a vector, which
+learning problems exist, what the ideal predictor for each is and how much error no predictor can avoid. It also
+sets the conventions for running times and the vector toolkit (norms, inner products, cosine similarity, pairwise
+distances) that every later note uses. Later notes refer back to Section~\ref{sec:notation} (notation) and Table~\ref{tab:tasks}
+(tasks and losses) instead of repeating them.}
 
 \section{Learning from examples}
 
-Suppose we want a program that decides whether a photograph shows a horse. Writing the rules by hand --- four
-legs, a mane, a long head, unless it is a donkey, unless the horse is lying down --- quickly becomes hopeless.
-The machine-learning approach is different: collect many photographs labelled ``horse'' or ``not horse'' and let an
-algorithm \emph{find} a function that maps images to labels. The principle is far more general than any single
-application: the same algorithm, given different examples, learns to recognise galaxies, transcribe speech or
-predict the energy of a particle shower.
+Suppose we want a program that decides whether a shower in a calorimeter was made by an electron or by a charged
+pion. Writing the rules by hand --- electrons deposit their energy early and in a narrow core, pions penetrate deeper
+and spread wider, unless the pion transferred most of its energy to a neutral pion in its first interaction ---
+quickly turns into a long list of exceptions. The machine-learning approach is different: simulate or record many
+showers whose origin is known and let an algorithm \emph{find} a function that maps the cell energies to the label.
+Nothing in that procedure is specific to calorimeters: fed with other labelled examples, the same algorithm sorts
+galaxy images by shape, transcribes speech or estimates the energy of the shower itself.
 
 \begin{keyidea}
-Learning is not memorising. A table that stores every training image with its label answers perfectly on those
-images and is useless on a new one. What we want is \emph{generalisation}: good predictions for cases never seen
-during training. Note~4 makes this precise and shows how to measure it honestly.
+Fitting the training set is easy; predicting new cases is the point. A table that stores every training shower with
+its label answers perfectly on those showers and is useless on a new one. The property we are after is
+\emph{generalisation}: the quality of the predictions on inputs not seen during training. Note~4 shows how to
+measure it honestly.
 \end{keyidea}
 
+How hopeless is memorising? Black-and-white $3 \times 3$ images come in only $2^9 = 512$ versions, but $28 \times 28$
+digits (Table~\ref{tab:size}), even with pixels reduced to on or off, come in $2^{784} \approx 10^{236}$; $60\,000$
+training images cover a vanishing fraction, and a new digit is essentially never an exact copy of one. Every useful
+prediction is an \emph{inference} from similar seen inputs, and the course is about what ``similar'' should mean.
+
+\subsection{Training and prediction}\label{sec:trainpredict}
+
+A learning algorithm consists of two procedures. \textsc{Train} turns the training set into a \emph{model} --- a
+list of numbers, a tree, the training set itself; \textsc{Predict} turns the model and a new input $\x$ into a
+prediction. Their costs are counted separately, because a model is trained once and queried many times.
+Algorithm~\ref{alg:memorise} is the memoriser of the key idea above, written in this form; when the query has not
+been seen it falls back on the most frequent label, the simplest \emph{baseline} that every real method must beat.
+Here $n$ is the number of training examples, $d$ the number of real numbers that describe one input and $m$ the
+number of classes (Section~\ref{sec:notation}); a \emph{hash table}, like a Python \texttt{dict}, finds the value
+stored under a key in a time that does not grow with the number of keys. Section~\ref{sec:cost} explains the
+``Running time'' boxes and the $O(\cdot)$ notation.
+
+\begin{algorithm}[htbp]
+\caption{The memoriser: a lookup table with a majority-class fallback}\label{alg:memorise}
+\begin{algorithmic}[1]
+\Require training set $D_n = \{(\x_i, y_i)\}_{i=1}^n$ with $\x_i \in \R^d$, labels in $\{1, \dots, m\}$
+\Function{Train}{$D_n$}
+  \State $T \gets$ hash table with $T[\x_i] = y_i$ for $i = 1, \dots, n$ \Comment{key: input vector, value: label}
+  \State $c \gets$ most frequent label among $y_1, \dots, y_n$; \Return model $(T, c)$
+\EndFunction
+\Function{Predict}{$(T, c)$, $\x$}
+  \State \Return $T[\x]$ if $\x$ is a key of $T$, otherwise $c$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{runtime}{the memoriser (Algorithm~\ref{alg:memorise})}
+\textbf{Training} $O(nd + m)$: hashing each of the $n$ keys reads its $d$ entries; counting labels needs $m$
+counters. \textbf{Prediction} $O(d)$ per query on average: hash the query and compare it with the stored key.
+\textbf{Memory} $O(nd)$: the whole training set. Speed is never the obstacle here; generalisation is.
+\end{runtime}
+
+\paragraph{From lookup to neighbours} The memoriser fails because an exact match almost never occurs. The smallest
+repair is to answer with the label of the \emph{closest} stored example in Euclidean distance
+(Section~\ref{sec:vectors}): the \emph{nearest-neighbour} or 1-NN rule. Letting the $k$ closest examples vote and
+predicting the majority label gives the $k$-NN rule. Both are developed, with pseudocode and costs, in Note~5,
+Sections~1--2; Section~\ref{sec:raw} of this note tries them on small images.
+
 \begin{modern}{rules versus data}
-The largest systems built today follow this principle at an enormous scale. A large language model is not given a
-grammar of English or Turkish; it is trained to predict the next piece of text from the previous ones on trillions
-of words, and grammar, facts and some reasoning skills emerge as by-products~\cite{vaswani2017,brown2020}. Image
-classifiers trained on ImageNet's 1.28 million labelled photographs~\cite{russakovsky2015} replaced decades of
-hand-designed vision pipelines.
+A large language model is given no grammar: a transformer network~\cite{vaswani2017} is trained to predict the next
+piece of text on hundreds of billions of tokens or more, and grammar, facts and the ability to solve new tasks from a
+few examples emerge as by-products~\cite{brown2020}. Classifiers trained on the 1.28 million images of the ImageNet
+challenge~\cite{russakovsky2015} replaced decades of hand-designed vision pipelines.
 \end{modern}
 
 \begin{physics}{from cuts to classifiers}
-Particle-physics analyses traditionally separated signal from background with hand-tuned \emph{cuts} on a few
-observables (``transverse momentum above 25~GeV, invariant mass within 10~GeV of the $Z$ peak''). Today the same
-decision is often made by a classifier trained on simulated events; for identifying boosted top quarks, for
-example, learned taggers that read low-level detector information outperform the best hand-designed
-variables~\cite{kasieczka2019}. The physics knowledge does not disappear --- it moves into the simulation, the
-choice of inputs and the validation of the classifier.
+Analyses traditionally separated signal from background with hand-tuned \emph{cuts} (``transverse momentum above
+25~GeV, invariant mass within 10~GeV of the $Z$ peak''). Today a classifier trained on simulated events often makes
+the decision; for boosted top quarks, taggers reading low-level detector information beat the best hand-designed
+variables~\cite{kasieczka2019}. The physics moves into the simulation, the inputs and the validation.
 \end{physics}
 
 \section{Data and notation}\label{sec:notation}
@@ -50,16 +99,36 @@ vector of $d$ real numbers, $\x = (x_1, \dots, x_d)\T \in \R^d$, whose component
   D_n = \{(\x_1, y_1), (\x_2, y_2), \dots, (\x_n, y_n)\}.
 \]
 Stacking the inputs as rows gives the \emph{design matrix} $X \in \R^{n \times d}$ whose $i$-th row is $\x_i\T$; the
-targets form a vector $\vect{y} \in \R^n$ (or, for $m$ classes, a matrix of one-hot rows). Subscripts index
-examples ($\x_i$), and when needed a bracket indexes features: $x_{i,j}$ or $\x_i[j]$ is feature $j$ of example $i$.
-A \emph{predictor} is a function $f : \R^d \to \mathcal{Y}$; a new input whose target is unknown is a \emph{test
-point}.
+targets form a vector $\vect{y} \in \R^n$ (or, for $m$ classes, a matrix of one-hot rows, Section~\ref{sec:onehot}).
+Indices follow one rule: a bold letter with one subscript, $\x_i$, is example $i$; a plain letter with one subscript,
+$x_j$ or $a_j$, is component $j$ of the vector $\x$ or $\vect{a}$; two indices, $x_{i,j}$ or $\x_i[j]$, give feature
+$j$ of example $i$. A \emph{predictor} is a function $f : \R^d \to \mathcal{Y}$, where $\mathcal{Y}$ is the set of
+possible targets (a set of classes, or $\R$); a new input whose target is unknown is a \emph{test point}. The \emph{indicator} $\ind{A}$ equals $1$ if the statement $A$ is true and $0$ otherwise.
 
-\paragraph{Problem size} Three numbers decide which algorithms are even feasible: the number of examples $n$, the
-input dimension $d$ and the number of outputs (for classification, the number of classes $m$). Table~\ref{tab:size}
-gives orders of magnitude.
+\begin{worked}{a dataset as a matrix}
+A trigger study records, for each collision event, the number of reconstructed tracks, the total energy deposited in
+the calorimeter and the missing transverse energy (both in GeV), and labels the event as signal ($y = +1$) or
+background ($y = -1$). Four invented events:
+\begin{center}\small
+\begin{tabular}{@{}cccc|c@{}}\toprule
+event $i$ & tracks $x_{i,1}$ & calorimeter energy $x_{i,2}$ & missing $E_{\mathrm T}$ $x_{i,3}$ & $y_i$ \\ \midrule
+1 & 12 & 85.0 & 4.1 & $-1$ \\
+2 & 3 & 41.5 & 38.2 & $+1$ \\
+3 & 25 & 140.2 & 7.7 & $-1$ \\
+4 & 5 & 62.0 & 51.3 & $+1$ \\ \bottomrule
+\end{tabular}
+\end{center}
+Here $n = 4$, $d = 3$, the design matrix $X$ is the $4 \times 3$ block left of the bar and $\vect{y} = (-1, +1, -1,
++1)\T$. Row~3 is the input $\x_3 = (25, 140.2, 7.7)\T$, the entry $x_{3,2} = \x_3[2] = 140.2$~GeV is feature~2 of
+example~3. The columns have different units and spreads, which matters for distances (Note~5, Section~5). On disk
+or in a data frame the whole dataset is usually one $n \times (d+1)$ array $[X \mid \vect{y}]$ --- here the $4 \times
+4$ table itself --- or an $n \times (d+m)$ array when the targets are one-hot rows (Section~\ref{sec:onehot}).
+\end{worked}
 
-\begin{table}[h]\centering\small
+\paragraph{Problem size} Three numbers decide which algorithms are feasible: $n$, $d$ and the number of outputs (for
+classification, the number of classes $m$); Table~\ref{tab:size} gives orders of magnitude.
+
+\begin{table}[h]\centering\small\setlength{\tabcolsep}{5pt}
 \caption{Typical problem sizes. The cost of most algorithms grows with $n$, $d$ and $m$ in very different ways.}
 \label{tab:size}
 \begin{tabular}{@{}llll@{}}\toprule
@@ -67,82 +136,283 @@ gives orders of magnitude.
 Iris flowers (1936) & 150 & 4 & 3 \\
 Handwritten digits (MNIST) & 60\,000 & 784 (28$\times$28 pixels) & 10 \\
 ImageNet classification & $1.28 \times 10^6$ & 150\,528 (224$\times$224$\times$3) & 1000 \\
-Language-model pre-training & $10^{12}$--$10^{13}$ tokens & embedding size $\sim 10^3$--$10^4$ & vocabulary $\sim 10^5$ \\
-Jet tagging at the LHC & $10^6$--$10^7$ simulated jets & $10^2$--$10^3$ constituents' features & 2--10 \\ \bottomrule
+Language-model pre-training & $10^{12}$--$10^{13}$ tokens & embedding $10^3$--$10^4$ & vocabulary $10^4$--$10^5$ \\
+Jet tagging at the LHC & $10^6$--$10^8$ simulated jets & $10^2$--$10^3$ constituents' features & 2--10 \\ \bottomrule
 \end{tabular}
 \end{table}
 
-\paragraph{The i.i.d.\ assumption} We model each example $Z_i = (\X_i, Y_i)$ as a draw from an \emph{unknown}
-joint distribution $P(\X, Y)$ --- ``nature'' or the experiment. Unless stated otherwise the examples are assumed
-\emph{independent and identically distributed} (i.i.d.): every example comes from the same distribution, independently
-of the others. Two consequences are used constantly: the order of the examples carries no information (shuffling the
-dataset changes nothing), and a randomly chosen subset is a fair sample of the whole.
+\paragraph{The i.i.d.\ assumption} We model each example $(\X_i, Y_i)$ as a draw from an \emph{unknown}
+joint distribution $P(\X, Y)$, fixed by the physics and by the measuring apparatus. Capital letters denote random
+variables and lowercase letters the values they take: $\X$ (a plain $X$ when the input is a single number) and $Y$
+versus $\x$ and $y$. The design matrix $X$ and the one-hot target matrix $Y$ of Section~\ref{sec:onehot} are
+matrices, not random variables; the context always tells which is meant. Unless stated otherwise the
+examples are assumed \emph{independent and identically distributed} (i.i.d.): every example comes from the same
+distribution, independently of the others. Two consequences are used constantly: a learning algorithm may visit the
+examples in any order without changing what it can learn, and a randomly chosen subset is a fair sample of the
+whole.
 
-\begin{keyidea}[Not every dataset is i.i.d.]
+\begin{keyidea}[Datasets that break the i.i.d.\ assumption]
 Time series (tomorrow depends on today), grouped data (several images of the same galaxy or patient), data whose
 distribution changes over time, and models trained on simulation but applied to real detector data (the
-\emph{simulation-to-reality gap}) all violate the assumption. Methods that ignore this produce optimistic results;
-Note~4 shows how to split such data correctly.
+\emph{simulation-to-reality gap}) all violate the assumption. Ignoring this gives optimistic results
+(Section~\ref{sec:leakage}); Note~4 shows how to split such data.
 \end{keyidea}
 
-\paragraph{Geometric picture} A dataset is a cloud of $n$ points in $\R^d$, each carrying a label. A test point is a
-new location in that space, and learning means deciding what to predict \emph{everywhere} in $\R^d$, including in
-regions where no training point lies. This picture --- points in a high-dimensional space --- underlies every method
-in weeks~1--3, and its difficulties in large $d$ are the subject of Note~3.
+\paragraph{Geometric picture} A dataset is a cloud of $n$ labelled points in $\R^d$; learning means deciding what to
+predict \emph{everywhere} in $\R^d$, including where no training point lies. Its difficulties in large $d$ are the
+subject of Note~3.
 
-\section{From raw observations to vectors}
+\subsection{Counting the cost of an algorithm}\label{sec:cost}
+
+Every algorithm in these notes comes with a box ``Running time'' that states three costs: \textbf{training time},
+\textbf{prediction time per query} and \textbf{memory}. They are given in $O(\cdot)$ notation: a cost $O(nd)$ means
+that, for large $n$ and $d$, the number of elementary operations is at most a constant times $nd$. Constants and
+lower-order terms are dropped, because what decides feasibility is how the cost \emph{grows}: doubling $n$ doubles
+an $O(n)$ cost, quadruples an $O(n^2)$ one and multiplies an $O(d^3)$ cost by eight when $d$ doubles. Besides $n$,
+$d$ and $m$, the symbol $q$ counts queries processed together; each note defines any further symbol it needs.
+
+\begin{center}\small
+\begin{tabular}{@{}L{0.43\linewidth}L{0.15\linewidth}L{0.34\linewidth}@{}}\toprule
+Operation & Cost & Why \\ \midrule
+inner product $\vect{a}\T\vect{b}$, $\vect{a}, \vect{b} \in \R^d$ & $O(d)$ & $d$ products and $d - 1$ sums \\
+matrix--vector product $X\vect{w}$, $X \in \R^{n \times d}$ & $O(nd)$ & $n$ inner products of length $d$ \\
+matrix product $Q X\T$, $Q \in \R^{q \times d}$ & $O(qnd)$ & $qn$ inner products of length $d$ \\
+solving a $d \times d$ linear system & $O(d^3)$ & Gaussian elimination \\
+sorting $n$ numbers & $O(n \log n)$ & comparison sorting \\
+the $k$ smallest of $n$ numbers ($k \le n$) & $O(n)$ & partial selection, no full sort \\
+insert or look up a key in a hash table & $O(1)$ on average & plus the cost of hashing the key \\ \bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Memory} A real number takes 8 bytes in \texttt{float64} and 4 in \texttt{float32}, the GPU default. The
+MNIST design matrix, $60\,000 \times 784$ numbers, needs $188$~MB in single precision; the ImageNet training images,
+resized to $224 \times 224$ at one byte per pixel and colour channel, need about $193$~GB, more than most computers'
+memory, so they are streamed from disk in mini-batches (Note~7).
+
+\paragraph{What vectorisation and GPUs change} Two algorithms with the same $O(\cdot)$ cost can differ by a factor
+of a hundred or more: an interpreted loop pays an overhead per elementary operation, while one matrix product runs
+in optimised parallel code on a CPU or GPU (Section~\ref{sec:bulk}). Hardware changes the constant, never the growth: an $O(n^2)$ algorithm with $n = 10^9$ needs $10^{18}$ operations, about
+four months on a workstation sustaining $10^{11}$ operations per second.
+
+\section{From raw observations to vectors}\label{sec:raw}
 
 Most learning algorithms of this course require each example to be a vector of fixed dimension $d$. How we build that
-vector --- the \emph{representation} --- often matters more than the choice of algorithm.
+vector --- the \emph{representation} --- often matters more than the choice of algorithm. Several recipes follow;
+most are worked by hand on a small object.
 
-\paragraph{Raw representations} A grey-scale image of $28 \times 28$ pixels becomes a vector of $d = 784$ intensities;
-a colour image of $224 \times 224$ pixels has $d = 150\,528$. A waveform or a detector read-out can be used as is.
-Raw vectors are easy to produce but awkward: a shift of the object by one pixel changes almost every coordinate.
+\paragraph{Raw representations} A $28 \times 28$ grey-scale image becomes a vector of $d = 784$ intensities; a waveform
+or a detector read-out can be used as is. Raw vectors are easy to produce but awkward: shifting the object by one
+pixel changes almost every coordinate.
 
-\paragraph{Hand-crafted features} Domain experts design a few informative quantities. For documents, the
-\emph{bag of words} counts how often each word of a vocabulary occurs, so ``the cat jumped'' becomes a long vector of
-zeros with three ones; it forgets word order, so ``dog bites man'' and ``man bites dog'' get the same vector. In
-vision, histograms of oriented gradients and SIFT descriptors~\cite{dalal2005,lowe2004} summarise local edge
-directions. In physics, features are often physical observables: invariant masses, transverse momenta, or
-jet-substructure variables built from the theory of QCD.
+\begin{worked}{a $3 \times 3$ image, raw and with features}
+Three binary images, with dark pixels equal to 1:
+\begin{center}
+$A$ = \pixgrid{1/0,1/1,1/2}\qquad
+$B$ = \pixgrid{2/0,2/1,2/2}\qquad
+$C$ = \pixgrid{0/1,1/1,2/1}
+\end{center}
+$A$ is a vertical bar, $B$ the same bar moved one pixel to the right and $C$ a horizontal bar. Reading the pixels row
+by row (``row-major'' order, the convention of \texttt{numpy}'s \texttt{reshape}) turns each image into a vector in
+$\R^9$:
+\[
+  \x_A = (0,1,0,\,0,1,0,\,0,1,0), \quad \x_B = (0,0,1,\,0,0,1,\,0,0,1), \quad \x_C = (0,0,0,\,1,1,1,\,0,0,0).
+\]
+The squared Euclidean distance counts the pixels in which two images differ: $\norm{\x_A - \x_B}^2 = 6$ (no dark
+pixel in common), but $\norm{\x_A - \x_C}^2 = 4$ (they share the centre pixel). In the raw representation the
+\emph{shifted copy} of the vertical bar is farther from it than a bar of a \emph{different orientation}.
 
-\paragraph{Learned representations} Deep networks learn the features themselves from raw inputs, layer by layer, from
-edges to parts to objects. The learned intermediate vectors --- \emph{embeddings} --- are now reused far beyond the task
-they were trained for: a word or token is mapped to a vector of a few hundred to a few thousand dimensions (768 in
-BERT-base~\cite{devlin2019}), and models such as CLIP map images and captions into a \emph{shared} space where
-matching pairs are close~\cite{radford2021}. For text, the raw input is first split into \emph{tokens} from a
-vocabulary of $10^4$--$10^5$ pieces, and each token is looked up in an embedding table.
+Now describe each image by three hand-crafted features: the number of dark pixels, the height and the width of the
+smallest box containing them. Then $\x_A' = \x_B' = (3, 3, 1)$ and $\x_C' = (3, 1, 3)$, so $\norm{\x_A' - \x_B'}^2 = 0$
+and $\norm{\x_A' - \x_C'}^2 = 8$. The features are invariant to shifts and separate the two orientations, at the
+price of forgetting where the bar is --- a good trade if orientation is what we want to predict, a bad one if
+position matters.
+
+\emph{Three predictors on the unseen image.} Train on $A \mapsto$ ``vertical'' and $C \mapsto$ ``horizontal'' and
+query $B$. The memoriser (Algorithm~\ref{alg:memorise}) finds no key equal to $\x_B$ and falls back on the majority
+label; with one example per class that is a tie, settled by an arbitrary rule (say, the first label alphabetically),
+so its answer is a guess. The 1-NN rule in raw pixels compares $\norm{\x_B - \x_A}^2 = 6$ with $\norm{\x_B - \x_C}^2
+= 4$ and answers ``horizontal'', wrongly. On the features, $\norm{\x_B' - \x_A'}^2 = 0 < \norm{\x_B' - \x_C'}^2 = 8$,
+and the same rule answers ``vertical''. Same algorithm, better representation, correct answer.
+\end{worked}
+
+\paragraph{Hand-crafted features} Experts design informative quantities: in vision, descriptors of local edge
+directions~\cite{dalal2005,lowe2004}; in physics, invariant masses, transverse momenta, jet substructure.
+
+\subsection{Categorical attributes: one-hot encoding}\label{sec:onehot}
+
+Many attributes take one of $K$ unordered values: the type of a reconstructed particle (electron, muon, photon,
+hadron), the detector sub-system that fired, the filter through which a galaxy was observed. The tempting code
+``electron $= 1$, muon $= 2$, photon $= 3$, hadron $= 4$'' invents an order and distances that do not exist: a
+hadron would be three times as far from an electron as a muon is.
+
+\begin{definition}[one-hot encoding]
+Number the $K$ categories $1, \dots, K$. The one-hot code of category $k$ is the $k$-th standard basis vector
+$\vect{e}_k \in \{0, 1\}^K$: a vector of zeros with a single one in position $k$.
+\end{definition}
+
+With the particle types, electron $\mapsto (1,0,0,0)$, muon $\mapsto (0,1,0,0)$, photon $\mapsto (0,0,1,0)$ and hadron
+$\mapsto (0,0,0,1)$ (function \textsc{OneHot} of Algorithm~\ref{alg:bow}). Every two different categories are now at the same distance, $\norm{\vect{e}_k - \vect{e}_l} =
+\sqrt{2}$, and their inner product is $\vect{e}_k\T\vect{e}_l = 0$; the code carries no information except identity.
+An example with several attributes concatenates the codes: a particle type (4 categories) and a sub-system
+(3 categories) give a vector of length 7 with exactly two ones. The same encoding represents the \emph{targets} of an
+$m$-class problem as rows of an $n \times m$ matrix $Y$ with $Y_{ik} = \ind{y_i = k}$; averaging rows gives class
+frequencies (Notes~5, 6 and~9).
+
+\subsection{Texts: the bag of words}\label{sec:bow}
+
+The \emph{bag of words} represents a document by how often each word of a fixed vocabulary occurs in it. It is a sum
+of one-hot vectors, one per word occurrence, so it inherits the properties above and adds one decision: word order
+is thrown away.
+
+\begin{algorithm}[H]
+\caption{One-hot codes and bag-of-words vectors from an index fitted on training data}\label{alg:bow}
+\begin{algorithmic}[1]
+\Require training items: category values $v_1, \dots, v_n$, or documents $T_1, \dots, T_n$ with a tokeniser
+\Function{FitIndex}{training items}
+  \State $W \gets$ set of all values (or of all tokens of all documents) \Comment{average $O(1)$ per insertion}
+  \State sort $W$; $\mathrm{index}[w] \gets$ position of $w$ in $W$; $V \gets |W|$ \Comment{training data only}
+  \State \Return $(\mathrm{index}, V)$
+\EndFunction
+\Function{OneHot}{$(\mathrm{index}, V)$, $v$}
+  \State $\vect{e} \gets (0, \dots, 0) \in \R^V$; \ if $v$ is a key of $\mathrm{index}$, $e_{\mathrm{index}[v]} \gets 1$
+  \State \Return $\vect{e}$ \Comment{an unseen value stays all-zero}
+\EndFunction
+\Function{BagOfWords}{$(\mathrm{index}, V)$, $T$}
+  \State $\x \gets$ empty sparse vector of length $V$ \Comment{stores only non-zero entries}
+  \For{each token $t$ of $T$ that is a key of $\mathrm{index}$}
+    \State $x_{\mathrm{index}[t]} \gets x_{\mathrm{index}[t]} + 1$
+  \EndFor
+  \State \Return $\x$ \Comment{the sum of the one-hot codes of the tokens}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{worked}{three sentences become three vectors}
+Training documents: $T_1$ = ``the muon hit the detector'', $T_2$ = ``a photon hit the detector'', $T_3$ = ``the muon
+decayed''.
+\begin{enumerate}
+\item \emph{Tokenise}: lower-case and split at spaces. The three documents have 5, 5 and 3 tokens.
+\item \emph{Build the vocabulary} from the training documents, here sorted alphabetically: (a, decayed, detector, hit,
+muon, photon, the), so $V = 7$.
+\item \emph{Count}: entry $j$ of $\x_i$ is the number of occurrences of word $j$ in $T_i$:
+\[
+  \x_1 = (0, 0, 1, 1, 1, 0, 2), \qquad \x_2 = (1, 0, 1, 1, 0, 1, 1), \qquad \x_3 = (0, 1, 0, 0, 1, 0, 1).
+\]
+The entries of $\x_i$ add up to the length of $T_i$.
+\item \emph{A new document} ``the pion hit the detector'' becomes $(0, 0, 1, 1, 0, 0, 2)$: ``pion'' is not in the
+vocabulary and is dropped (or counted in an extra ``unknown'' entry).
+\end{enumerate}
+The vectors are compared in Section~\ref{sec:vectors}. Two lessons are visible already. First, ``dog bites man'' and
+``man bites dog'' get identical vectors; the representation cannot tell them apart. A representation that keeps one
+vector per position (the sequence of one-hot or embedding vectors, padded to a fixed length and flattened), or one
+that also counts adjacent word pairs (\emph{bigrams}: ``dog bites'', ``bites man''), does. Second, frequent short words
+(``the'', ``a'') carry little meaning but dominate the counts; they are often removed as \emph{stop words} or
+down-weighted, for instance by the tf--idf scheme, which multiplies each count by $\log(n / n_j)$, where $n_j$ is
+the number of training documents containing word $j$, so that a word present in every document gets weight zero.
+\end{worked}
+
+
+\begin{runtime}{one-hot codes and bag of words (Algorithm~\ref{alg:bow})}
+Let $n_{\mathrm{it}}$ be the number of items seen by \textsc{FitIndex} ($n_{\mathrm{it}} = n$ for a categorical column, the total number of tokens
+for documents) and $\ell$ the length of one document. \textbf{Fitting the index} $O(n_{\mathrm{it}} + V \log V)$: one
+average-$O(1)$ hash-set insertion per item, then a sort of the $V$ distinct values. \textbf{Encoding}: $O(1)$ for one
+categorical value and $O(\ell)$ for a document if the output is sparse; writing a dense vector adds $O(V)$.
+\textbf{Memory}: dense codes take $O(nV)$ (for a categorical column $V = K$, the number of categories); sparse ones
+take $O(n)$ for a categorical column and $O(n_{\mathrm{it}})$ for documents, one entry per distinct token of each document. Example:
+$n = 10^5$ documents, $V = 5 \times 10^4$ words and about 200 distinct words per document need $20$~GB as a dense
+\texttt{float32} matrix but only $10^5 \times 200 \times 8$ bytes $= 160$~MB sparse (a 4-byte index and a 4-byte value
+per non-zero entry).
+\end{runtime}
+
+\subsection{Events with a variable number of objects}\label{sec:events}
+
+A collision event is a list of objects whose length varies. A fixed $d$ is obtained by keeping the $k$ leading
+objects (by transverse momentum $p_{\mathrm T}$), padded with zeros (Algorithm~\ref{alg:leading}), or by computing
+summary observables.
+
+\begin{algorithm}[H]
+\caption{A fixed-length vector from an event with a variable number of objects}\label{alg:leading}
+\begin{algorithmic}[1]
+\Require event: $r$ objects, each described by $f$ numbers with $p_{\mathrm T}$ first; number $k$ of objects kept
+\Function{LeadingObjects}{event, $k$}
+  \State sort the objects by decreasing $p_{\mathrm T}$ \Comment{or select the $k$ largest without a full sort}
+  \State keep the first $\min(r, k)$ objects; append $k - \min(r, k)$ objects of $f$ zeros \Comment{zero padding}
+  \State \Return the $k$ objects concatenated into one vector of length $kf$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{runtime}{leading objects (Algorithm~\ref{alg:leading})}
+\textbf{Training}: none, nothing is fitted ($k$ is a choice). \textbf{Encoding} $O(r \log r + kf)$ per event: the
+sort, then writing $kf$ numbers; partial selection lowers the sort to $O(r + k \log k)$. \textbf{Memory} $O(kf)$ per
+event, $O(nkf)$ for the dataset.
+\end{runtime}
+
+\begin{worked}{an event with three jets}
+Three jets have $(p_{\mathrm T}, \eta, \phi) = (120~\text{GeV}, 0.5, 0.0)$, $(80~\text{GeV}, -0.3, 3.0)$ and
+$(30~\text{GeV}, 1.8, 1.2)$, with $\eta = -\ln\tan(\theta/2)$ the pseudorapidity, $\theta$ the polar angle to the
+beam (unrelated to the $\eta(\x)$ of Section~\ref{sec:targets}), and $\phi$ the azimuth in radians. A summary vector with $d = 5$ holds the multiplicity, $H_{\mathrm T} = \sum
+p_{\mathrm T} = 230$~GeV, the two leading $p_{\mathrm T}$ and the invariant mass of the two leading jets, which for
+massless jets is
+\begin{align*}
+  m_{jj}^2 &= 2 p_{\mathrm T 1} p_{\mathrm T 2}\big(\cosh(\eta_1 - \eta_2) - \cos(\phi_1 - \phi_2)\big)
+  = 2 \times 120 \times 80 \times \big(\cosh 0.8 - \cos(-3.0)\big) \\
+  &= 19\,200 \times \big(1.3374 - (-0.9900)\big) = 19\,200 \times 2.3274 \approx 44\,687~\text{GeV}^2 ,
+\end{align*}
+so $m_{jj} \approx 211.4$~GeV and $\x = (3, 230, 120, 80, 211.4)$. ``Two leading jets, padded'' gives instead
+$\x = (120, 0.5, 0.0, 80, -0.3, 3.0)$. Both forget the third jet partly or completely --- the price of a fixed $d$.
+An event with a single jet, $(120~\text{GeV}, 0.5, 0.0)$, becomes $(120, 0.5, 0.0, 0, 0, 0)$: the padding looks like
+a real jet with $p_{\mathrm T} = 0$ at $\eta = \phi = 0$, and distances treat it as one.
+\end{worked}
+
+\paragraph{Learned representations} Deep networks learn the features themselves from raw inputs. Their intermediate
+vectors --- \emph{embeddings} --- are reused far beyond the task they were trained for: a token from a vocabulary of
+$10^4$--$10^5$ pieces becomes a vector of a few hundred to over ten thousand dimensions (768 in
+BERT-base~\cite{devlin2019}), and CLIP maps images and captions into a \emph{shared} space where matching pairs are
+close~\cite{radford2021}. Looking a token up in an embedding table is a matrix product in disguise: if $\vect{e}_k
+\in \R^V$ is the one-hot code of token $k$ and $W$ is the $V \times d_{\mathrm{emb}}$ embedding matrix, then
+$\vect{e}_k\T W$ is row $k$ of $W$. The product is a table lookup, so neither $\vect{e}_k$ nor the multiplication is
+ever computed.
+
+\paragraph{Levels of representation} The representations of this section can be ordered by level. Lowest are the raw
+measurements: pixels, calorimeter cells, the constituents of a jet. In the middle are observables computed from them
+by hand: the dark-pixel count and box size of the $3 \times 3$ images, $H_{\mathrm T}$ and $m_{jj}$ of the three-jet
+event. Highest are learned embeddings. A higher level keeps what matters for the task and discards what does not
+(such as the position of a bar), so simple methods built on distances or linear rules work
+better on it: 1-NN failed on the raw pixels and succeeded on the features. Raw high-dimensional inputs also suffer
+from the curse of dimensionality (Note~3, Section~3); neural networks (week~5) learn the levels layer by layer.
 
 \begin{modern}{representations as a product}
-A common recipe in 2026 is to take a large pre-trained model, keep it frozen, and train only a simple classifier
---- or even a nearest-neighbour rule (Note~5) --- on its embeddings. The algorithms of weeks~1--3 are therefore not
-museum pieces: they are exactly what is applied on top of modern representations.
+A common recipe in 2026 is to keep a large pre-trained model frozen and train only a simple classifier --- or a
+nearest-neighbour rule (Note~5) --- on its embeddings: the algorithms of weeks~1--3 are what is applied on top.
 \end{modern}
 
 \section{Families of learning problems}
 
-\paragraph{Supervised learning} predicts a target $y$ from an input $\x$. In \emph{classification} $y$ is a category
+\paragraph{Supervised learning} The goal is to predict a target $y$ from an input $\x$. In \emph{classification} $y$ is a category
 (binary, $y \in \{0,1\}$ or $\{-1,+1\}$; or multiclass, $y \in \{1, \dots, m\}$). In \emph{regression} $y$ is a real
 number or a vector of real numbers.
 
-\paragraph{Unsupervised learning} has no explicit target. \emph{Density estimation} models the distribution $p(\x)$
+\paragraph{Unsupervised learning} There is no explicit target. \emph{Density estimation} models the distribution $p(\x)$
 of the inputs; \emph{clustering} groups similar examples; \emph{dimensionality reduction} finds a few coordinates that
 describe the data (for visualisation or compression); \emph{representation learning} builds useful features.
 
 \paragraph{Between the two} \emph{Semi-supervised} learning uses a few labelled and many unlabelled examples.
-\emph{Self-supervised} learning manufactures targets from the data itself: predict the next token of a text, a masked
-patch of an image, or which caption belongs to which image. Next-token prediction is, formally, multiclass
-classification with $m$ equal to the vocabulary size, repeated at every position of every text --- which is why the
-simple losses below also drive the largest models.
+\emph{Self-supervised} learning manufactures targets from the data: the next token of a text, a masked image patch.
+Next-token prediction is multiclass classification with $m$ the vocabulary size. The model outputs a probability
+$f_k(\x)$ for every token $k$ and is trained to minimise the \emph{log loss} (cross-entropy) $-\log f_y(\x)$, minus
+the logarithm of the probability it gave to the token $y$ that actually came next (Table~\ref{tab:tasks}; Note~4,
+Section~2). This is the negative log-likelihood of the density-estimation row, applied to the conditional
+distribution $P(Y \mid \X = \x)$; the simple losses below thus also drive the largest models.
 
-\paragraph{Reinforcement learning} An agent chooses actions in an environment to maximise a cumulative reward; it is
-used, for example, to fine-tune language models from human preference judgements~\cite{ouyang2022}. It is outside
-the scope of this course.
+\paragraph{Reinforcement learning} An agent chooses actions to maximise a cumulative reward, as when language
+models are fine-tuned from human preferences~\cite{ouyang2022}; it is outside the scope of this course.
 
 \begin{figure}[h]\centering
-\includegraphics[width=\linewidth]{figures/tasks}
+\includegraphics[width=0.72\linewidth]{figures/tasks}
 \caption{Three tasks. Left: classify events into signal (amber) and background (indigo) from two observables. Middle: regression;
-the curve is the conditional mean $\E[Y \mid X = x]$ that a good regressor approximates. Right: density estimation;
+the input is a single number $x$ and the curve is the conditional mean $\E[Y \mid X = x]$ that a good regressor
+approximates. Right: density estimation;
 contours of an estimate of $p(\x)$ (Note~5 explains how it was computed).}
 \label{fig:tasks}
 \end{figure}
@@ -153,102 +423,468 @@ contours of an estimate of $p(\x)$ (Note~5 explains how it was computed).}
 \renewcommand{\arraystretch}{1.25}
 \begin{tabular}{@{}L{0.17\linewidth}L{0.16\linewidth}L{0.36\linewidth}L{0.23\linewidth}@{}}\toprule
  & Target & What $f(\x)$ should be & Typical loss $L$ \\ \midrule
-Classification & $y \in \{1, \dots, m\}$ & the most probable class, or the vector of probabilities $P(Y = k \mid \X = \x)$ & error $\ind{f(\x) \neq y}$ \\
+Classification & $y \in \{1, \dots, m\}$ & the most probable class, or the vector of probabilities $P(Y = k \mid \X = \x)$ & error $\ind{f(\x) \neq y}$; for probabilities, log loss $-\log f_y(\x)$ \\
 Regression & $y \in \R$ & the conditional mean $\E[Y \mid \X = \x]$ & squared error $(f(\x) - y)^2$ \\
 Density estimation & none & the density $p(\x)$ & negative log-likelihood $-\log f(\x)$ \\ \bottomrule
 \end{tabular}
 \end{table}
 
-Why these targets? For squared error, conditioning on $\X = \x$ and writing $\mu(\x) = \E[Y \mid \X = \x]$,
-\[
-  \E\big[(f(\x) - Y)^2 \mid \X = \x\big] = \big(f(\x) - \mu(\x)\big)^2 + \Var(Y \mid \X = \x),
-\]
-so the best possible prediction is $\mu(\x)$, and the remaining $\Var(Y \mid \X = \x)$ is noise that no predictor can
-remove. Similarly, the expected classification error at $\x$ is $1 - P(Y = f(\x) \mid \X = \x)$, minimised by the most
-probable class (Exercise~E3). The irreducible error that remains is called the \emph{Bayes error}.
+\paragraph{What kind of function is learned} A classifier maps $\R^d \to \{1, \dots, m\}$ (or to probability
+vectors), a regressor $\R^d \to \R$, a density estimator $\R^d \to [0, \infty)$ with $\int f(\x)\,d\x = 1$; the family
+searched is chosen as in Note~4, Section~1.
 
-\paragraph{One dataset, several tasks} The task is a choice of the analyst, not a property of the data. From the same
-galaxy survey one can classify morphology (spiral or elliptical), regress the redshift from the measured colours
-(``photometric redshifts''), or estimate the density of objects in colour space and flag the rare ones that fall in
-low-density regions --- a standard route to discovering unusual objects.
+\subsection{Why these targets: two derivations}\label{sec:targets}
+
+The column ``What $f(\x)$ should be'' of Table~\ref{tab:tasks} is the prediction with the smallest \emph{expected}
+value of the loss in the column ``Typical loss'' when $P(\X, Y)$ is known. Both derivations work at a fixed input $\x$, where $f(\x)$ is just a number $c$ to choose.
+
+\paragraph{Squared error} Write $\mu(\x) = \E[Y \mid \X = \x]$ and abbreviate $\mu = \mu(\x)$. Add and subtract $\mu$
+inside the square and expand:
+\[
+  (c - Y)^2 = \big((c - \mu) + (\mu - Y)\big)^2 = (c - \mu)^2 + 2(c - \mu)(\mu - Y) + (\mu - Y)^2 .
+\]
+Now take the conditional expectation given $\X = \x$ term by term; expectation is linear and $c - \mu$ is a
+constant, so
+\[
+  \E\big[(c - Y)^2 \mid \X = \x\big] = (c - \mu)^2 + 2(c - \mu)\,\E[\mu - Y \mid \X = \x] + \E\big[(\mu - Y)^2 \mid \X = \x\big].
+\]
+The middle expectation is $\mu - \E[Y \mid \X = \x] = \mu - \mu = 0$, so the cross term vanishes, and the last one is,
+by definition, the conditional variance. Hence
+\begin{equation}\label{eq:sqdecomp}
+  \E\big[(c - Y)^2 \mid \X = \x\big] = \big(c - \mu(\x)\big)^2 + \Var(Y \mid \X = \x).
+\end{equation}
+The first term is zero exactly when $c = \mu(\x)$, and the second does not depend on $c$ at all. The same answer
+follows from one derivative: $g(c) = \E[(c - Y)^2 \mid \X = \x] = c^2 - 2c\,\mu + \E[Y^2 \mid \X = \x]$ has
+$g'(c) = 2(c - \mu) = 0$ at $c = \mu$, and $g''(c) = 2 > 0$ makes it a minimum. So the best regressor is the
+conditional mean, and $\Var(Y \mid \X = \x)$ is noise that \emph{no} predictor can remove. For any predictor $f$,
+set $c = f(\x)$ in \eqref{eq:sqdecomp}, which holds at every $\x$, and average over $\X$ with the law of total
+expectation $\E\big[\E[Z \mid \X]\big] = \E[Z]$:
+\begin{equation}\label{eq:sqdecompavg}
+  \E\big[(f(\X) - Y)^2\big] = \E\big[(f(\X) - \mu(\X))^2\big] + \E\big[\Var(Y \mid \X)\big] ,
+\end{equation}
+the sum of a part we can reduce by learning and a floor set by nature. Note~4, Section~6, splits the first part
+further into bias and variance.
+
+\begin{worked}{a regression problem small enough to solve exactly}
+The input takes two values, $\X = 1$ or $\X = 2$, each with probability $\tfrac12$. Given $\X = 1$, $Y$ is $1$ or $3$
+with equal probability; given $\X = 2$, $Y$ is $2$, $4$ or $6$ with equal probability.
+\begin{itemize}
+\item Conditional means: $\mu(1) = (1 + 3)/2 = 2$ and $\mu(2) = (2 + 4 + 6)/3 = 4$.
+\item Conditional variances: $\Var(Y \mid \X = 1) = \tfrac12\big[(1-2)^2 + (3-2)^2\big] = 1$ and
+$\Var(Y \mid \X = 2) = \tfrac13\big[4 + 0 + 4\big] = \tfrac83$.
+\item The best possible mean squared error is $\E[\Var(Y \mid \X)] = \tfrac12\big(1 + \tfrac83\big) = \tfrac{11}{6}
+\approx 1.83$, reached by $f = \mu$.
+\item The best constant predictor, $f \equiv \E[Y] = \tfrac12 \cdot 2 + \tfrac12 \cdot 4 = 3$ (the average of the
+conditional means), ignores $\X$. Directly: at $\X = 1$ its squared errors are $4$ and $0$
+(mean $2$); at $\X = 2$ they are $1, 1, 9$ (mean $\tfrac{11}{3}$); overall $\tfrac12(2 + \tfrac{11}{3}) =
+\tfrac{17}{6} \approx 2.83$. With \eqref{eq:sqdecompavg}: $\tfrac{11}{6} + \tfrac12\big[(3-2)^2 + (3-4)^2\big] =
+\tfrac{11}{6} + 1 = \tfrac{17}{6}$, the same number.
+\end{itemize}
+Using the input reduces the error from $\tfrac{17}{6}$ to $\tfrac{11}{6}$; nothing reduces it further.
+\end{worked}
+
+\paragraph{Classification error} Write $\eta_k(\x) = P(Y = k \mid \X = \x)$ for the class probabilities at $\x$. If we
+predict class $c$, the loss $\ind{c \ne Y}$ is $1$ for every outcome $Y \ne c$ and $0$ for $Y = c$, so
+\[
+  \E\big[\ind{c \ne Y} \mid \X = \x\big] = \sum_{k=1}^m \eta_k(\x)\, \ind{c \ne k} = \sum_{k \ne c} \eta_k(\x)
+  = 1 - \eta_c(\x),
+\]
+using $\sum_k \eta_k(\x) = 1$ in the last step. The conditional error is smallest when $\eta_c(\x)$ is largest, so the
+best classifier --- the \emph{Bayes classifier} --- is
+\begin{equation}\label{eq:bayesrule}
+  f^*(\x) = \argmax_k\, \eta_k(\x), \qquad \text{with conditional error } 1 - \max_k \eta_k(\x) .
+\end{equation}
+Averaging over $\X$ gives the \emph{Bayes error} $R^* = \E\big[1 - \max_k \eta_k(\X)\big]$, the smallest error rate
+any classifier can achieve with these inputs. With two classes and $\eta(\x)$ the probability of one of them it reads
+$R^* = \E[\min(\eta(\X), 1 - \eta(\X))] \le \tfrac12$. How to estimate the $\eta_k$ from data is the subject of Note~6.
+
+\begin{worked}{Bayes classifier and Bayes error from a table}
+A muon chamber has two detection layers; $X \in \{0, 1, 2\}$ is the number of layers that fired, and $Y = 1$ if the
+particle was a muon. The joint distribution is known (from simulation); in the table $P(x, Y{=}0)$ abbreviates
+$P(X{=}x, Y{=}0)$, and $P(x)$ is $P(X{=}x)$:
+\begin{center}\small
+\begin{tabular}{@{}c|cc|c|c|c|c@{}}\toprule
+$x$ & $P(x, Y{=}0)$ & $P(x, Y{=}1)$ & $P(x)$ & $\eta(x) = P(Y{=}1 \mid x)$ & $f^*(x)$ & error at $x$ \\ \midrule
+0 & 0.45 & 0.05 & 0.50 & 0.10 & 0 & 0.10 \\
+1 & 0.12 & 0.18 & 0.30 & 0.60 & 1 & 0.40 \\
+2 & 0.04 & 0.16 & 0.20 & 0.80 & 1 & 0.20 \\ \bottomrule
+\end{tabular}
+\end{center}
+Each $\eta(x)$ is a row's $Y{=}1$ entry divided by its total, e.g.\ $0.18 / 0.30 = 0.60$. The Bayes classifier
+predicts ``muon'' when $\eta(x) > \tfrac12$, i.e.\ for $x \ge 1$. Its error is
+\[
+  R^* = 0.50 \times 0.10 + 0.30 \times 0.40 + 0.20 \times 0.20 = 0.05 + 0.12 + 0.04 = 0.21 ,
+\]
+which is also the sum of the \emph{smaller} joint entry in each row. Two comparisons: the stricter rule ``muon only if
+$x = 2$'' has error $0.05 + 0.18 + 0.04 = 0.27$; ignoring $X$ and always predicting the more frequent class (no muon,
+since $P(Y{=}1) = 0.39$) has error $0.39$. No classifier using only $X$ beats $21\%$; a third layer --- a better
+representation --- could.
+\end{worked}
+
+\paragraph{Density estimation} A good density is large where data actually fall: $-\log f(\x)$ is large when the
+observed $\x$ was given a low density, so its average penalises a density that misses the data. The expected negative
+log-likelihood $\E[-\log f(\X)]$ is minimised by the true density, $f = p$ (Gibbs' inequality: $\E[-\log f(\X)] \ge
+\E[-\log p(\X)]$ for every density $f$, with equality only for $f = p$); maximum likelihood (Note~2, Section~2) minimises its empirical version.
+
+\begin{keyidea}[The Bayes error belongs to the representation]
+The irreducible errors $\E[\Var(Y \mid \X)]$ and $R^*$ belong to the joint distribution of the chosen inputs and the
+target, not to any algorithm: a better algorithm can approach them but never beat them; a better
+\emph{representation} --- an extra, informative feature --- can lower them.
+\end{keyidea}
 
 \section{Anatomy of a machine-learning project}\label{sec:workflow}
 
 \begin{enumerate}
 \item \textbf{Formulate.} Which task of Table~\ref{tab:tasks} is it? Which loss reflects what you actually care about
 (a missed signal event and a false alarm rarely cost the same)?
-\item \textbf{Understand the data.} How many examples, what is one example, how were labels obtained (by experts,
-by simulation, by an older algorithm?), and what is the unit of independence?
+\item \textbf{Understand the data.} What is one example, how were the labels obtained, and what is the unit of
+independence?
 \item \textbf{Split first.} Set aside validation and test data \emph{before} looking for patterns (Note~4).
 \item \textbf{Pre-process using training data only.} Scaling constants, vocabularies and feature selections are part
 of the model; computing them on all the data leaks information from the test set.
-\item \textbf{Start simple.} A constant predictor, a linear model or a nearest-neighbour rule gives a baseline. Debug on
-low-dimensional problems where the data and the decision boundary can be plotted and training takes seconds.
+\item \textbf{Start simple.} A constant predictor, a linear model or a nearest-neighbour rule gives a baseline; test
+new code first on a two-input toy problem that you can see in a scatter plot.
 \item \textbf{Evaluate out of sample}, compare models fairly and report uncertainty (Note~4).
 \item \textbf{Deploy and monitor.} The data distribution can drift after deployment.
 \end{enumerate}
 
+\subsection{Leakage, with numbers}\label{sec:leakage}
+
+\emph{Leakage} is any route by which information about the evaluation data reaches the model during its construction.
+It makes the \emph{reported} performance better than the performance on genuinely new data.
+
+\begin{worked}{the same galaxy on both sides of the split}
+A morphology dataset contains $1000$ images: $250$ galaxies, each photographed $4$ times. It is shuffled and split at
+random into $800$ training and $200$ test images. Pick a test image. Given that it is in the test set, the other
+$199$ test images are a random subset of the remaining $999$, every subset equally likely. Its $3$ siblings are all
+in that subset for $\binom{199}{3}$ of the $\binom{999}{3}$ equally likely sets of positions they can occupy, so the
+probability that \emph{all three} siblings also landed in the test set is (the $3!$ in both binomials cancels)
+\[
+  \frac{\binom{199}{3}}{\binom{999}{3}} = \frac{199 \cdot 198 \cdot 197}{999 \cdot 998 \cdot 997} \approx 0.0078 .
+\]
+Thus $99.2\%$ of test images have at least one image of the same galaxy in the training set. Suppose a classifier is
+right $98\%$ of the time on galaxies it has seen and $70\%$ of the time on new galaxies. The random split reports
+$0.992 \times 0.98 + 0.008 \times 0.70 \approx 97.8\%$, whereas a survey of new galaxies will see $70\%$. The fix is a
+\emph{grouped} split that keeps all images of a galaxy on the same side (Note~4, Section~4); it then reports
+$70\%$, the honest number.
+\end{worked}
+
+\paragraph{Validation and cross-validation} Data used to \emph{choose} between models or settings are
+\emph{validation} data; test data are touched only once, at the end, to report the final number. When data are
+scarce, \emph{$k$-fold cross-validation} cuts them into $k$ equal parts (\emph{folds}); each fold in turn serves as
+validation data for a model trained on the other $k - 1$, and the $k$ validation errors are averaged (Note~4,
+Section~4). Everything fitted, including a feature selection, must then be fitted anew inside each fold.
+
+\begin{worked}{choosing features before cross-validation}
+Take $n = 50$ examples with balanced random labels and $5000$ features of pure noise, so that no classifier can do better than chance ($50\%$
+error) on new data. A common mistake is to first keep the $20$ features most correlated with the label, using all $50$
+examples, and then estimate the error of a $1$-nearest-neighbour classifier (Note~5) by $5$-fold cross-validation on
+those features. Averaged over $200$ simulated datasets (our own simulation), this procedure reports an error of
+about $9\%$. Repeating the feature selection \emph{inside} each fold, on the training part only, reports about $52\%$,
+close to the true $50\%$. The selection step had seen the labels of the validation examples and picked features that
+happen to fit them. This is a smaller version of the example in~\cite[section~7.10.2]{hastie2009}, where keeping
+$100$ features drives the reported error down to about $3\%$.
+\end{worked}
+
+Other common leaks are features that encode the label by accident (a file name, a simulation run number) and random
+splits of time series. The remedy is always
+Algorithm~\ref{alg:pipeline}: everything \emph{fitted} --- scaling constants, vocabularies, selected features, the
+model --- is fitted on training data and \emph{applied} unchanged to the evaluation data.
+
+\begin{algorithm}[htbp]
+\caption{Leak-free hold-out evaluation of a pipeline}\label{alg:pipeline}
+\begin{algorithmic}[1]
+\Require dataset $D_n$; pre-processing \textsc{Fit}/\textsc{Apply}; learner \textsc{Train}/\textsc{Predict}; loss $L$
+\State split $D_n$ into $\Dtrain$ and $\Dtest$ \Comment{by group or by time when the data are not i.i.d.}
+\State $\phi \gets \textsc{Fit}(\Dtrain)$ \Comment{e.g.\ means and standard deviations, vocabulary, selected features}
+\State $\theta \gets \textsc{Train}\big(\{(\textsc{Apply}(\phi, \x), y) : (\x, y) \in \Dtrain\}\big)$
+\State \Return $\frac{1}{|\Dtest|} \sum_{(\x, y) \in \Dtest} L\big(\textsc{Predict}(\theta, \textsc{Apply}(\phi, \x)), y\big)$
+\Statex \textit{$k$-fold version:} cut $D_n$ into $k$ folds; for each fold run lines 2--4 with that fold as the
+evaluation set and the rest as $\Dtrain$ (\textsc{Fit} includes any feature selection), then average the $k$ results
+(Note~4, Section~4).
+\end{algorithmic}
+\end{algorithm}
+
+\begin{runtime}{leak-free evaluation (Algorithm~\ref{alg:pipeline})}
+Write $T_{\textsc{Fit}}$, $T_{\textsc{Apply}}$, $T_{\textsc{Train}}$, $T_{\textsc{Predict}}$ for the costs of the four
+procedures and $n_{\mathrm{tr}}$ for the training size. \textbf{Training}
+$T_{\textsc{Fit}}(n_{\mathrm{tr}}) + n_{\mathrm{tr}}\, T_{\textsc{Apply}} + T_{\textsc{Train}}(n_{\mathrm{tr}})$: fit
+$\phi$, transform every training input once, train. \textbf{Prediction} $T_{\textsc{Apply}} + T_{\textsc{Predict}}$ per
+test example: the same transformation, then the model. \textbf{Memory}: that of $\phi$ (e.g.\ $O(d)$ for
+standardisation constants, $O(V)$ for a vocabulary) plus that of $\theta$. The leaky version costs the same, so doing
+it right is free; $k$-fold cross-validation repeats the training part $k$ times.
+\end{runtime}
+
 \begin{modern}{leakage in published science}
-A survey of machine-learning-based science found data leakage --- for example pre-processing on the full dataset,
-duplicates across splits, or features that encode the label --- in hundreds of published papers across seventeen
-fields, often turning a useless model into an apparently excellent one~\cite{kapoor2023}. Steps 3 and 4 above are the
-cheapest insurance against it. Documenting how a dataset was collected (``datasheets for datasets''~\cite{gebru2021})
-helps others detect such problems.
+A survey of machine-learning-based science found leakage --- pre-processing on the full dataset, duplicates across
+splits, features that encode the label --- in hundreds of papers in seventeen fields, inflating reported performance
+and, in some case studies, making a model no better than simple baselines look excellent~\cite{kapoor2023}. Steps 3
+and 4 above and documenting how data were collected~\cite{gebru2021} are the cheapest insurance.
 \end{modern}
 
 \section{A vector toolkit}\label{sec:vectors}
 
+A vector has three faces in this course. Mathematically it is an element of $\R^d$. In code it is a \texttt{numpy}
+array of shape \texttt{(d,)}, taking $4d$ bytes in \texttt{float32} or $8d$ in \texttt{float64} --- for instance one
+row of the design matrix. Graphically it is a point of a scatter plot (Section~\ref{sec:notation}) or an arrow from
+the origin to that point, the picture behind the angles and projections below.
+
 For $\vect{a}, \vect{b} \in \R^d$ the \emph{inner product} is $\vect{a}\T\vect{b} = \sum_{j=1}^d a_j b_j$. The
 \emph{$L_p$ norm} is $\norm{\vect{a}}_p = \big(\sum_j |a_j|^p\big)^{1/p}$ for $p \ge 1$; $p = 2$ gives the Euclidean
 norm $\norm{\vect{a}} = \sqrt{\vect{a}\T\vect{a}}$, $p = 1$ the sum of absolute values and $p \to \infty$ the largest
-absolute value. The Euclidean distance is $\norm{\vect{a} - \vect{b}}$, and the \emph{cosine similarity}
+absolute value. The Euclidean distance is $\norm{\vect{a} - \vect{b}}$.
+
+The \emph{cosine similarity}
 $\cos(\vect{a},\vect{b}) = \vect{a}\T\vect{b} / (\norm{\vect{a}}\,\norm{\vect{b}})$ compares directions only --- the
-standard way to compare embeddings.
+standard way to compare embeddings. Geometrically, $\vect{a}\T\vect{b} = \norm{\vect{a}}\,\norm{\vect{b}}\cos\theta$
+with $\theta$ the angle between the vectors, and $\vect{a}\T\vect{b} / \norm{\vect{b}}$ is the signed length of the
+projection of $\vect{a}$ onto the direction of $\vect{b}$. The Cauchy--Schwarz inequality $|\vect{a}\T\vect{b}| \le
+\norm{\vect{a}}\,\norm{\vect{b}}$ guarantees $-1 \le \cos(\vect{a}, \vect{b}) \le 1$; the value is $1$ for parallel
+vectors, $0$ for orthogonal ones and $-1$ for opposite ones. Note~5, Section~5, compares the norms' unit balls.
 
-\paragraph{Distances in bulk} Many methods need the distances between $q$ query points (rows of $Q \in \R^{q \times
-d}$) and $n$ data points (rows of $X$). Expanding the square,
+\begin{worked}{norms, inner product and angle}
+Let $\vect{a} = (3, -4, 0, 12)$ and $\vect{b} = (1, 2, 2, 0)$ in $\R^4$.
+\begin{itemize}
+\item $\norm{\vect{a}}_1 = 3 + 4 + 0 + 12 = 19$, $\ \norm{\vect{a}}_2 = \sqrt{9 + 16 + 0 + 144} = \sqrt{169} = 13$,
+$\ \norm{\vect{a}}_\infty = 12$. Always $\norm{\vect{a}}_\infty \le \norm{\vect{a}}_2 \le \norm{\vect{a}}_1$.
+\item $\norm{\vect{b}} = \sqrt{1 + 4 + 4} = 3$ and $\vect{a}\T\vect{b} = 3 - 8 + 0 + 0 = -5$.
+\item $\cos(\vect{a}, \vect{b}) = -5 / (13 \times 3) = -5/39 \approx -0.128$, an angle of about $97.4^\circ$: the
+vectors are nearly orthogonal. The projection of $\vect{a}$ on the direction of $\vect{b}$ has length $-5/3$.
+\item $\norm{\vect{a} - \vect{b}}^2 = \norm{\vect{a}}^2 + \norm{\vect{b}}^2 - 2\,\vect{a}\T\vect{b} = 169 + 9 + 10 =
+188$; directly, $\vect{a} - \vect{b} = (2, -6, -2, 12)$ and $4 + 36 + 4 + 144 = 188$.
+\end{itemize}
+\end{worked}
+
+\paragraph{Distance or direction} The two notions can disagree (Figure~\ref{fig:distcos}, right). For
+$\vect{u} = (1, 2)$, the vector $\vect{w} = (2, 1)$ is close in distance ($\norm{\vect{u} - \vect{w}} = \sqrt2
+\approx 1.41$) but points elsewhere ($\cos = 0.8$), while $3\vect{u}$ is far ($\norm{\vect{u} - 3\vect{u}} =
+2\sqrt5 \approx 4.47$) but points the same way ($\cos = 1$). For bag-of-words vectors, a document copied three times
+is $3\x$: its topic is unchanged, and only the cosine sees that. On the three sentences of Section~\ref{sec:bow},
+$\x_1\T\x_2 = 4$, $\x_1\T\x_3 = 3$, $\x_2\T\x_3 = 1$ and $\norm{\x_1}^2 = 7$, $\norm{\x_2}^2 = 5$, $\norm{\x_3}^2 = 3$,
+so
 \[
-  \norm{\vect{a} - \vect{b}}^2 = \norm{\vect{a}}^2 + \norm{\vect{b}}^2 - 2\,\vect{a}\T\vect{b},
+  \cos(\x_1, \x_2) = \tfrac{4}{\sqrt{35}} \approx 0.68, \qquad \cos(\x_1, \x_3) = \tfrac{3}{\sqrt{21}} \approx 0.65,
+  \qquad \cos(\x_2, \x_3) = \tfrac{1}{\sqrt{15}} \approx 0.26 .
 \]
-so the whole $q \times n$ matrix of squared distances is two vectors of squared norms plus the single matrix product
-$-2\,QX\T$. Matrix products are what modern hardware does best; the loop over pairs disappears.
+Removing the stop words ``the'' and ``a'' leaves the vocabulary (decayed, detector, hit, muon, photon) and the
+vectors $(0,1,1,1,0)$, $(0,1,1,0,1)$ and $(1,0,0,1,0)$; the cosines become $2/3 \approx 0.67$, $1/\sqrt6 \approx 0.41$
+and $0$: $T_1$ is now clearly closer to
+$T_2$ (shared ``hit'', ``detector'') than to $T_3$ (shared ``muon''), and $T_2$, $T_3$ share no content word.
 
+\begin{figure}[htbp]\centering
+\includegraphics[width=0.8\linewidth]{figures/n1_distances_cosine}
+\caption{Left: the three points of the worked example below, with their squared distances. Right: Euclidean distance
+and cosine similarity disagree; $\vect{w}$ is nearer to $\vect{u}$, but $3\vect{u}$ has the same direction.}
+\label{fig:distcos}
+\end{figure}
+
+\subsection{Distances in bulk}\label{sec:bulk}
+
+Many methods need the distances between $q$ query points (rows of $Q \in \R^{q \times d}$) and $n$ data points (rows
+of $X$). For one pair, expand the square of the difference using the bilinearity of the inner product:
+\[
+  \norm{\vect{a} - \vect{b}}^2 = (\vect{a} - \vect{b})\T(\vect{a} - \vect{b})
+  = \vect{a}\T\vect{a} - \vect{a}\T\vect{b} - \vect{b}\T\vect{a} + \vect{b}\T\vect{b}
+  = \norm{\vect{a}}^2 + \norm{\vect{b}}^2 - 2\,\vect{a}\T\vect{b},
+\]
+where the middle step uses $\vect{b}\T\vect{a} = \vect{a}\T\vect{b}$. Apply this to every pair $(\vect{q}_i, \x_j)$.
+With the vectors of squared norms $\vect{s}^Q \in \R^q$ and $\vect{s}^X \in \R^n$, with components $s^Q_i =
+\norm{\vect{q}_i}^2$ and $s^X_j = \norm{\x_j}^2$, and since $(QX\T)_{ij} = \vect{q}_i\T\x_j$, the whole $q \times n$
+matrix of squared distances is
+\begin{equation}\label{eq:sqdist}
+  D = \vect{s}^Q \vect{1}_n\T + \vect{1}_q (\vect{s}^X)\T - 2\,Q X\T .
+\end{equation}
+Here $\vect{1}_n$ is the vector of $n$ ones. The outer product $\vect{s}^Q \vect{1}_n\T$ is the $q \times n$ matrix
+whose entry $(i, j)$ is $s^Q_i$ (every column equals $\vect{s}^Q$), and $\vect{1}_q (\vect{s}^X)\T$ has entry
+$(i, j)$ equal to $s^X_j$ (every row equals $(\vect{s}^X)\T$). Entry $(i, j)$ of $D$ is therefore $s^Q_i + s^X_j -
+2\,\vect{q}_i\T\x_j$, the single-pair identity; in code the outer products are never formed, \texttt{numpy}
+``broadcasts'' the two norm vectors instead. Below, $\odot$ is the element-wise (Hadamard) product. When $Q = X$, the matrix $G = XX\T$ of all
+inner products is called the \emph{Gram matrix}; it reappears with the kernels of Note~10. Algorithm~\ref{alg:sqdist} sets this computation against the naive triple loop.
+
+\begin{algorithm}[H]
+\caption{Pairwise squared distances: the naive triple loop and the vectorised form}\label{alg:sqdist}
+\begin{algorithmic}[1]
+\Require queries $Q \in \R^{q \times d}$, data $X \in \R^{n \times d}$
+\Ensure $D \in \R^{q \times n}$ with $D_{ij} = \norm{\vect{q}_i - \x_j}^2$
+\Function{SqDistLoop}{$Q, X$}
+  \For{$i = 1, \dots, q$ and $j = 1, \dots, n$}
+      \State $D_{ij} \gets 0$
+      \For{$k = 1, \dots, d$}
+        \State $D_{ij} \gets D_{ij} + (Q_{ik} - X_{jk})^2$
+      \EndFor
+  \EndFor
+  \State \Return $D$
+\EndFunction
+\Function{SqDist}{$Q, X$}
+  \State $\vect{s}^Q \gets$ row sums of $Q \odot Q$; \ $\vect{s}^X \gets$ row sums of $X \odot X$ \Comment{$O((q+n)d)$}
+  \State $P \gets Q X\T$ \Comment{one matrix product, $O(qnd)$}
+  \State $D_{ij} \gets \max(s^Q_i + s^X_j - 2 P_{ij},\, 0)$ for all $i, j$ \Comment{broadcasting, $O(qn)$; clip round-off}
+  \State \Return $D$
+\EndFunction
+\Statex \textit{Large $q$:} call \textsc{SqDist} on blocks of $b$ query rows and keep only what is needed (e.g.\ the
+$k$ smallest entries per row); memory $O(bn)$ instead of $O(qn)$.
+\Statex \textit{Cosine similarities:} divide every row of $Q$ and of $X$ by its norm; the matrix is then $QX\T$.
+\end{algorithmic}
+\end{algorithm}
+
+\begin{runtime}{pairwise squared distances (Algorithm~\ref{alg:sqdist})}
+\textbf{Operations}: both need $O(qnd)$ --- the loop does three operations (subtract, square, add) per index triple;
+the vectorised version about $2qnd$ in $QX\T$ plus lower-order work. \textbf{Memory}: inputs $O((q + n)d)$, output
+$O(qn)$; computing the differences by broadcasting, \texttt{(Q[:,None,:] - X[None,:,:])**2}, would materialise a
+$q \times n \times d$ array. \textbf{In practice}: on the machine used to prepare these notes, with $q = 200$, $n = 2000$ and
+$d = 64$, a pure-Python triple loop took a few seconds, the matrix-product version a few milliseconds --- a factor
+of several hundred to a few thousand --- and the broadcasting version, which allocates $205$~MB, was roughly ten times
+slower than the matrix product. \textbf{Scale}: with $Q = X$ and $n = 10^5$ points, $D$ has $10^{10}$ entries, $40$~GB
+in single precision; this is why the blocked form, and for very large $n$ approximate neighbour search (Note~5,
+Section~2), are needed.
+\end{runtime}
+
+\begin{worked}{a squared-distance matrix by hand and by the identity}
+Three points in $\R^2$: $\x_1 = (1, 2)$, $\x_2 = (4, 6)$, $\x_3 = (2, 0)$ (Figure~\ref{fig:distcos}, left).
+\emph{Directly}: $\x_1 - \x_2 = (-3, -4)$ gives $25$; $\x_1 - \x_3 = (-1, 2)$ gives $5$; $\x_2 - \x_3 = (2, 6)$ gives
+$40$. \emph{By the identity}, with $Q = X$ and hence $\vect{s}^Q = \vect{s}^X = \vect{s}$: the squared norms are
+$\vect{s} = (5, 52, 4)$ and the Gram matrix is
+\[
+  G = XX\T = \begin{pmatrix} 5 & 16 & 2 \\ 16 & 52 & 8 \\ 2 & 8 & 4 \end{pmatrix}, \qquad
+  \begin{aligned} D_{12} &= 5 + 52 - 2 \cdot 16 = 25, \\ D_{13} &= 5 + 4 - 2 \cdot 2 = 5, \\
+  D_{23} &= 52 + 4 - 2 \cdot 8 = 40, \end{aligned} \qquad
+  D = \begin{pmatrix} 0 & 25 & 5 \\ 25 & 0 & 40 \\ 5 & 40 & 0 \end{pmatrix}.
+\]
+The diagonal of $G$ is $\vect{s}$; the diagonal of $D$ is zero ($D_{ii} = s_i + s_i - 2G_{ii}$) and $D$ is symmetric, as it must be. The nearest
+neighbour of $\x_1$ is $\x_3$ --- read off as the smallest off-diagonal entry of row~1.
+\end{worked}
+
+\paragraph{A numerical caveat} Identity \eqref{eq:sqdist} subtracts large numbers to obtain a small one.
+\texttt{float32} keeps 24 significant bits (about 7 decimal digits): representable numbers between $2^{19}$ and
+$2^{20}$ (around $10^6$) are $2^{19-23} = 0.0625$ apart, between $2^{20}$ and $2^{21}$ $0.125$ apart. Take $a = 1000.1$ and $b = 1000.0$. Already $a$ is stored as $1000.09998$; with this stored value $a^2 + b^2 \approx
+2\,000\,199.96$ and $2ab \approx 2\,000\,199.95$ both round to $2\,000\,200$, and the identity returns exactly $0$.
+Subtracting first, $(a - b)^2 = 0.09998^2 = 0.009995$, is close to the true $0.01$. Subtracting a common centre
+first (e.g.\ the training mean), which leaves distances unchanged, removes the problem; so does double precision.
+
+In \texttt{numpy}, \textsc{SqDist} is the function below; Note~5, Sections~1--2, builds the nearest-neighbour algorithm on it.
 \begin{verbatim}
-import numpy as np
-def sq_distances(Q, X):          # Q: (q, d), X: (n, d)
-    D = (Q**2).sum(1)[:, None] + (X**2).sum(1)[None, :] - 2 * Q @ X.T
-    return np.maximum(D, 0)      # round-off can make tiny values negative
+def sq_distances(Q, X):                     # Q: (q, d), X: (n, d)
+    D = (Q**2).sum(1)[:, None] + (X**2).sum(1) - 2 * Q @ X.T
+    return np.maximum(D, 0)                 # round-off can give tiny negatives
 \end{verbatim}
 
-The cost is $O(qnd)$ operations either way; the gain is that they run as one optimised matrix multiplication.
-Note~5 builds the nearest-neighbour algorithm on this function.
-
 \begin{keyidea}[Summary]
-An example is a pair $(\x, y)$ with $\x \in \R^d$; a dataset is $n$ such pairs, assumed i.i.d.\ from an unknown
-$P(\X, Y)$. Representations range from raw measurements through hand-crafted features to learned embeddings. Tasks
-are supervised (classification, regression), unsupervised (density estimation and others) or in between
-(self-supervised); each comes with a natural target and loss (Table~\ref{tab:tasks}). The goal is always
-generalisation to new data.
+A dataset is $n$ i.i.d.\ pairs $(\x, y)$, $\x \in \R^d$, from an unknown $P(\X, Y)$, stored as an $n \times d$ design
+matrix. The representation --- raw values, features, one-hot codes, bags of words, embeddings --- fixes what can be
+learned. Each task has a natural target and loss (Table~\ref{tab:tasks}): the conditional mean for squared error,
+the most probable class for classification error; the remaining Bayes error no algorithm can beat. Everything
+fitted is fitted on training data only. Pairwise distances cost $O(qnd)$, computed as one matrix product.
 \end{keyidea}
 
-\begin{exercises}
-\item What is the input dimension $d$ of (a) a $64 \times 64$ colour image, (b) a one-hot encoding of a word from a
-vocabulary of 50\,000 words, (c) a sequence of 128 tokens, each embedded in $\R^{768}$, flattened into one vector?
-\item Prove the decomposition of the conditional expected squared error in Section~4 and conclude that $\E[Y\mid\X=\x]$
-is the best regressor.
-\item Show that the expected classification error at $\x$ equals $1 - P(Y = f(\x) \mid \X = \x)$ and is minimised by
-$f(\x) = \argmax_k P(Y = k \mid \X = \x)$.
+\begin{questions}
+\begin{conceptual}
+\item A lookup table stores every training input with its label and otherwise predicts the most frequent class. It
+has zero training error on data without duplicates; why is it nevertheless a poor learner for handwritten digits?
+For which kind of input space would it be perfectly reasonable?
+\item For each problem, name the task --- classification, regression, density estimation, another unsupervised
+task, or self-supervised learning --- with the target and a natural loss: (a) estimating the redshift of a galaxy
+from five colours; (b) deciding
+whether a jet comes from a $b$ quark; (c) flagging collision events that look unlike anything in the training data;
+(d) grouping light curves of variable stars without labels; (e) predicting the next token of a physics paper.
 \item Is the i.i.d.\ assumption reasonable for a random train/test split of (a) collision events recorded in one run
-of an experiment, (b) consecutive frames of the same video, (c) data from 2024 used to predict 2025, (d) galaxy images
+of an experiment, (b) consecutive frames of the same video, (c) records from 2023--2025 of a detector whose
+calibration drifts, for a model that will be used in 2026, (d) galaxy images
 where each galaxy was photographed several times? For each ``no'', propose a better split.
-\item Implement \texttt{sq\_distances}, check it against a double loop on small random matrices, and compare running
-times for $q = 1000$, $n = 10\,000$, $d = 128$.
 \item Give two sentences with identical bag-of-words vectors and different meanings. Which kind of representation
-of Section~3 can tell them apart, and why?
-\end{exercises}
+could tell them apart, and why?
+\item A feature ``detector region'' takes the values barrel, end-cap and forward. What goes wrong if it is coded as
+$1, 2, 3$ before computing Euclidean distances? How does one-hot encoding fix it, and what is then the distance
+between two different regions?
+\item In raw pixel space, a vertical bar in a $3 \times 3$ image is farther from the same bar shifted by one column
+than from a horizontal bar. Why does this hurt a method that predicts from nearby training examples? Describing each
+image by its number of dark pixels, height and width fixes it: what do these features gain, and what do they lose?
+\item True or false, with a one-sentence justification: (a) a sufficiently powerful learning algorithm can reach an
+expected error (the error rate on the whole population of new examples) below the Bayes error; (b) adding a feature to
+$\x$ can never increase the Bayes error; (c) if $\Var(Y \mid \X = \x) = 0$ for every $\x$, the best possible mean
+squared error is zero; (d) the error measured on a finite test set can be below the Bayes error.
+\item A regressor predicts the true energy $Y$ of a particle from the calorimeter reading $X$; the reading fluctuates
+by about 2\% around the true energy (the resolution of the calorimeter). Interpret the term $\Var(Y \mid X = x)$ of the squared-error decomposition in this setting: which
+part of the regression error can be reduced by a better algorithm, and which only by a better detector?
+\item Why is cosine similarity preferred to Euclidean distance for bag-of-words vectors of documents of very
+different lengths? Give two vectors with cosine similarity $1$ and a large Euclidean distance.
+\item Identify the leak in each pipeline and say how to remove it: (a) features are standardised with the mean and
+standard deviation of the full dataset before splitting; (b) the vocabulary of a text classifier is built from
+training and test documents together; (c) a classifier separating simulated signal from simulated background uses
+the simulation run number as a feature.
+\item Squared distances from $q$ queries to $n$ points in $\R^d$ can be computed by a triple loop or by one matrix
+product $QX\T$ plus squared norms; both need $O(qnd)$ operations. Why is the second hundreds of times faster, and
+what limits it when $q$ and $n$ are both very large?
+\item Why is next-token prediction a classification problem? What are $m$ and the loss, and why does a one-hot
+representation of tokens never need to be written down explicitly?
+\item An event contains between $1$ and $12$ jets. Compare two fixed-length representations: (i) the
+$(p_{\mathrm T}, \eta, \phi)$ of the four leading jets, padded with zeros, and (ii) five summary observables
+(multiplicity, $H_{\mathrm T}$, the two leading $p_{\mathrm T}$, the leading-pair mass). What does each lose? Why can
+the zeros of padding mislead a method based on Euclidean distances?
+\end{conceptual}
 
-\paragraph{Further reading} Bishop~\cite{bishop2006}, chapter~1; Murphy~\cite{murphy2022}, chapter~1; for applications
-across physics, the review by Carleo \emph{et al.}~\cite{carleo2019}.
+\begin{calculations}
+\item What is the input dimension $d$ of (a) a $64 \times 64$ colour image, (b) a one-hot encoding of a word from a
+vocabulary of $50\,000$ words, (c) a sequence of $128$ tokens, each embedded in $\R^{768}$, flattened into one vector?
+How many megabytes ($10^6$ bytes) does one example of (c) take in single precision?
+\item For $\vect{a} = (2, -1, 2)$ and $\vect{b} = (1, 4, 8)$ compute $\norm{\vect{a}}_1$, $\norm{\vect{a}}_2$,
+$\norm{\vect{a}}_\infty$, $\vect{a}\T\vect{b}$, $\cos(\vect{a}, \vect{b})$ and $\norm{\vect{a} - \vect{b}}^2$, the last
+one in two ways.
+\item The points $\x_1 = (0, 1)$, $\x_2 = (3, 1)$ and $\x_3 = (1, 3)$ form the rows of $X$. Compute the vector of
+squared norms, the Gram matrix $XX\T$ and, using $\norm{\vect{a} - \vect{b}}^2 = \norm{\vect{a}}^2 +
+\norm{\vect{b}}^2 - 2\vect{a}\T\vect{b}$, the matrix of squared distances. Check one entry directly; give each
+point's nearest neighbour.
+\item Build the vocabulary and bag-of-words vectors for the training documents ``proton hits target'', ``neutron hits
+target'' and ``proton proton collision''. Encode the new document ``neutron hits proton'' and compute its cosine
+similarity with each training document. Rank the training documents by similarity. Two of them tie: explain from the
+word counts why, and why a bag of words cannot break the tie.
+\item The joint distribution of a binary feature $X \in \{0, 1\}$ and a label $Y \in \{0, 1\}$ is $P(0, 0) = 0.35$,
+$P(0, 1) = 0.15$, $P(1, 0) = 0.10$, $P(1, 1) = 0.40$. Compute $P(Y = 1 \mid X = x)$ for both $x$, the Bayes classifier
+and the Bayes error. What is the error of the best classifier that ignores $X$?
+\item Given $X = x$, a target $Y$ takes the values $0$, $2$ and $7$ with probabilities $0.5$, $0.3$ and $0.2$. Write
+$g(c) = \E[(c - Y)^2 \mid X = x]$ as a quadratic in $c$, find its minimum by setting $g'(c) = 0$, and check that the
+minimum value equals $\Var(Y \mid X = x)$. What is the expected squared error of the prediction $c = 3$?
+\item A design matrix has $n = 10^6$ rows and $d = 512$ columns. How much memory does it need in single precision?
+How many floating-point operations does it take to compute the squared distances from $q = 1000$ queries to all rows
+(count $2qnd$ for the product), and roughly how long on a machine sustaining $10^{11}$ operations per second?
+\end{calculations}
+
+\begin{derivations}
+\item Without looking at Section~\ref{sec:targets}, reproduce \eqref{eq:sqdecomp} and \eqref{eq:sqdecompavg}. Apply
+the latter to $f \equiv \E[Y]$ to prove $\Var(Y) = \E[\Var(Y \mid \X)] + \Var(\E[Y \mid \X])$, and check it on the
+regression example of Section~\ref{sec:targets}.
+\item Show that predicting class $c$ at $\x$ has conditional error $1 - \eta_c(\x)$, so that the Bayes classifier
+is \eqref{eq:bayesrule}. Then, starting from $R^* = \E\big[1 - \max_k \eta_k(\X)\big]$, show that the Bayes
+error is at most $1 - \tfrac1m$ for $m$ classes (hint: the largest of $m$ numbers that add up to $1$ is at least
+$\tfrac1m$), and describe a distribution of $(\X, Y)$ for which the bound is attained.
+\item For the absolute loss $|c - Y|$ and a continuous conditional density of $Y$, show that
+$\frac{d}{dc}\E[\,|c - Y| \mid \X = \x] = P(Y < c \mid \X = \x) - P(Y > c \mid \X = \x)$, and conclude that the best
+prediction is the conditional \emph{median}. Why is the median less sensitive than the mean to rare, very large
+values of $Y$?
+\item Prove the Cauchy--Schwarz inequality by noting that $h(t) = \norm{\vect{a} - t\vect{b}}^2 \ge 0$ for every real
+$t$: expand $h$ as a quadratic in $t$ and use its minimum. Conclude that $-1 \le \cos(\vect{a}, \vect{b}) \le 1$ and
+find when equality holds.
+\item A dataset contains $G$ groups of $r$ near-identical examples each, and a random split puts a fraction $\tau$ of
+the $N = Gr$ examples in the test set. Show that the probability that a test example has none of its $r - 1$ siblings
+in the training set is $\binom{\tau N - 1}{r - 1} / \binom{N - 1}{r - 1}$, and that this is approximately
+$\tau^{r - 1}$ for large $N$. Evaluate both for the galaxy example.
+\end{derivations}
+
+\begin{programming}
+\item Implement both functions of Algorithm~\ref{alg:sqdist}, check that they agree, time them for $q = 1000$,
+$n = 10\,000$, $d = 128$ (extrapolate the loop), and add a blocked version returning each query's nearest point.
+Reproduce the \texttt{float32} cancellation of Section~\ref{sec:bulk}; show that centring cures it.
+\item Implement the three functions of Algorithm~\ref{alg:bow} with Python dictionaries, \textsc{BagOfWords} returning
+a \texttt{scipy.sparse} matrix. Reproduce the cosines of Section~\ref{sec:vectors} with and without stop words, and
+measure how dense and sparse memory grow with the number of documents.
+\item Reproduce the feature-selection experiment of Section~\ref{sec:leakage}: $50$ examples, $5000$ noise features,
+selection of $20$ features, $5$-fold cross-validation of a 1-nearest-neighbour classifier, with the selection done
+once on all data and, alternatively, inside each fold. Repeat over $200$ datasets and report both average errors.
+How does the gap change with the number of selected features?
+\end{programming}
+\end{questions}
+
+\paragraph{Further reading} Bishop~\cite{bishop2006}, ch.~1; Murphy~\cite{murphy2022}, ch.~1; Hastie, Tibshirani and
+Friedman~\cite{hastie2009}, sections~2.4 and 7.10; for physics, Carleo \emph{et al.}~\cite{carleo2019}.
 
 \begin{thebibliography}{99}\small
 \bibitem{bishop2006} C.~M. Bishop, \emph{Pattern Recognition and Machine Learning}, Springer (2006).
@@ -257,6 +893,7 @@ across physics, the review by Carleo \emph{et al.}~\cite{carleo2019}.
 \bibitem{dalal2005} N.~Dalal and B.~Triggs, Histograms of oriented gradients for human detection, \emph{CVPR} (2005).
 \bibitem{devlin2019} J.~Devlin \emph{et al.}, BERT: pre-training of deep bidirectional transformers for language understanding, \emph{NAACL} (2019).
 \bibitem{gebru2021} T.~Gebru \emph{et al.}, Datasheets for datasets, \emph{Commun.\ ACM} 64(12), 86--92 (2021).
+\bibitem{hastie2009} T.~Hastie, R.~Tibshirani and J.~Friedman, \emph{The Elements of Statistical Learning}, 2nd ed., Springer (2009).
 \bibitem{kapoor2023} S.~Kapoor and A.~Narayanan, Leakage and the reproducibility crisis in machine-learning-based science, \emph{Patterns} 4(9), 100804 (2023).
 \bibitem{kasieczka2019} G.~Kasieczka \emph{et al.}, The machine learning landscape of top taggers, \emph{SciPost Phys.}\ 7, 014 (2019).
 \bibitem{lowe2004} D.~G. Lowe, Distinctive image features from scale-invariant keypoints, \emph{Int.\ J.\ Comput.\ Vis.}\ 60, 91--110 (2004).

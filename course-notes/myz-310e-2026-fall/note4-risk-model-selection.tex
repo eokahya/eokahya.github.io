@@ -5,11 +5,14 @@
 \begin{document}
 \NoteTitle{4}{2}{Risk, generalisation\\ and model selection}{Risk and model selection}{%
 This note turns the informal goal ``predict well on new data'' into mathematics and into a working procedure. It
-defines expected and empirical risk, explains why training error is optimistic, and shows how to estimate
-generalisation honestly with held-out data and cross-validation. Capacity, under- and overfitting, the
-bias--variance trade-off and regularisation explain how to choose a model; the double-descent curve and scaling laws
-show how deep learning has refined, without overturning, this classical picture. It is the methodological core of the
-course: every later method is selected and evaluated in this way.}
+defines expected and empirical risk, proves that a test-set estimate is unbiased and computes its standard error,
+explains why training error is optimistic, and shows how to estimate generalisation honestly with hold-out data,
+cross-validation, leave-one-out, sequential and nested validation. Capacity, under- and overfitting, the
+approximation--estimation and bias--variance decompositions and regularisation explain how to choose a model; grid and
+random search organise the choice. Every procedure comes with pseudocode and its cost, and every idea with a small
+example that can be redone by hand. The double-descent curve and scaling laws show how deep learning has refined,
+without overturning, this classical picture. This is the methodological core of the course: every later method is
+selected and evaluated in this way.}
 
 \section{A learning algorithm has three ingredients}\label{sec:ingredients}
 
@@ -21,61 +24,170 @@ Almost every learning algorithm combines, explicitly or implicitly,
 \item an \textbf{optimisation procedure} that searches $\F$ for a function with small average loss on the training
 data.
 \end{enumerate}
-Families range from the trivial to the enormous: constant predictors $f(\x) = b$; affine functions
-$f(\x) = \vect{w}\T\x + b$; polynomials of degree $p$; the piecewise-constant functions of histograms (Note~3);
-weighted sums of kernels centred on the data (Note~5); decision trees; neural networks, where each architecture
-defines a different family. Choosing the family is the most consequential decision in a project, and it is the
-subject of this note.
+The families met in this course grow from the very small to the very large. A histogram classifier (Note~3)
+predicts one value per cell, a staircase function. A $k$-nearest-neighbour ($k$-NN) predictor answers a query $\x$
+with the average target (regression) or the majority label (classification) of the $k$ training points nearest to
+$\x$; $1$-NN is the case $k = 1$. It and the Parzen predictor (Note~5) are weighted sums of kernels centred on the
+training points, and so are the kernel machines of Note~10. A fit of a calibration curve uses polynomials, and a linear regression or
+classifier (Notes~8 and~9) uses affine functions $f(\x) = \vect{w}\T\x + b$ --- with the constant $f(\x) = b$ as the
+degenerate case; a decision tree (Note~3) is a histogram whose cells adapt to the data. A neural network is the extreme: its architecture fixes the family, its weights pick a member.
+Choosing the family is the most consequential decision in a project, and it is the subject of this note.
+
+The three ingredients are independent choices. The same family can be trained with different losses, and the same
+loss can be minimised by different optimisers --- in closed form, by enumeration or by gradient descent (Note~7).
+The smallest possible example already shows how much the loss matters.
+
+\begin{worked}{the best constant under three losses}
+Take the family of constants, $f(\x) = b$, and the training targets $y = 1, 2, 2, 3, 7$ ($n = 5$). The training
+objective is $J(b) = \frac1n \sum_i L(b, y_i)$.
+
+\emph{Squared loss.} $J(b) = \frac15 \sum_i (b - y_i)^2$ and
+\[
+  J'(b) = \frac{2}{n} \sum_i (b - y_i) = 2\,(b - \bar y) = 0 \quad\Longrightarrow\quad \hat b = \bar y = 3 .
+\]
+$J''(b) = 2 > 0$, so this is a minimum. The training risk is
+$\frac15(4 + 1 + 1 + 0 + 16) = 4.4$.
+
+\emph{Absolute loss.} $J(b) = \frac15 \sum_i |b - y_i|$. Away from the data points the derivative of $|b - y_i|$ is
+$+1$ if $b > y_i$ and $-1$ if $b < y_i$, so
+$J'(b) = \frac1n\big[\#\{y_i < b\} - \#\{y_i > b\}\big]$. It changes sign where as many targets lie below $b$ as
+above: $\hat b$ is the \emph{median}, $2$, with training risk $\frac15(1 + 0 + 0 + 1 + 5) = 1.4$. The mean, $b = 3$,
+would give $1.6$; the median would give squared risk $5.4$ instead of $4.4$.
+
+\emph{0--1 loss} (for class labels). $J(b)$ is the fraction of labels different from $b$, minimised by the most
+frequent label --- the \emph{majority class}.
+
+Each loss picks a different ``centre'' of the data: the mean is pulled by the outlier $7$, the median is not.
+Which is right depends on what the prediction is for, not on the data.
+\end{worked}
 
 \section{Measuring quality}\label{sec:quality}
 
-What we ultimately care about is rarely the loss the algorithm minimises. A hierarchy of measures is common:
-\begin{enumerate}
-\item the real objective in the full system --- lives saved, money earned, the statistical significance of a
-physics measurement;
-\item a field-specific metric --- BLEU for translation, area under the ROC curve for a trigger, word error rate for
-speech;
-\item a generic metric --- classification error, precision and recall, mean squared error;
-\item the training loss actually optimised.
-\end{enumerate}
-The lower levels are proxies for the higher ones, and the gap between them deserves attention.
+What we ultimately care about is rarely the loss the algorithm minimises. Take a jet tagger in a collider analysis.
+What matters in the end is the precision of the measurement it serves --- the uncertainty on a cross-section, or the
+expected significance of a search. One level down is a metric specific to the field, such as the background rejection
+at a fixed signal efficiency. Below that sit generic metrics (error rate, mean squared error), and at the bottom the
+loss the training actually minimises, usually a cross-entropy. Each level is a proxy for the one above it, and the
+gaps between them deserve attention.
 
 \paragraph{Surrogate losses} The classification error $\ind{f(\x) \ne y}$ is piecewise constant in the parameters,
-so its gradient is zero almost everywhere, and even for linear classifiers minimising it exactly is computationally
-hard. One therefore trains a real-valued score and minimises a smooth \emph{surrogate} that upper-bounds or tracks
-the error:
+so its gradient is zero almost everywhere; and when the classes are not linearly separable, no efficient algorithm is
+known for finding the linear classifier with the fewest training errors (the problem is NP-hard). One therefore trains
+a real-valued score $g$ and minimises a continuous, convex \emph{surrogate} with two properties: it upper-bounds (or
+closely tracks) the 0--1 error, and its slope is non-zero wherever a decision is wrong or only barely right --- exactly
+where the 0--1 loss is flat but the decision should change --- so that a (sub)gradient points towards fewer errors.
+(The hinge $\max(0, 1 - t\,g)$ below has a kink at $t\,g = 1$ and is flat beyond it, where decisions are already confidently right.) With $t = 2y - 1 \in \{\pm 1\}$ for binary
+labels, the four common choices are:
 
 \begin{center}\small
-\begin{tabular}{@{}L{0.27\linewidth}L{0.37\linewidth}L{0.28\linewidth}@{}}
+\begin{tabular}{@{}L{0.16\linewidth}L{0.30\linewidth}L{0.27\linewidth}L{0.18\linewidth}@{}}
 \toprule
-Model output & Surrogate loss & Decision rule \\
+Surrogate & Loss on one example & Output $\to$ decision & Used by \\
 \midrule
-$g(\x) \approx P(Y = 1 \mid \x)$ & binary cross-entropy $-y\log g - (1-y)\log(1-g)$ & $f(\x) = \ind{g(\x) > \tfrac12}$ \\
-$\vect{g}(\x) \approx (P(Y = k \mid \x))_{k}$ & cross-entropy $-\log g_y(\x)$ & $f(\x) = \argmax_k g_k(\x)$ \\
-score $g(\x)$, $t = 2y - 1 \in \{\pm1\}$ & hinge $\max(0,\, 1 - t\,g(\x))$ & $f(\x) = \ind{g(\x) > 0}$ \\
-scores $g_1(\x), \dots, g_m(\x)$ & margin $\max\big(0,\, 1 + \max_{k \ne y} g_k - g_y\big)$ & $f(\x) = \argmax_k g_k(\x)$ \\
+hinge & $\max(0,\, 1 - t\,g(\x))$ & score $g$; \ $\ind{g > 0}$ & SVM (Note~9) \\
+binary cross-entropy & $-y\log g - (1-y)\log(1-g)$ & $g \approx P(Y = 1 \mid \x)$; \ $\ind{g > \tfrac12}$ & logistic regression (Note~9) \\
+multiclass margin & $\max\big(0,\, 1 + \max_{k \ne y} g_k - g_y\big)$ & scores $g_1, \dots, g_m$; \ $\argmax_k g_k$ & multiclass SVM \\
+cross-entropy & $-\log g_y(\x)$ & $g_k \approx P(Y = k \mid \x)$; \ $\argmax_k g_k$ & softmax classifiers, networks \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-The cross-entropies are negative log-likelihoods of a categorical model (Note~2, Section~2); the hinge and margin
-losses are used by support vector machines. Probabilistic outputs have an extra benefit: the threshold can be moved
-after training to trade one kind of error for another.
+The cross-entropies are negative log-likelihoods of a categorical model (Note~2, Section~2). Probabilistic outputs
+have an extra benefit: the threshold can be moved after training to trade one kind of error for another.
+
+\paragraph{Losses as functions of the margin} For a binary score write $z = t\,g(\x)$, the \emph{margin}: $z > 0$
+means a correct decision, $z < 0$ a wrong one, and $|z|$ the confidence. Figure~\ref{fig:surrogates} plots the losses
+against $z$. If the score is a log-odds, $g = \log\frac{P(Y=1\mid\x)}{P(Y=0\mid\x)}$, then
+$P(Y = 1 \mid \x) = 1/(1 + e^{-g})$ and $P(Y = 0 \mid \x) = 1 - P(Y = 1 \mid \x) = 1/(1 + e^{g})$. For $y = 1$
+($t = +1$) the cross-entropy is $-\log P(Y = 1 \mid \x) = \log(1 + e^{-g})$; for $y = 0$ ($t = -1$) it is
+$-\log P(Y = 0 \mid \x) = \log(1 + e^{g})$. Both cases are $\log(1 + e^{-t g}) = \log(1 + e^{-z})$. Measured in bits (logarithm to base~2) it equals $1$ at $z = 0$ and decreases, so it is
+\emph{at least} $1$ whenever the decision is wrong; the hinge $1 - z$ is also at least $1$ there. Both surrogates are
+therefore upper bounds on the 0--1 loss, and driving them down drives the error down. Unlike the 0--1 loss they keep
+penalising correct but unconfident decisions ($0 < z < 1$), which is what gives them useful gradients. The squared loss
+$(1 - z)^2$ is an upper bound too, but it also penalises decisions that are ``too right'' ($z > 1$), a weakness
+discussed in Note~9, Section~2. Since $t^2 = 1$, $(t - g)^2 = t^2(1 - t g)^2 = (1 - z)^2$: this is the squared loss on
+the \emph{score}, not the squared loss on a probability (the Brier score) used in the worked example below.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.46\linewidth]{figures/n4_surrogates.pdf}
+\caption{Binary classification losses as functions of the margin $z = t\,g(\x)$. Hinge, cross-entropy in bits and
+squared loss all lie above the 0--1 loss for $z \le 0$.}
+\label{fig:surrogates}
+\end{figure}
+
+\begin{worked}{one prediction table, three losses}
+A classifier outputs $g_i \approx P(Y = 1 \mid \x_i)$ for five validation examples. The decision is
+$\ind{g_i > \frac12}$; the squared loss is applied to the probability, $(g_i - y_i)^2$ (this is called the
+\emph{Brier score}); the cross-entropy uses the natural logarithm.
+\begin{center}\small
+\begin{tabular}{@{}cccccc@{}}
+\toprule
+$i$ & $g_i$ & $y_i$ & 0--1 loss & squared loss $(g_i - y_i)^2$ & cross-entropy \\
+\midrule
+1 & 0.9 & 1 & 0 & $0.1^2 = 0.01$ & $-\ln 0.9 = 0.105$ \\
+2 & 0.6 & 1 & 0 & $0.4^2 = 0.16$ & $-\ln 0.6 = 0.511$ \\
+3 & 0.3 & 0 & 0 & $0.3^2 = 0.09$ & $-\ln 0.7 = 0.357$ \\
+4 & 0.2 & 1 & 1 & $0.8^2 = 0.64$ & $-\ln 0.2 = 1.609$ \\
+5 & 0.7 & 0 & 1 & $0.7^2 = 0.49$ & $-\ln 0.3 = 1.204$ \\
+\midrule
+\multicolumn{3}{@{}l}{empirical risk (mean)} & $2/5 = 0.40$ & $1.39/5 = 0.278$ & $3.786/5 = 0.757$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+The three numbers measure different things. The error rate counts mistakes only. The cross-entropy also charges
+example~2, which is correct but hesitant, and it charges the confident mistake of example~4 ($1.609$) more than the
+milder mistake of example~5 ($1.204$); a completely undecided prediction, $g = 0.5$, would have cost
+$-\ln 0.5 = 0.693$ whatever the label. In bits the cross-entropies are
+$0.152, 0.737, 0.515, 2.322, 1.737$: the two wrong examples cost more than one bit each, as the margin argument above
+requires. (In margin form the score is the log-odds $s_i = \ln\frac{g_i}{1 - g_i}$ and $z_i = t_i s_i$; example~4 has
+$s = \ln 0.25 = -1.39$ and $t = +1$, so $z = -1.39 < 0$, and example~5 has $z = -\ln\frac{0.7}{0.3} = -0.85$.) A model with the same 0--1 error but probabilities closer to the true labels (more confident when right,
+less confident when wrong) would have a lower cross-entropy, which matters whenever the threshold will be moved later.
+\end{worked}
+
+\paragraph{Precision, recall and the F-score} When one class is rare --- a signal among much background --- the error
+rate hides what matters. Count the four outcomes of a binary decision on a test set (``positive'' = class~$1$):
+\begin{center}\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+ & predicted $1$ & predicted $0$ \\
+\midrule
+true $1$ & TP (true positives) & FN (false negatives) \\
+true $0$ & FP (false positives) & TN (true negatives) \\
+\bottomrule
+\end{tabular}
+\end{center}
+This table is the \emph{confusion matrix}. \emph{Precision} $= \mathrm{TP}/(\mathrm{TP} + \mathrm{FP})$ is the
+fraction of predicted positives that are real; \emph{recall} $= \mathrm{TP}/(\mathrm{TP} + \mathrm{FN})$ is the
+fraction of real positives that are found. The \emph{F-score} $F_1$ is their harmonic mean,
+$F_1 = 2\,\mathrm{prec}\cdot\mathrm{rec}/(\mathrm{prec} + \mathrm{rec}) = 2\,\mathrm{TP}/(2\,\mathrm{TP} + \mathrm{FP}
++ \mathrm{FN})$, which is small as soon as either of the two is small. Moving the decision threshold trades one for the
+other.
+
+\begin{worked}{high accuracy, mediocre recall}
+On $1000$ test events with $60$ true positives a classifier gives $\mathrm{TP} = 40$, $\mathrm{FN} = 20$,
+$\mathrm{FP} = 10$, $\mathrm{TN} = 930$. Accuracy $= (40 + 930)/1000 = 0.97$. Precision $= 40/50 = 0.80$, recall
+$= 40/60 = 0.667$ and $F_1 = 2 \cdot 0.8 \cdot 0.667/(0.8 + 0.667) = 80/110 = 0.727$. The accuracy looks excellent,
+but a third of the positives are missed --- and the trivial rule ``always predict $0$'' already reaches accuracy
+$940/1000 = 0.94$ with recall $0$ and an undefined precision.
+\end{worked}
 
 \begin{physics}{efficiency, rejection and the ROC curve}
-A trigger or tagger outputs a score $g(\x)$, and the analysis keeps events with $g(\x) > c$. Lowering $c$ raises
-the signal efficiency and lowers the background rejection; the curve traced by all thresholds is the ROC curve. The
+A trigger or tagger outputs a score $g(\x)$, and the analysis keeps events with $g(\x) > \tau$. The \emph{signal
+efficiency} is the fraction of true signal events kept --- the recall --- and the \emph{background rejection} the
+fraction of background events removed; the \emph{purity} of the selected sample is the precision. Lowering $\tau$
+raises the efficiency and lowers the rejection; the curve traced by all thresholds is the ROC (receiver operating
+characteristic) curve. The
 best threshold is fixed by the physics goal --- for instance, the expected discovery significance --- not by the
-training loss, which is why classifiers in physics are trained with cross-entropy and then evaluated on the full ROC
-curve.
+training loss. Classifiers in physics are therefore typically trained with cross-entropy and then judged at the working
+point, or over the part of the ROC curve, that the analysis needs.
 \end{physics}
 
 \begin{modern}{training loss versus what we want}
 Language models are pre-trained to minimise next-token cross-entropy, yet they are judged on answering questions,
-writing code and following instructions. Closing that gap is the purpose of fine-tuning on human preferences, in which
-a second model is trained to predict which of two answers people prefer and the language model is then optimised for
-that learned reward. The hierarchy above, with level~4 refined step by step towards level~1, is a large part of how
-current assistants are built.
+writing code and following instructions. Besides supervised instruction tuning, one of the main tools for closing that
+gap is fine-tuning on human preferences: a second model learns which of two answers people prefer, and the language
+model is optimised for that learned reward~\cite{ouyang2022}. It is the hierarchy above, climbed one level at a time.
 \end{modern}
 
 \section{Expected risk and empirical risk}\label{sec:risk}
@@ -90,78 +202,492 @@ and its \emph{empirical risk} on a finite set $D$ is
   \ERisk(f, D) = \frac{1}{|D|}\sum_{(\x, y) \in D} L(f(\x), y).
 \]
 We cannot compute $\Risk(f)$, because $P$ is unknown, but if $f$ was chosen \emph{without using} $D$, then
-$\ERisk(f, D)$ is an average of i.i.d.\ terms with mean $\Risk(f)$: it is unbiased and converges to $\Risk(f)$ as
-$|D| \to \infty$. Its precision follows from the variance of an average. For the classification error $p$ estimated on
-$n_{\mathrm{test}}$ examples the standard error is $\sqrt{p(1-p)/n_{\mathrm{test}}}$; with $p = 10\%$ and $1000$ test
-examples that is about $\pm 0.95$ percentage points. Differences between models smaller than this are not evidence of
-anything.
+$\ERisk(f, D)$ is an honest estimate of it. The next subsection makes ``honest'' precise.
 
-\paragraph{Empirical risk minimisation} Since the expected risk is out of reach, learning minimises its estimate on
-the training set,
+\subsection{The test-set estimate: unbiased, with a computable error bar}\label{sec:unbiased}
+
+Let $\Dtest = \{(\x_j, y_j)\}_{j=1}^{n'}$ be drawn i.i.d.\ from $P$, independently of everything used to build $f$.
+(Throughout this note $n'$ is the number of test or held-out examples, also written $n_{\mathrm{test}}$ or
+$n_{\mathrm{valid}}$ when the role of the set matters; $m$ keeps its course-wide meaning, the number
+of classes.)
+Write $L_j = L(f(\x_j), y_j)$. Because $f$ is fixed with respect to $\Dtest$, the $L_j$ are i.i.d.\ copies of the
+random variable $L(f(\X), Y)$, with mean $\Risk(f)$ and some variance $\sigma_L^2$.
+
+\emph{Mean.} By linearity of expectation,
+\[
+  \E\big[\ERisk(f, \Dtest)\big] = \E\Big[\frac{1}{n'} \sum_{j=1}^{n'} L_j\Big] = \frac{1}{n'} \sum_{j=1}^{n'} \E[L_j]
+  = \frac{1}{n'} \cdot n'\,\Risk(f) = \Risk(f) .
+\]
+The estimate is \emph{unbiased}: on average over test sets it neither over- nor underestimates.
+
+\emph{Variance.} Independent terms have zero covariance, so the variance of the sum is the sum of the variances:
+\[
+  \Var\big[\ERisk(f, \Dtest)\big] = \frac{1}{(n')^2} \Var\Big[\sum_{j} L_j\Big] = \frac{1}{(n')^2} \sum_{j} \Var[L_j]
+  = \frac{\sigma_L^2}{n'} .
+\]
+The \emph{standard error} is $\sigma_L / \sqrt{n'}$: to halve it, quadruple the test set. As $n' \to \infty$ the estimate
+converges to $\Risk(f)$ (law of large numbers), and for moderate $n'$ it is approximately Gaussian (central limit
+theorem), so $\ERisk \pm 2\,\sigma_L/\sqrt{n'}$ is roughly a 95\% interval.
+
+\emph{The 0--1 loss.} If $f$ errs with probability $p = \Risk(f)$, then $L_j \in \{0, 1\}$ is a Bernoulli variable.
+Since $L_j^2 = L_j$, $\sigma_L^2 = \E[L_j^2] - (\E L_j)^2 = p - p^2 = p(1 - p)$, and the standard error of a test
+error is
+\begin{equation}\label{eq:se}
+  \mathrm{SE} = \sqrt{\frac{p(1-p)}{n'}} \approx \sqrt{\frac{\hat p(1-\hat p)}{n'}} .
+\end{equation}
+With $p = 10\%$ and $n' = 1000$ test examples that is about $\pm 0.95$ percentage points: a difference of this size
+between two models can be produced by test-set noise alone. Requiring $2\,\mathrm{SE} \le \delta$ gives the test size
+needed to measure \emph{one} error rate to within $\pm\delta$: $n' \ge 4p(1-p)/\delta^2$, which for $p = 0.1$ and
+$\delta = 1$ point is $3600$. To resolve a \emph{difference} $\delta$ between two models evaluated on independent test
+sets the variance doubles, so $n' \ge 8p(1-p)/\delta^2 = 7200$; evaluating both on the same examples (next example)
+usually needs far fewer.
+
+\begin{worked}{is model B really better than model A}
+Two classifiers are evaluated on the \emph{same} $n' = 1000$ test examples. A makes $80$ errors ($\hat p_A = 8.0\%$),
+B makes $65$ ($\hat p_B = 6.5\%$). From \eqref{eq:se}, $\mathrm{SE}_A = \sqrt{0.08 \cdot 0.92/1000} = 0.86\%$ and
+$\mathrm{SE}_B = 0.78\%$.
+
+\emph{Naive comparison.} Treating the two estimates as independent, the difference $1.5$ points has standard error
+$\sqrt{0.86^2 + 0.78^2} = 1.16$ points: only $1.3$ standard errors, not convincing.
+
+\emph{Paired comparison.} Both models saw the same examples, so compare them example by example. Suppose $45$ examples
+are missed by both, $35$ only by A and $20$ only by B. Let $\Delta_j = L_{A,j} - L_{B,j} \in \{-1, 0, 1\}$ be the
+difference on example~$j$; then $\hat p_A - \hat p_B = \bar\Delta = \frac{1}{n'}\sum_j \Delta_j = (35 - 20)/1000 =
+0.015$. The $\Delta_j$ are i.i.d., so by the same argument as for $\ERisk$ above, $\Var(\bar\Delta) =
+\Var(\Delta)/n'$. To estimate $\Var(\Delta) = \E[\Delta^2] - (\E\Delta)^2$, use the sample mean of the squares,
+$\overline{\Delta^2} = \frac{1}{n'}\sum_j \Delta_j^2$. Since $\Delta_j^2 = 1$ exactly when one model is wrong and the
+other right,
+\[
+  \widehat{\Var}(\Delta) = \overline{\Delta^2} - \bar\Delta^2 = \frac{35 + 20}{1000} - 0.015^2 = 0.0548,
+  \qquad \mathrm{SE}(\bar\Delta) = \sqrt{0.0548/1000} = 0.74 \text{ points}.
+\]
+(Dividing by $n' - 1$ instead of $n'$, as in Algorithm~\ref{alg:holdout}, makes no visible difference at $n' = 1000$.)
+The difference is now $2.0$ standard errors --- right at the rough 95\% threshold above: borderline but real evidence,
+where the naive comparison ($1.3$ standard errors) showed nothing. The examples both models get wrong (or right)
+have $\Delta_j = 0$ and carry no information about the difference; pairing removes their contribution to the noise. Always compare models on the same test set, and
+compare them pairwise.
+\end{worked}
+
+\subsection{Empirical risk minimisation}
+
+Since the expected risk is out of reach, learning minimises its estimate on the training set,
 \[
   \hat f = \argmin_{f \in \F} \ERisk(f, \Dtrain).
 \]
-This is the training phase. But now $\hat f$ \emph{was} chosen using $\Dtrain$, specifically to make
-$\ERisk(\hat f, \Dtrain)$ small, so the training error is biased downwards as an estimate of $\Risk(\hat f)$ --- often
-drastically, as the histogram classifier of Note~3 showed (5.2\% training error, 34.6\% test error).
+This principle is \emph{empirical risk minimisation} (ERM), and it is the training phase of almost every method in
+the course. Algorithm~\ref{alg:erm} writes it generically; the three branches correspond to the three ways the
+optimisation ingredient of Section~\ref{sec:ingredients} is realised in practice.
+
+\begin{algorithm}[htbp]\small
+\caption{Empirical risk minimisation (generic)}
+\label{alg:erm}
+\begin{algorithmic}[1]
+\Require family $\{f_\theta\}$, loss $L$, training set $\Dtrain = \{(\x_i, y_i)\}_{i=1}^n$, optional penalty $\lambda\,\Omega(\theta)$
+\Statex \Comment{the penalty is explained in Section~\ref{sec:regularisation}; $\lambda = 0$ means no penalty}
+\Ensure fitted parameters $\hat\theta$
+\Function{ERM}{$\Dtrain$}
+  \State $J(\theta) \gets \frac1n \sum_{i=1}^n L(f_\theta(\x_i), y_i) + \lambda\,\Omega(\theta)$ \Comment{training objective}
+  \If{$\nabla J(\theta) = 0$ can be solved in closed form}
+    \State $\hat\theta \gets$ its solution \Comment{mean, least squares (Note~8)}
+  \ElsIf{the family is finite, $\{\theta_1, \dots, \theta_M\}$}
+    \State $\hat\theta \gets \argmin_{1 \le j \le M} J(\theta_j)$ \Comment{enumerate every candidate}
+  \Else
+    \State $\hat\theta \gets$ an iterative minimiser of $J$, e.g.\ gradient descent \Comment{Note~7}
+  \EndIf
+  \State \Return $\hat\theta$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{runtime}{empirical risk minimisation}
+Let $c$ be the cost of one prediction $f_\theta(\x)$ ($c = O(d)$ for a linear model in $d$ features) and $q$ the
+number of parameters. \emph{One evaluation of $J$}: $O(nc)$, one prediction and one loss per example. \emph{Finite
+family}: $O(Mnc)$, every candidate on every example. \emph{Iterative}: $O(N_{\mathrm{ep}}\,nc)$ for $N_{\mathrm{ep}}$ full passes (epochs), since a gradient
+costs about as much as the objective itself (Note~7); stochastic gradients replace $n$ by a mini-batch size.
+\emph{Closed form}: problem-specific, e.g.\ $O(nd^2 + d^3)$ for least squares, the $d^3$ coming from solving a
+$d \times d$ linear system (Note~8). \emph{Prediction}: $c$ per query. \emph{Memory}: $O(q)$ for the model plus the
+$O(nd)$ training data during training.
+\end{runtime}
+
+\subsection{Why training error is optimistic}\label{sec:optimism}
+
+Now $\hat f$ \emph{was} chosen using $\Dtrain$, specifically to make $\ERisk(\hat f, \Dtrain)$ small, so the
+argument of Section~\ref{sec:unbiased} no longer applies: the terms $L(\hat f(\x_i), y_i)$ are not independent of
+$\hat f$. The bias always goes the same way. Let $f_{\F} = \argmin_{f \in \F} \Risk(f)$ be the best member of the
+family; it is a fixed function, so its training error is unbiased. Then, for every training set,
+\[
+  \ERisk(\hat f, \Dtrain) \le \ERisk(f_{\F}, \Dtrain) \quad (\hat f \text{ minimises } \ERisk)
+  \qquad\text{and}\qquad
+  \Risk(f_{\F}) \le \Risk(\hat f) \quad (f_{\F} \text{ minimises } \Risk).
+\]
+Taking expectations over $\Dtrain$ and using $\E[\ERisk(f_{\F}, \Dtrain)] = \Risk(f_{\F})$,
+\[
+  \E\big[\ERisk(\hat f, \Dtrain)\big] \;\le\; \Risk(f_{\F}) \;\le\; \E\big[\Risk(\hat f)\big] .
+\]
+Here $\Risk(\hat f)$ is itself a random number, because $\hat f$ depends on the random training set; the outer
+expectation averages over training sets. On average the training error of the trained model is below its true risk --- often drastically, as the histogram
+classifier of Note~3 showed (5.2\% training error, 34.6\% test error).
+
+\begin{worked}{the optimism of the sample mean}
+Fit the constant predictor $\hat b = \bar y$ to $n$ i.i.d.\ targets with mean $\mu$ and variance $\sigma^2$, with
+squared loss. Using $y_i - \bar y = (y_i - \mu) - (\bar y - \mu)$ and $\sum_i (y_i - \mu) = n(\bar y - \mu)$,
+\[
+  \sum_i (y_i - \bar y)^2 = \sum_i (y_i - \mu)^2 - 2(\bar y - \mu)\, n(\bar y - \mu) + n(\bar y - \mu)^2
+  = \sum_i (y_i - \mu)^2 - n(\bar y - \mu)^2 .
+\]
+With $\E[(y_i - \mu)^2] = \sigma^2$ and $\E[(\bar y - \mu)^2] = \Var(\bar y) = \sigma^2/n$, the expected sum is
+$\E[\sum_i (y_i - \bar y)^2] = n\sigma^2 - n\cdot\sigma^2/n = n\sigma^2 - \sigma^2$, so
+\[
+  \E[\text{training error}] = \frac1n\big(n\sigma^2 - \sigma^2\big) = \Big(1 - \frac1n\Big)\sigma^2 .
+\]
+For a new target $Y$, independent of the training set, the cross term vanishes and
+\[
+  \E\big[(Y - \bar y)^2\big] = \E\big[(Y - \mu)^2\big] + \E\big[(\bar y - \mu)^2\big] = \Big(1 + \frac1n\Big)\sigma^2 .
+\]
+With $n = 5$ and $\sigma^2 = 1$: training error $0.8$ on average, true risk $1.2$ (a simulation over $200\,000$
+training sets gives $0.798$ and $1.199$). The gap $2\sigma^2/n$ is the price of one fitted parameter. For least
+squares with $q$ fitted coefficients, with the error measured on new targets drawn at the same inputs
+$\x_1, \dots, \x_n$, the same calculation gives a gap of
+$2q\sigma^2/n$~\cite{hastie2009}: optimism grows with capacity and shrinks with data.
+\end{worked}
 
 \begin{keyidea}[Never evaluate on data used for choosing]
 $\ERisk(f, D)$ is an honest estimate of $\Risk(f)$ only if $D$ played no part in choosing $f$ --- not in fitting the
 parameters, not in choosing hyperparameters, not in pre-processing, not in deciding which model to report.
 \end{keyidea}
 
+Learning therefore has two phases. In the \emph{training phase} ERM fits $\hat f$; memorising $\Dtrain$ is not the
+goal. In the \emph{test phase} $\hat f$ is applied to new examples, and its risk is estimated by
+$\ERisk(\hat f, \Dtest)$ on a set never used before. That estimate is honest when $\Dtest$ played no part in
+building $\hat f$, and precise when $\Dtest$ is large enough (standard error $\sigma_L/\sqrt{n'}$,
+Section~\ref{sec:unbiased}).
+
 \section{Estimating generalisation}\label{sec:estimating}
 
-\paragraph{Hold-out} Shuffle the data and split it: train on one part, report the empirical risk on the other. This
-is simple and correct, but with little data it wastes examples and gives a noisy estimate.
+Throughout this section $A$ denotes a learning algorithm with fixed hyperparameters: given a training set it returns
+a predictor. $T_A(n)$ is its training cost on $n$ examples and $c$ the cost of one prediction.
 
-\paragraph{$k$-fold cross-validation} Split the data into $k$ blocks of roughly equal size. For $j = 1, \dots, k$,
-train on all blocks except $j$ and compute the loss on block $j$; average the $k$ results. Every example is used once
-for evaluation and $k-1$ times for training. Typical values are $k = 5$ or $10$; $k = n$ is
-\emph{leave-one-out}. Cross-validation estimates the performance of the \emph{procedure} trained on a fraction
-$(k-1)/k$ of the data, not of one particular fitted function.
+\subsection{Hold-out}
 
-\paragraph{Splits that respect the structure of the data} Shuffling assumes i.i.d.\ examples. When that fails
-(Note~1, Section~2), the split must follow the dependence:
+Shuffle the data and split it: train on one part, report the empirical risk on the other
+(Algorithm~\ref{alg:holdout}). It is simple and correct; its two weaknesses with little data --- held-out examples are
+not used for training, and the standard error $\sigma_L/\sqrt{n'}$ is large --- are compared with the other protocols
+in the table at the end of this section. A common compromise holds out 20--30\%.
+
+\begin{algorithm}[htbp]\small
+\caption{Hold-out evaluation}
+\label{alg:holdout}
+\begin{algorithmic}[1]
+\Require data $D$ of size $n$, algorithm $A$, held-out fraction $\rho$ (e.g.\ $0.2$), with $\lceil \rho n \rceil \ge 2$
+\Ensure estimate $\hat R$ of the risk of $A(\Dtrain)$ and its standard error
+\Function{HoldOut}{$D, A, \rho$}
+  \State shuffle $D$ \Comment{or split by group or time, Section~\ref{sec:structure}}
+  \State $n' \gets \lceil \rho n \rceil$; \ $\Dtest \gets$ first $n'$ examples; \ $\Dtrain \gets$ the rest
+  \State $\hat f \gets A(\Dtrain)$
+  \For{$j = 1, \dots, n'$} \State $L_j \gets L(\hat f(\x_j), y_j)$ \Comment{$(\x_j, y_j) \in \Dtest$} \EndFor
+  \State $\hat R \gets \frac{1}{n'} \sum_j L_j$; \ $s \gets \sqrt{\frac{1}{n'-1}\sum_j (L_j - \hat R)^2}$
+  \State \Return $\hat f$, $\hat R$, $s/\sqrt{n'}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{\texorpdfstring{$k$}{k}-fold cross-validation}
+
+Split the data into $k$ blocks (folds) of roughly equal size.\footnote{Both uses of the letter are standard: $k$ counts the folds of $k$-fold
+cross-validation and the neighbours of $k$-NN. In this note $k$ means folds in Sections~\ref{sec:estimating}
+and~\ref{sec:selection}, except in the name ``$k$-NN''; in Section~\ref{sec:capacity} and in questions about $k$-NN
+it means neighbours.} For $j = 1, \dots, k$, train on all blocks except $j$
+and compute the loss on block $j$; average the results (Algorithm~\ref{alg:cv}, Figure~\ref{fig:splits}, left). Every
+example is used once for evaluation and $k - 1$ times for training. Typical values are $k = 5$ or $10$.
+
+Cross-validation estimates the performance of the \emph{procedure} $A$ trained on a fraction $(k-1)/k$ of the data,
+not of one particular fitted function: the $k$ fitted predictors are different. Because each is trained on fewer
+examples than the final model will be, the estimate is slightly pessimistic; larger $k$ reduces this bias. The $k$
+fold errors are not independent (the training sets overlap), so the sample standard deviation of
+$e_1, \dots, e_k$ divided by $\sqrt k$ is only a rough standard error, but it is still useful for judging whether two settings differ (the one-standard-error rule, Section~\ref{sec:selection}).
+
+\begin{algorithm}[htbp]\small
+\caption{$k$-fold cross-validation}
+\label{alg:cv}
+\begin{algorithmic}[1]
+\Require data $D$ of size $n$, algorithm $A$, number of folds $k$
+\Ensure cross-validation estimate $\mathrm{CV}$ and the fold errors $e_1, \dots, e_k$
+\Function{CrossValidate}{$D, A, k$}
+  \State assign each example (or each whole group) at random to one of $k$ folds $B_1, \dots, B_k$ of near-equal size
+  \For{$j = 1, \dots, k$}
+    \State $\hat f_j \gets A(D \setminus B_j)$ \Comment{train without fold $j$}
+    \State $e_j \gets \ERisk(\hat f_j, B_j)$ \Comment{evaluate on fold $j$}
+  \EndFor
+  \State \Return $\mathrm{CV} = \sum_j |B_j|\, e_j / n$ and $(e_1, \dots, e_k)$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Leave-one-out}
+
+The extreme case $k = n$ is \emph{leave-one-out} cross-validation (LOO; the same leave-one-out idea applied to the bias
+or variance of a statistic is the jackknife of statistics): each example is predicted
+by a model trained on all the others (Algorithm~\ref{alg:loo}). It wastes almost no data and has almost no
+pessimistic bias, but it needs $n$ trainings, and its estimate can have a high variance because the $n$ training sets
+are nearly identical. Two important cases are cheap. \emph{Memory-based methods} ($k$-NN, Parzen windows, Note~5)
+have no training: leave-one-out only means excluding the point itself from its own neighbourhood, one pass over all
+pairwise distances, $O(n^2 d)$. \emph{Linear smoothers} --- methods whose predictions are fixed linear combinations of the training targets, such as
+the constant predictor and the least-squares and ridge regression of Note~8 --- have an exact
+shortcut that obtains all $n$ leave-one-out residuals from a single fit~\cite{hastie2009}; the constant predictor
+below is the simplest case.
+
+\begin{algorithm}[htbp]\small
+\caption{Leave-one-out cross-validation}
+\label{alg:loo}
+\begin{algorithmic}[1]
+\Require data $D = \{(\x_i, y_i)\}_{i=1}^n$, algorithm $A$
+\Ensure leave-one-out estimate $\mathrm{LOO}$
+\Function{LeaveOneOut}{$D, A$}
+  \For{$i = 1, \dots, n$}
+    \State $\hat f_{-i} \gets A(D \setminus \{(\x_i, y_i)\})$
+    \State $L_i \gets L(\hat f_{-i}(\x_i), y_i)$
+  \EndFor
+  \State \Return $\mathrm{LOO} = \frac1n \sum_i L_i$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{The LOO shortcut for the constant predictor} Removing $y_i$ changes the mean to
+$\bar y_{-i} = (n\bar y - y_i)/(n-1)$, so the left-out residual is
+\[
+  y_i - \bar y_{-i} = \frac{(n-1)y_i - n\bar y + y_i}{n-1} = \frac{n}{n-1}\,(y_i - \bar y) .
+\]
+Every LOO residual is the ordinary residual inflated by $n/(n-1)$, and
+$\mathrm{LOO} = \big(\tfrac{n}{n-1}\big)^2 \times$ training error: one fit instead of $n$.
+
+\begin{worked}{3-fold cross-validation by hand}
+Six examples $(x, y)$: $(1, 2), (2, 3), (3, 3), (4, 6), (5, 5), (6, 7)$. Compare two algorithms with squared loss:
+the constant predictor (predict the mean of the training targets) and $1$-NN regression (predict the target of the
+nearest training input, Note~5). For readability the folds are consecutive pairs; in practice they are chosen at
+random.
+\begin{center}\small
+\begin{tabular}{@{}ccccc@{}}
+\toprule
+fold & validation $x$ ($y$) & training $y$ & constant: $\hat y$; errors & 1-NN: neighbour $x$; errors \\
+\midrule
+1 & $1, 2$ \ ($2, 3$) & $3, 6, 5, 7$ & $5.25$: \ $10.5625,\ 5.0625$ & $x = 3, 3$: \ $1,\ 0$ \\
+2 & $3, 4$ \ ($3, 6$) & $2, 3, 5, 7$ & $4.25$: \ $1.5625,\ 3.0625$ & $x = 2, 5$: \ $0,\ 1$ \\
+3 & $5, 6$ \ ($5, 7$) & $2, 3, 3, 6$ & $3.5$: \ \ $2.25,\ 12.25$ & $x = 4, 4$: \ $1,\ 1$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Fold mean squared errors: constant $7.8125$, $2.3125$, $7.25$; 1-NN $0.5$, $0.5$, $1.0$. Averaging over the folds
+(all folds have the same size),
+\[
+  \mathrm{CV}_{\text{const}} = \frac{7.8125 + 2.3125 + 7.25}{3} = 5.79, \qquad
+  \mathrm{CV}_{\text{1-NN}} = \frac{0.5 + 0.5 + 1.0}{3} = 0.67 .
+\]
+1-NN wins clearly: the targets follow a trend that a constant cannot represent (underfitting). Note that the
+\emph{training} errors would not have told us this honestly: 1-NN has training error $0$ by construction, whatever
+the data. For the constant predictor the training error is $3.22$ (the mean is $26/6 = 4.33$), and the LOO shortcut
+gives $\mathrm{LOO} = (6/5)^2 \times 3.22 = 4.64$ --- smaller than the 3-fold value $5.79$. Each LOO model is trained
+on five examples instead of four, and our folds are consecutive pairs: folds~1 and~3 remove the smallest or the
+largest targets, so the mean of the remaining four lies far from the left-out values.
+\end{worked}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.94\linewidth]{figures/n4_splits.pdf}
+\caption{Left: in 5-fold cross-validation each block is the validation set once. Right: sequential validation for
+time-ordered data; at every step the candidates are trained on the past and compared on the block that follows, the
+winner is retrained on the past and that block, and it is tested on the next block (Algorithm~\ref{alg:sequential}).}
+\label{fig:splits}
+\end{figure}
+
+\subsection{Splits that respect the structure of the data}\label{sec:structure}
+
+Shuffling assumes i.i.d.\ examples. When that fails (Note~1, Section~2), the split must follow the dependence:
 \begin{itemize}
 \item \emph{Groups}: all measurements of the same galaxy, patient, sample or detector run go into the same block, or
 the model is tested on objects it has already seen.
 \item \emph{Time}: for forecasting, train on the past and validate on the block that follows, then roll the window
-forward (sequential validation). A random split would let the model learn from the future.
+forward (\emph{sequential validation}, Algorithm~\ref{alg:sequential} and Figure~\ref{fig:splits}, right). A random
+split would let the model learn from the future. When hyperparameters are chosen as well, each step has three parts:
+choose the setting on block $B_t$ with models trained on the earlier blocks, retrain the winner on everything up to
+and including $B_t$, and report its error on $B_{t+1}$. This is Algorithm~\ref{alg:selection} of
+Section~\ref{sec:selection} with time-ordered training, validation and test sets, repeated as the origin rolls
+forward.
 \item \emph{Simulation and reality}: a model trained and validated on simulation must still be tested on real data,
 or on a control region of it, before its performance is believed.
 \end{itemize}
 
-\paragraph{Nested cross-validation} When the same small dataset must both select hyperparameters and estimate the
-error of the whole procedure, use two loops: an outer cross-validation for the estimate and, inside each outer
-training set, an inner cross-validation for the selection.
+\begin{algorithm}[htbp]\small
+\caption{Sequential (rolling-origin) validation for time-ordered data}
+\label{alg:sequential}
+\begin{algorithmic}[1]
+\Require time blocks $B_1, \dots, B_T$, algorithm $A_\gamma$ with candidate settings $\Gamma$ ($G$ of them), initial
+blocks $s$, window $w$ ($w = \infty$: expanding)
+\Ensure test errors $e_{s+2}, \dots, e_T$ and their mean
+\Function{SequentialValidation}{$B_1, \dots, B_T, A, \Gamma, s, w$}
+  \For{$t = s+1, \dots, T-1$}
+    \State $D_{\mathrm{past}} \gets B_{\max(1,\, t-w)} \cup \dots \cup B_{t-1}$ \Comment{the last $w$ blocks, or all of the past}
+    \For{each $\gamma \in \Gamma$}
+      \State $v_\gamma \gets \ERisk(A_\gamma(D_{\mathrm{past}}), B_t)$ \Comment{validate on the next block}
+    \EndFor
+    \State $\gamma_t^* \gets \argmin_\gamma v_\gamma$; \ $\hat f_t \gets A_{\gamma_t^*}(D_{\mathrm{past}} \cup B_t)$ \Comment{retrain, now including $B_t$}
+    \State $e_{t+1} \gets \ERisk(\hat f_t, B_{t+1})$ \Comment{test on the block after}
+  \EndFor
+  \State \Return $(e_{s+2}, \dots, e_T)$ and their mean
+\EndFunction
+\end{algorithmic}
+With a single setting ($G = 1$) nothing is chosen, so no validation block is needed: train on the past and evaluate
+directly on the block that follows.
+\end{algorithm}
+
+Errors $e_t$ that grow with $t$ reveal drift: the process is changing and the model must be retrained regularly. When
+neighbouring time points are strongly correlated, leave a gap between the training and validation blocks.
+
+\begin{worked}{sequential validation by hand}
+A yearly quantity takes the values $y = 10, 12, 13, 15, 16, 18$ in years $1$--$6$ (one value per block, so that
+everything can be done by hand). Two forecasters compete: M predicts the \emph{mean} of all past years, L the
+\emph{last} year's value. Squared loss, $s = 2$, expanding window.
+\begin{center}\small
+\begin{tabular}{@{}cccccc@{}}
+\toprule
+step & validate on & M: forecast; error & L: forecast; error & choice & test: forecast, $y$; error \\
+\midrule
+$t = 3$ & $y_3 = 13$ & $11$; \ $4$ & $12$; \ $1$ & L & year 4: $13$, $15$; \ $4$ \\
+$t = 4$ & $y_4 = 15$ & $11.67$; \ $11.1$ & $13$; \ $4$ & L & year 5: $15$, $16$; \ $1$ \\
+$t = 5$ & $y_5 = 16$ & $12.5$; \ $12.25$ & $15$; \ $1$ & L & year 6: $16$, $18$; \ $4$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+After each choice L is ``retrained'' on the years up to and including the validation year, i.e.\ it forecasts that
+year's value. The honest test errors are $4, 1, 4$, mean $3$. The validation errors of M grow ($4$, $11.1$, $12.25$):
+the series drifts upwards, and an average over the whole past falls further and further behind.
+\end{worked}
+
+\subsection{Nested cross-validation}
+
+When the same small dataset must both select hyperparameters and estimate the error of the whole procedure, use two
+loops --- \emph{nested} or \emph{double cross-validation} (Algorithm~\ref{alg:nested}). We write $\gamma$ for one
+hyperparameter setting (a single value or a tuple of values), $A_\gamma$ for the algorithm run with it and $\Gamma$
+for the set of candidates; the letter $\lambda$ is kept for a penalty strength (Section~\ref{sec:regularisation}).
+The two loops are an outer cross-validation for the estimate and, inside each outer training set, an
+inner cross-validation for the selection. The outer test fold never influences any choice, so the outer estimate is
+honest for the \emph{procedure} ``tune by inner CV, then train''. The hyperparameters chosen in different outer
+folds may differ; that is expected, and their spread is itself informative.
+
+
+\begin{algorithm}[htbp]\small
+\caption{Nested cross-validation}
+\label{alg:nested}
+\begin{algorithmic}[1]
+\Require data $D$, algorithm family $A_\gamma$, candidate settings $\Gamma$ ($G$ of them), outer folds $K$, inner folds $k$
+\Ensure estimate of the risk of the whole tuning-and-training procedure
+\Function{NestedCV}{$D, A, \Gamma, K, k$}
+  \State split $D$ at random into outer folds $C_1, \dots, C_K$
+  \For{$j = 1, \dots, K$}
+    \State $D_j \gets D \setminus C_j$ \Comment{outer training set}
+    \For{each $\gamma \in \Gamma$}
+      \State $v_\gamma \gets \Call{CrossValidate}{D_j, A_\gamma, k}$ \Comment{inner loop, Algorithm~\ref{alg:cv}}
+    \EndFor
+    \State $\gamma_j^* \gets \argmin_\gamma v_\gamma$; \ $\hat f_j \gets A_{\gamma_j^*}(D_j)$
+    \State $e_j \gets \ERisk(\hat f_j, C_j)$ \Comment{$C_j$ untouched until now}
+  \EndFor
+  \State \Return $\frac1K \sum_j e_j$ \Comment{final model: tune by CV on all of $D$, then refit}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{worked}{nested cross-validation on six points}
+Take the six points of the 3-fold example above as outer folds ($K = 3$, consecutive pairs). Inside each outer
+training set of four points, leave-one-out chooses between the constant predictor and $1$-NN regression (when two
+neighbours are equally close, average their targets). For the constant, the LOO shortcut gives the inner score
+directly: on the targets $3, 6, 5, 7$ of outer fold~1 the training error is $8.75/4 = 2.1875$, and $(4/3)^2 \times
+2.1875 = 3.89$.
+\begin{center}\small
+\begin{tabular}{@{}cccccc@{}}
+\toprule
+outer fold & inner training $x$ & LOO, constant & LOO, 1-NN & chosen & outer-fold error \\
+\midrule
+1 ($x = 1, 2$) & $3, 4, 5, 6$ & $3.89$ & $4.81$ & constant & $7.81$ \\
+2 ($x = 3, 4$) & $1, 2, 5, 6$ & $6.56$ & $2.50$ & 1-NN & $0.50$ \\
+3 ($x = 5, 6$) & $1, 2, 3, 4$ & $4.00$ & $3.125$ & 1-NN & $1.00$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+The outer errors are those of the 3-fold example for the chosen method, so the nested estimate is
+$(7.81 + 0.50 + 1.00)/3 = 3.10$. It is much larger than $0.67$, the cross-validation error of the winner: with four
+points per inner set the selection itself is unreliable (outer fold~1 picks the worse method), and nested
+cross-validation charges the procedure for that.
+\end{worked}
+
+\begin{runtime}{evaluation protocols}
+\begin{tabular}{@{}L{0.17\linewidth}L{0.21\linewidth}L{0.25\linewidth}L{0.27\linewidth}@{}}
+\toprule
+Protocol & Training cost & Use it when & Watch out for \\
+\midrule
+Hold-out (Alg.~\ref{alg:holdout}) & $T_A(n - n')$, one training & $n$ large; training expensive & noisy if $n'$ is small \\
+$k$-fold (Alg.~\ref{alg:cv}) & $k\,T_A\big(\frac{k-1}{k}n\big)$ & $n$ moderate; the default & groups straddling folds \\
+Leave-one-out (Alg.~\ref{alg:loo}) & $n\,T_A(n-1)$, or one fit with a shortcut & $n$ small; $k$-NN, Parzen, linear smoothers & high variance; cost without a shortcut \\
+Sequential (Alg.~\ref{alg:sequential}) & $(T - s - 1)(G + 1)$ trainings, each at most $T_A(n)$ & time-ordered data & leakage across the time boundary \\
+Nested (Alg.~\ref{alg:nested}) & $K(Gk+1)$ trainings, $+\,(Gk+1)$ for the final model & small $n$; honest estimate of a tuned procedure & cost \\
+\bottomrule
+\end{tabular}
+\par\smallskip
+Here $n$ is the number of examples, $T_A(n)$ the cost of one training, $c$ the cost of one prediction and $G$ the number
+of hyperparameter settings. \emph{Prediction}: every protocol predicts each example at most once per training, $O(nc)$ per round. \emph{Memory}:
+$O(nd)$ for the data, $O(n)$ for the fold indices and one model at a time; nested CV also keeps $G$ scores per outer
+fold. \emph{Why the terms}: $k$-fold trains $k$ times on all but one
+fold, so for $T_A$ linear in $n$ it costs about $k - 1$ full trainings; naive leave-one-out of least squares,
+$T_A = O(nd^2 + d^3)$, costs $O(n^2d^2 + nd^3)$; sequential validation trains the $G$ candidates and one refit at each of its $T - s - 1$ steps; nested CV runs a full
+inner search ($Gk$ trainings) plus one refit
+in each of $K$ outer folds --- with $K = k = 5$ and $G = 20$, $505$ trainings, about $8.4$ hours at one minute each,
+plus $101$ more to tune and refit the final model on all of $D$.
+All folds, steps and settings are independent, so on $N_{\mathrm{proc}}$ processors or GPUs the wall-clock time drops by up to a
+factor $N_{\mathrm{proc}}$.
+\end{runtime}
+
+Whatever the protocol, the same three rules apply: every choice is made without the data used for the final
+estimate; the split follows the dependence structure of the data; and every reported error comes with an error bar.
 
 \section{Capacity, underfitting and overfitting}\label{sec:capacity}
 
 The \emph{capacity} of a family $\F$ is, informally, how many different patterns it can fit. It usually grows with the
 number of free parameters, but what matters is the effective number of degrees of freedom: constraints, shared
-parameters or regularisation can make a large model behave like a small one. For restricted settings capacity can be
-measured exactly; for example, the Vapnik--Chervonenkis dimension of affine classifiers in $\R^d$ is $d + 1$, the
-largest number of points they can label in every possible way.
+parameters or regularisation can make a large model behave like a small one. For $k$-NN, which has no fitted
+parameters at all, the effective number of parameters is about $n/k$ (roughly one local average per neighbourhood of
+$k$ points)~\cite{hastie2009}. For restricted settings capacity can be measured exactly. The
+\emph{Vapnik--Chervonenkis (VC) dimension} of a family of classifiers is the largest number $N$ such that \emph{some}
+arrangement of $N$ points can be given every one of the $2^N$ labellings by members of the family (it is enough that
+one arrangement works: three points on a line cannot be labelled $+,-,+$ by a straight line, but three points in general
+position can). For affine classifiers $f(\x) = \ind{\vect{w}\T\x + b > 0}$ in $\R^d$ it is $d + 1$. In the plane
+($d = 2$), three points not on a line can be given all $2^3 = 8$ labellings by straight lines, but no four points can.
+We only check the square here: for its four corners, the labelling that puts diagonally opposite corners in the same
+class is impossible (the general proof for four points is longer).
 
 Figure~\ref{fig:polyfits} shows the three regimes on $15$ noisy points from $\sin(\pi x)$. A straight line cannot follow
 the curve (\emph{underfitting}: high training and test error). A polynomial of degree~$12$ passes close to every point and
 oscillates wildly between them (\emph{overfitting}: low training error, high test error). Degree~$3$ captures the trend
 and ignores the noise.
 
-\begin{figure}[h]
+The same three regimes appear in classification, where capacity shows up as the flexibility of the decision boundary.
+Note~5, Section~1, shows $k$-NN boundaries for several $k$ with their training and test errors, and Note~3, Section~2,
+shows histogram classifiers with coarser and finer cells. The boundary that generalises best does not have the
+fewest training errors (in Note~5, about 6\% for $k = 15$ against 0\% for $k = 1$). It can even make \emph{more}
+training errors than an underfitting straight line: what it is judged on is the error on new data, and a boundary that
+bends to avoid every training error is following noise.
+
+\begin{figure}[tb]
 \centering
 \includegraphics[width=\linewidth]{figures/poly_fits.pdf}
 \caption{Least-squares polynomial fits to the same 15 points (dashed: the true function $\sin(\pi x)$).}
 \label{fig:polyfits}
 \end{figure}
 
-Averaging over many training sets gives Figure~\ref{fig:capacity}: training error decreases monotonically with the
-degree, while validation error first falls, reaches its minimum at degree~3 and then rises steeply. The optimal
-capacity depends on the amount of data --- with more points, higher degrees become affordable. Occam's razor, ``prefer
-the simplest model that explains the data'', is the qualitative version of this curve.
+Repeating the experiment on $200$ training sets of $n = 20$ points and taking the median errors gives
+Figure~\ref{fig:capacity}: training error decreases monotonically with the degree, while validation error first falls,
+reaches its minimum at degree~3 and then rises steeply. The optimal capacity depends on the amount of data --- with
+more points, higher degrees become affordable. Occam's razor --- among models that explain the data equally well,
+prefer the simpler one --- is the qualitative version of this curve.
 
-\begin{figure}[h]
+\begin{figure}[tb]
 \centering
 \begin{minipage}[t]{0.49\linewidth}\centering
 \includegraphics[width=\linewidth]{figures/capacity_curve.pdf}
@@ -177,108 +703,438 @@ converge to the same limit; the more flexible model needs more data to get there
 \end{minipage}
 \end{figure}
 
+\paragraph{Validation curves and learning curves} A plot of training and validation error against a hyperparameter
+at fixed $n$, such as Figure~\ref{fig:capacity}, is a \emph{validation curve}; some texts also call it a learning curve.
+In this course a \emph{learning curve} is the error against the training-set size $n$, as in
+Figure~\ref{fig:learningcurve}. Algorithm~\ref{alg:curves} computes both.
+
+\begin{algorithm}[htbp]\small
+\caption{Validation curve and learning curve}
+\label{alg:curves}
+\begin{algorithmic}[1]
+\Require training set $\Dtrain$ of size $n$, validation set $\Dvalid$, algorithm $A_\gamma$
+\Function{ValidationCurve}{settings $\gamma_1, \dots, \gamma_G$}
+  \For{$g = 1, \dots, G$}
+    \State $\hat f \gets A_{\gamma_g}(\Dtrain)$; \ record $\ERisk(\hat f, \Dtrain)$ and $\ERisk(\hat f, \Dvalid)$
+  \EndFor
+\EndFunction
+\Function{LearningCurve}{setting $\gamma$, sizes $n_1 < n_2 < \dots < n_r = n$}
+  \State shuffle $\Dtrain$ once \Comment{nested subsets: $D_1 \subset D_2 \subset \dots$}
+  \For{$i = 1, \dots, r$}
+    \State $D_i \gets$ the first $n_i$ examples; \ $\hat f \gets A_\gamma(D_i)$
+    \State record $\ERisk(\hat f, D_i)$ and $\ERisk(\hat f, \Dvalid)$
+  \EndFor
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{runtime}{validation and learning curves}
+\emph{Validation curve}: $\sum_g T_{A_{\gamma_g}}(n)$, one training per setting, plus $O(G(n + n_{\mathrm{valid}})c)$
+for the evaluations. \emph{Learning curve}: $\sum_i T_A(n_i) \le r\,T_A(n)$; for sizes that double ($n_i = n/2^{r-i}$)
+and a training cost linear in $n$ the sum is below $2\,T_A(n)$, about two full trainings. In practice each curve is
+averaged over several random splits (Figure~\ref{fig:capacity} uses $200$), which multiplies the cost. \emph{Memory}:
+$O(nd)$ for the data and $O(G)$ or $O(r)$ numbers for the curves.
+\end{runtime}
+
+\paragraph{Reading a learning curve} Curves of training and validation error against $n$, as in
+Figure~\ref{fig:learningcurve}, diagnose what limits a model. If both errors are close to each other but high, the
+model underfits: more data will not help, a richer family will. If the training error is low and the validation error
+much higher, the model overfits: more data, a smaller family or stronger regularisation will help. The size of the gap
+at the current $n$, and how fast it is closing, tells whether collecting more data is worth the cost.
+
+\begin{worked}{counting capacity and reading two learning curves}
+\emph{Effective size of $k$-NN.} With $n = 200$ training points, $k$-NN behaves like a model with about $n/k$
+parameters: $200$ for $k = 1$ (every point its own region), $40$ for $k = 5$, $10$ for $k = 20$ and $1$ for $k = 200$,
+where every query receives the same average --- the constant predictor of Section~\ref{sec:ingredients}. Increasing
+$k$ therefore \emph{lowers} the capacity, although nothing is ``removed'' from the model.
+
+\emph{Two diagnoses.} At $n = 1000$, model~A has training error $0.30$ and validation error $0.32$, and both curves
+have been flat since $n = 300$. Model~B has training error $0.02$ and validation error $0.25$, and the gap shrinks
+slowly as $n$ grows. A underfits: the gap ($0.02$) is small, so more data cannot help; a richer family or better
+features can. B overfits: the gap ($0.23$) dominates, so more data, a smaller family or stronger regularisation will
+help. Both curves are useful only because the validation errors are computed on data the models never saw.
+\end{worked}
+
 \section{Where the error comes from}\label{sec:decomposition}
+
+\subsection{Approximation and estimation error}
 
 Let $f^* = \argmin_f \Risk(f)$ be the best possible predictor (its risk is the Bayes risk of Note~1, Section~4),
 $f_{\F} = \argmin_{f \in \F} \Risk(f)$ the best member of the family, and $\hat f$ the function returned by the
-algorithm. Then
+algorithm. Adding and subtracting $\Risk(f_{\F})$,
 \[
   \Risk(\hat f) - \Risk(f^*) = \underbrace{\Risk(f_{\F}) - \Risk(f^*)}_{\text{approximation error}}
   + \underbrace{\Risk(\hat f) - \Risk(f_{\F})}_{\text{estimation error}} .
 \]
-The approximation error shrinks as $\F$ grows; the estimation error --- the price of having to find $f_{\F}$ from
-finitely many noisy examples --- grows with the size of $\F$ and shrinks with $n$.
+Both terms are non-negative: $f^*$ is the best of all functions, and $f_{\F}$ is the best in $\F$, which contains
+$\hat f$. The approximation error depends only on the family and the problem; it shrinks (or stays the same) as $\F$
+grows. The estimation error --- the price of learning $f_{\F}$ from finitely many noisy examples --- is random,
+usually grows with the size of $\F$ at fixed $n$, and shrinks with $n$.
 
-\paragraph{Bias and variance for squared loss} Let $y = f^*(\x) + \varepsilon$ with $\E[\varepsilon] = 0$ and
-$\Var(\varepsilon) = \sigma^2$, and let $\hat f_D$ be trained on a random training set $D$. At a fixed $\x$, averaging
-over both $D$ and the noise,
+\begin{worked}{approximating a parabola with constants, lines and parabolas}
+Let $X$ be uniform on $[-1, 1]$ and $Y = X^2 + \varepsilon$ with noise variance $\sigma^2 = 0.04$, squared loss. The
+Bayes predictor is $f^*(x) = x^2$ with risk $0.04$, and $\Risk(f) - \Risk(f^*) = \E[(f(X) - X^2)^2]$ (Note~1,
+Section~4).
+
+\emph{Constants.} $\E[(b - X^2)^2]$ is minimised by $b = \E[X^2] = \frac12\int_{-1}^{1} x^2\,dx = \frac13$, and
+with $\E[X^4] = \frac12\int_{-1}^{1} x^4\,dx = \frac15$ the approximation error is
+$\Var(X^2) = \E[X^4] - (\E X^2)^2 = \frac15 - \frac19 = \frac{4}{45} = 0.089$. For the sample mean the estimation
+error is $\E[(\bar y - \frac13)^2] = \Var(Y)/n$, and $\Var(Y) = \Var(X^2) + \Var(\varepsilon) = 0.089 + 0.04$
+because $X$ and $\varepsilon$ are independent.
+
+\emph{Lines.} Minimise $\E[(a + bX - X^2)^2]$ over $a$ and $b$. Setting the two partial derivatives to zero,
+\[
+  \E[a + bX - X^2] = 0, \qquad \E[(a + bX - X^2)X] = 0,
+\]
+gives $a = \E[X^2] - b\,\E[X]$ and, after substituting, $b = \Cov(X, X^2)/\Var(X)$. Here $\E[X] = 0$ and
+$\Cov(X, X^2) = \E[X^3] - \E[X]\E[X^2] = 0$ by symmetry, so $b = 0$ and $a = \frac13$: the best line is the same
+constant, and the approximation error is \emph{unchanged}, $0.089$. (Without any algebra: $X^2$ is even in $X$, so a
+slope can only add error.) The extra parameter adds only estimation error.
+
+\emph{Parabolas.} $f^*$ is in the family: approximation error $0$.
+
+Estimation errors from $10^5$ simulated training sets (least-squares fits):
+\begin{center}\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+ & approximation & estimation & excess & estimation & excess \\
+ & & $n = 10$ & $n = 10$ & $n = 100$ & $n = 100$ \\
+\midrule
+constants & 0.089 & 0.013 & 0.102 & 0.0013 & 0.090 \\
+lines & 0.089 & 0.047 & 0.136 & 0.0032 & 0.092 \\
+parabolas & 0 & $\approx 0.03$ & $\approx 0.03$ & 0.0012 & 0.0012 \\
+\bottomrule
+\end{tabular}
+\end{center}
+The ``excess'' columns are $\Risk(\hat f) - \Risk(f^*)$, approximation plus estimation; add the noise $0.04$ for the
+expected risk itself. A bigger family is not automatically better: lines are worse than constants here. Parabolas, on
+the other hand, have a \emph{smaller} estimation error than lines although they have more parameters: for lines the
+unexplained curvature acts like extra noise (residual variance $0.089 + 0.04 = 0.129$ instead of $0.04$), and for
+large $n$ the estimation error is roughly residual variance $\times$ number of parameters $/\,n$ --- at $n = 100$,
+$0.129 \times 2/100 = 0.0026$ for lines and $0.04 \times 3/100 = 0.0012$ for parabolas. With the right family the
+estimation error dominates, and it falls roughly like $1/n$.
+\end{worked}
+
+\subsection{Bias and variance for squared loss}
+
+Let $y = f^*(\x) + \varepsilon$ with $\E[\varepsilon] = 0$ and $\Var(\varepsilon) = \sigma^2$, and let $\hat f_D$ be
+trained on a random training set $D$. At a fixed $\x$, averaging over both $D$ and the noise of a new observation,
 \begin{equation}\label{eq:biasvar}
   \E\big[(y - \hat f_D(\x))^2\big] = \underbrace{\sigma^2}_{\text{noise}}
   + \underbrace{\big(f^*(\x) - \E_D[\hat f_D(\x)]\big)^2}_{\text{bias}^2}
   + \underbrace{\Var_D\big(\hat f_D(\x)\big)}_{\text{variance}} .
 \end{equation}
-Bias measures how far the \emph{average} fitted function is from the truth; variance measures how much the fit
-changes from one training set to another. A richer family lowers bias and raises variance; more data lowers variance
-(Figure~\ref{fig:learningcurve}), which is why ``the best regulariser is more data''. The proof extends the
-decomposition of Note~1, Section~4, by one line (Exercise~E2).
+
+\paragraph{Derivation} Fix $\x$ and abbreviate $F = \hat f_D(\x)$ (random through $D$), $\bar F = \E_D[F]$ and
+$f^* = f^*(\x)$. The new noise $\varepsilon$ is independent of $D$.
+
+\emph{Step 1: separate the noise.} Expanding the square,
+\[
+  \E\big[(f^* + \varepsilon - F)^2\big] = \E[\varepsilon^2] + 2\,\E\big[\varepsilon\,(f^* - F)\big]
+  + \E\big[(f^* - F)^2\big] .
+\]
+By independence $\E[\varepsilon (f^* - F)] = \E[\varepsilon]\,\E[f^* - F] = 0$, and $\E[\varepsilon^2] = \sigma^2$.
+So the expected error is $\sigma^2 + \E[(f^* - F)^2]$, which is Note~1's decomposition with the trained model in
+place of a fixed one.
+
+\emph{Step 2: separate bias and variance.} Add and subtract $\bar F$:
+\[
+  \E\big[(f^* - F)^2\big] = \E\big[(f^* - \bar F + \bar F - F)^2\big]
+  = (f^* - \bar F)^2 + 2\,(f^* - \bar F)\,\E[\bar F - F] + \E\big[(\bar F - F)^2\big] .
+\]
+The first term is a constant (it does not depend on $D$). The middle term vanishes because $\E[\bar F - F] = \bar F -
+\bar F = 0$. The last term is $\Var_D(F)$ by definition. Combining the two steps gives \eqref{eq:biasvar}; averaging
+it over $\x$ gives the same decomposition of the risk.
+
+\paragraph{Interpretation} Bias measures how far the \emph{average} fitted function is from the truth; variance
+measures how much the fit changes from one training set to another. A richer family lowers bias and raises variance;
+more data lowers variance (Figure~\ref{fig:learningcurve}), which is why collecting more data is often the most
+effective way to reduce overfitting.
+Figure~\ref{fig:biasvar} computes both terms exactly for polynomial fits to $15$ equally spaced points with noise
+$\sigma = 0.3$: degree~1 has squared bias $0.209$ and variance $0.011$; degree~3 balances them ($0.006$ and $0.021$,
+total expected error $0.116$ including the noise $0.09$); degree~12 has negligible bias and variance $0.486$. Bias
+roughly corresponds to approximation error and variance to estimation error, although the two decompositions are not
+identical.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/n4_biasvar.pdf}
+\caption{Bias and variance. Left and middle: 20 least-squares fits, each to a fresh noisy sample at the same 15 inputs
+(dashed: the truth). Right: squared bias and variance, averaged over $x \in [-1, 1]$, and their sum plus the noise.}
+\label{fig:biasvar}
+\end{figure}
+
+\begin{worked}{a biased estimator that beats the unbiased one}
+Estimate a mean $\mu$ from $n$ observations with variance $\sigma^2$ by the \emph{shrunk} mean $\hat\mu_a = a\,\bar y$,
+$0 \le a \le 1$. Since $\E[\bar y] = \mu$ and $\Var(\bar y) = \sigma^2/n$,
+\[
+  \text{bias} = \E[\hat\mu_a] - \mu = (a - 1)\mu, \qquad \text{variance} = a^2\,\sigma^2/n .
+\]
+The mean squared error of the estimator, $\E[(\hat\mu_a - \mu)^2]$, splits exactly as in Step~2 of the derivation
+above, with $\mu$ in place of $f^*$ and $\hat\mu_a$ in place of $F$: it is bias$^2$ $+$ variance. There is no noise
+term, because the estimate is compared with $\mu$ itself, not with a new noisy observation.
+Take $\mu = 2$, $\sigma^2 = 4$, $n = 4$, so $\sigma^2/n = 1$:
+\begin{center}\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+$a$ & 1 & 0.9 & 0.8 & 0.7 & 0.5 & 0 \\
+\midrule
+bias$^2 = (1-a)^2 \mu^2$ & 0 & 0.04 & 0.16 & 0.36 & 1.00 & 4.00 \\
+variance $= a^2 \sigma^2/n$ & 1.00 & 0.81 & 0.64 & 0.49 & 0.25 & 0 \\
+mean squared error & 1.00 & 0.85 & \textbf{0.80} & 0.85 & 1.25 & 4.00 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Setting the derivative of $(1 - a)^2\mu^2 + a^2\sigma^2/n$ to zero, $-2(1-a)\mu^2 + 2a\sigma^2/n = 0$, gives
+$a^* = \mu^2/(\mu^2 + \sigma^2/n) = 4/5$: shrinking by 20\% lowers the error from $1.00$ to $0.80$ (a simulation gives
+$0.996$ and $0.795$). For predicting a new observation the noise $\sigma^2 = 4$ is added to every column. The catch is
+that $a^*$ depends on the unknown $\mu$; in practice the amount of shrinkage is a hyperparameter chosen on validation
+data. In fact $a\,\bar y$ is the minimiser of the regularised objective $\frac1n\sum_i (y_i - b)^2 + \lambda b^2$ with
+$a = 1/(1 + \lambda)$ (Question~B6), the one-parameter version of ridge regression (Note~8, Section~4).
+\end{worked}
 
 \section{Model selection}\label{sec:selection}
 
-\paragraph{Parameters and hyperparameters} \emph{Parameters} are fitted by the training algorithm;
-\emph{hyperparameters} are fixed before training and control the family, the preference among its members or the
-optimisation. They usually control capacity, which is why they cannot be chosen on the training set: the training
+\paragraph{Parameters and hyperparameters} \emph{Parameters} are what the training algorithm fits.
+\emph{Hyperparameters} are set before training starts: a polynomial degree or a network architecture selects the
+family, a penalty strength $\lambda$ says which of its members are preferred, a learning rate or a number of epochs
+steers the optimiser. As in Section~\ref{sec:estimating}, $\gamma$ denotes one complete setting of the
+hyperparameters and $\lambda$ only a penalty strength. Most of them control capacity, which is why they cannot be chosen on the training set: the training
 error would always favour the largest capacity.
 
 \begin{center}\small
-\begin{tabular}{@{}L{0.22\linewidth}L{0.38\linewidth}L{0.32\linewidth}@{}}
+\begin{tabular}{@{}L{0.25\linewidth}L{0.37\linewidth}L{0.30\linewidth}@{}}
 \toprule
 Method & Hyperparameters & Parameters \\
 \midrule
 Histogram (Note~3) & number and placement of bins & counts in each cell \\
-$k$-NN (Note~5) & $k$, the distance & none beyond the stored training set \\
-Parzen windows (Note~5) & kernel and its width & none beyond the stored training set \\
-Polynomial regression & degree, regularisation strength $\lambda$ & coefficients \\
+Decision tree (Note~3) & maximum depth, minimum leaf size & split variables, thresholds, leaf values \\
+$k$-NN (Note~5) & $k$, the distance & the stored training set \\
+Parzen windows (Note~5) & kernel and its width & the stored training set \\
+Gaussian Bayes classifier (Note~6) & shared or separate covariances, shrinkage & class means, covariances, priors \\
+Polynomial, ridge, lasso regression (Note~8) & degree, $\lambda$, whether and how to scale features & coefficients \\
+Logistic regression, SVM (Note~9) & $\lambda$ or $C$; kernel and width (Note~10) & weights and bias \\
 Neural network & architecture, learning rate, batch size, training time, $\lambda$ & weights and biases \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\begin{algorithm}[h]
+\begin{worked}{sorting the choices of a real pipeline}
+A $5$-NN classifier with Euclidean distance is trained on standardised features, using 20\% of the data for
+validation.
+\begin{itemize}
+\item $k = 5$ and the Euclidean distance: \emph{hyperparameters}, chosen on validation data.
+\item Whether to standardise at all: a \emph{hyperparameter}. The means and standard deviations it uses:
+\emph{parameters} --- they are computed from data, so
+they must be computed from the training part only (Note~1, Section~5). Computing them on all data is leakage: the
+validation examples then shape the features the model sees, which tends to make the estimate optimistic (usually only
+slightly for standardisation, much more for steps such as feature selection).
+\item The stored training examples: the parameters of a memory-based method.
+\item The 20\% validation fraction and the random seed of the split: \emph{neither}; they belong to the evaluation
+protocol. The seed should not be tuned, and the variation across seeds is part of the error bar.
+\item The decision threshold of a probabilistic classifier: a hyperparameter if chosen to optimise a metric on
+validation data, a fixed rule ($\frac12$) otherwise.
+\end{itemize}
+\end{worked}
+
+\subsection{Selection with a training, a validation and a test set}
+
+Algorithm~\ref{alg:selection} is the basic meta-algorithm of the course: every candidate is trained on $\Dtrain$,
+scored on $\Dvalid$, and only the winner is evaluated, once, on $\Dtest$.
+
+\begin{algorithm}[htbp]\small
 \caption{Model selection with a training, a validation and a test set}
 \label{alg:selection}
 \begin{algorithmic}[1]
-\State Shuffle (or split by group or time, Section~\ref{sec:estimating}) and divide $D$ into $\Dtrain$, $\Dvalid$, $\Dtest$
-\For{each candidate algorithm $A$ and each hyperparameter setting $\lambda$}
-  \State $\hat f_{A,\lambda} \gets A_\lambda(\Dtrain)$ \Comment{fit parameters}
-  \State $e_{A,\lambda} \gets \ERisk(\hat f_{A,\lambda}, \Dvalid)$ \Comment{out-of-sample score}
+\Require data $D$, candidate algorithms $A$, each with a set $\Gamma_A$ of hyperparameter settings
+\Ensure selected model $\hat f_{\mathrm{sel}}$ and an honest estimate of its risk
+\Function{SelectModel}{$D$, $\{(A, \Gamma_A)\}$}
+\State Shuffle (or split by group or time, Section~\ref{sec:structure}) and divide $D$ into $\Dtrain$, $\Dvalid$, $\Dtest$
+\For{each candidate algorithm $A$ and each setting $\gamma \in \Gamma_A$}
+  \State $\hat f_{A,\gamma} \gets A_\gamma(\Dtrain)$ \Comment{fit parameters}
+  \State $e_{A,\gamma} \gets \ERisk(\hat f_{A,\gamma}, \Dvalid)$ \Comment{out-of-sample score}
 \EndFor
-\State $(A^*, \lambda^*) \gets \argmin e_{A,\lambda}$
-\State Optionally refit: $f^* \gets A^*_{\lambda^*}(\Dtrain \cup \Dvalid)$
-\State \Return $f^*$ and the estimate $\ERisk(f^*, \Dtest)$ \Comment{$\Dtest$ used once, at the very end}
+\State $(A^*, \gamma^*) \gets \argmin e_{A,\gamma}$; \ $\hat f_{\mathrm{sel}} \gets \hat f_{A^*,\gamma^*}$
+\State Optionally refit: $\hat f_{\mathrm{sel}} \gets A^*_{\gamma^*}(\Dtrain \cup \Dvalid)$
+\State \Return $\hat f_{\mathrm{sel}}$ and $\ERisk(\hat f_{\mathrm{sel}}, \Dtest)$ \Comment{$\Dtest$ used once, at the very end}
+\EndFunction
 \end{algorithmic}
 \end{algorithm}
 
-The validation error of the winner is itself optimistic --- it was the minimum over many candidates --- which is why
-a separate test set is needed. Cross-validation can replace the single validation set in line~4. For more than two
-or three hyperparameters a grid becomes expensive; random search covers the important directions far more
-efficiently, because usually only a few hyperparameters matter~\cite{bergstra2012}.
+\begin{runtime}{model selection with train/validation/test}
+With $G$ candidates (algorithms times settings): $\sum_{A,\gamma} T_{A_\gamma}(n_{\mathrm{train}})$ for training,
+$O(G\,n_{\mathrm{valid}}\,c)$ for validation, one optional refit and $O(n_{\mathrm{test}}\,c)$ for the final test.
+Replacing the validation set by $k$-fold cross-validation multiplies the training cost by about $k$. Prediction: the
+selected model costs $c$ per query; the selection adds nothing at prediction time. Memory: the data, $O(nd)$, plus
+the best model so far (or none, refitting at the end).
+\end{runtime}
 
-\paragraph{Regularisation} Instead of choosing among nested families, one can keep a rich family and add a
-preference for simple members,
+The validation error of the winner is itself optimistic --- it is the minimum over many noisy estimates --- which is
+why a separate test set is needed. The effect is easy to quantify. Suppose $20$ settings are tried on $200$
+validation examples of a balanced binary problem, and \emph{none} of them is better than guessing: each has true error
+$50\%$ and, by \eqref{eq:se}, a standard error of $3.5$ points. The smallest of the $20$ validation errors is then on
+average $43.4\%$ (by simulation, assuming the settings err independently of one another; correlated settings give a
+smaller but still positive optimism), an apparent improvement of more than six points that does not exist; with $200$
+settings the best reaches $40.3\%$. Cross-validation can replace the single validation set in line~5, which reduces
+the noise but does not remove this selection effect.
+
+\paragraph{The one-standard-error rule} Validation curves are often flat near their minimum, and the differences
+between the best few settings are within noise. A common, conservative choice is to take the \emph{simplest} model
+(lowest capacity, strongest regularisation) whose validation error is within one standard error of the
+best~\cite{hastie2009} (Algorithm~\ref{alg:onese}). It needs no training beyond the cross-validation that produced the
+errors: $O(G)$ comparisons.
+
+\begin{algorithm}[htbp]\small
+\caption{The one-standard-error rule}
+\label{alg:onese}
+\begin{algorithmic}[1]
+\Require settings $\gamma_1, \dots, \gamma_G$ ordered from simplest to most complex, their cross-validation errors
+$\mathrm{CV}_g$ and standard errors $\mathrm{SE}_g$ (Algorithm~\ref{alg:cv})
+\Function{OneSERule}{$\mathrm{CV}_{1..G}, \mathrm{SE}_{1..G}$}
+  \State $g^* \gets \argmin_g \mathrm{CV}_g$ \Comment{the best setting}
+  \State \Return the smallest $g$ with $\mathrm{CV}_g \le \mathrm{CV}_{g^*} + \mathrm{SE}_{g^*}$ \Comment{simplest within one SE}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{worked}{choosing a polynomial degree with the one-standard-error rule}
+Ten-fold cross-validation on the training and validation data gives, for degrees $1$--$6$ (mean $\pm$ standard error of
+the fold errors):
+\begin{center}\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+degree & 1 & 2 & 3 & 4 & 5 & 6 \\
+\midrule
+$\mathrm{CV} \pm \mathrm{SE}$ & $0.42 \pm 0.03$ & $0.15 \pm 0.02$ & $0.110 \pm 0.015$ & $0.105 \pm 0.015$ & $0.108 \pm 0.02$ & $0.12 \pm 0.025$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+The minimum is at degree~$4$, $0.105$, so the threshold is $0.105 + 0.015 = 0.120$. Degree~$2$ ($0.15$) is above it,
+degree~$3$ ($0.110$) below: the rule picks degree~$3$. Degrees $3$--$6$ are indistinguishable within their error bars,
+and the simplest of them has the lowest variance. Refit degree~$3$ on all training and validation data and evaluate it
+once on the test set; that single number is what is reported.
+\end{worked}
+
+\subsection{Searching the hyperparameter space}\label{sec:search}
+
+With one hyperparameter one evaluates a list of values, usually on a logarithmic scale for scale-like quantities such
+as $\lambda$, a kernel width or a learning rate ($10^{-4}, 10^{-3}, \dots, 1$). With several hyperparameters there are
+two standard strategies (Algorithm~\ref{alg:search}). \emph{Grid search} evaluates every combination of a few values
+per hyperparameter. \emph{Random search} draws each setting at random from a chosen distribution and stops when the
+budget is spent.
+
+\begin{algorithm}[H]\small
+\caption{Grid search and random search}
+\label{alg:search}
+\begin{algorithmic}[1]
+\Require a scoring routine $\mathrm{Score}(\gamma)$ (validation error, or \Call{CrossValidate}{} of $A_\gamma$); $h$ hyperparameters
+\Function{GridSearch}{value lists $V_1, \dots, V_h$}
+  \For{each $\gamma \in V_1 \times V_2 \times \dots \times V_h$} \State $e_\gamma \gets \mathrm{Score}(\gamma)$ \EndFor
+  \State \Return $\argmin_\gamma e_\gamma$ \Comment{$|V_1| \cdots |V_h|$ evaluations}
+\EndFunction
+\Function{RandomSearch}{distributions $\pi_1, \dots, \pi_h$, budget $N_{\mathrm{tr}}$}
+  \For{$b = 1, \dots, N_{\mathrm{tr}}$}
+    \State draw $\gamma_b = (\gamma_{b1}, \dots, \gamma_{bh})$ with $\gamma_{bj} \sim \pi_j$ independently
+    \Statex \Comment{e.g.\ log-uniform for a penalty $\lambda$ and learning rates}
+    \State $e_b \gets \mathrm{Score}(\gamma_b)$
+  \EndFor
+  \State \Return $\gamma_{b^*}$ with $b^* = \argmin_b e_b$ \Comment{$N_{\mathrm{tr}}$ evaluations, $N_{\mathrm{tr}}$ chosen freely}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{runtime}{grid search and random search}
+Each evaluation costs one training plus validation, or about $k$ trainings with cross-validation. Grid search with $v$
+values per hyperparameter needs $v^h$ evaluations: exponential in the number of hyperparameters ($5$ values for $4$
+hyperparameters is already $625$ trainings). Random search needs exactly the budget $N_{\mathrm{tr}}$, whatever $h$. Both are
+embarrassingly parallel. Prediction: $c$ per query for the selected model; the search adds nothing. Memory: the
+list of scores, $O(v^h)$ or $O(N_{\mathrm{tr}})$.
+\end{runtime}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.78\linewidth]{figures/n4_search.pdf}
+\caption{Nine trials when only the horizontal hyperparameter matters. Top: the trials in the plane of the two
+hyperparameters. Bottom: the validation error, which depends on the important hyperparameter only. The grid tests
+just three of its values and misses the dip (best error $0.223$); random search tests nine and finds it ($0.109$).
+After the illustration of Bergstra and Bengio~\cite{bergstra2012}.}
+\label{fig:search}
+\end{figure}
+
+\paragraph{Why random search usually wins} Usually only a few hyperparameters matter much~\cite{bergstra2012}. A
+$3 \times 3$ grid spends nine trainings on only three values of the important hyperparameter, because each value is
+repeated for every value of the unimportant one (Figure~\ref{fig:search}). Nine random trials give nine different
+values of every hyperparameter. A simple calculation shows how many trials are enough. If a setting counts as
+``good'' when it lies in the best 5\% of the search space (in volume), each random trial misses with probability
+$0.95$, and $N_{\mathrm{tr}}$ independent trials all miss with probability $0.95^{N_{\mathrm{tr}}}$. So $P(\text{at least one good trial}) =
+1 - 0.95^{N_{\mathrm{tr}}}$: $0.37$ for $N_{\mathrm{tr}} = 9$, $0.64$ for $N_{\mathrm{tr}} = 20$ and $0.95$ for $N_{\mathrm{tr}} = 60$, independently of the number of
+hyperparameters. Grids remain fine for one or two hyperparameters, and as a final refinement around a good region.
+More elaborate methods (Bayesian optimisation, early termination of bad runs) build on the same scoring routine.
+
+\subsection{Regularisation}\label{sec:regularisation}
+
+Instead of choosing among nested families, one can keep a rich family and add a preference for simple members,
 \[
   \hat f_\lambda = \argmin_{f \in \F} \; \ERisk(f, \Dtrain) + \lambda\, \Omega(f),
 \]
 where $\Omega$ penalises complexity and $\lambda \ge 0$ is a hyperparameter. Weight decay ($\Omega = \norm{\vect{w}}^2$)
-is the most common choice; stopping the optimisation early, injecting noise (dropout) and augmenting the data with
-transformed copies act as implicit regularisers. Shrinking the covariance estimate in Note~2 is the same idea.
+is the most common choice; it is studied for linear models as ridge regression (Note~8, Section~4), and the
+$\ell_1$ penalty of the lasso (Note~8, Section~5) prefers sparse solutions. Stopping the optimisation early (Note~7,
+Section~7), injecting noise (dropout) and augmenting the data with transformed copies act as implicit regularisers.
+Shrinking the covariance estimate (Note~2, Section~6) is the same idea. $\Omega$ can even be the degree of a
+polynomial: minimising $\ERisk + \lambda \cdot \mathrm{degree}$ trades training error against degree, the soft analogue of choosing the
+degree on validation data. Penalised criteria of this kind are known as \emph{complexity penalties}.
+
+\begin{worked}{the value of $\lambda$ decides between two fits}
+Four points $(x, y)$: $(-1, -2)$, $(0, 1)$, $(1, 2)$, $(2, 1)$, squared loss, and $\Omega$ the sum of squared
+coefficients \emph{excluding} the intercept. Compare two candidates:
+\begin{itemize}
+\item A, the parabola $1 + 2x - x^2$, which passes through all four points: $\ERisk = 0$, $\Omega = 2^2 + 1^2 = 5$;
+\item B, the least-squares line $y = x$, with residuals $-1, 1, 1, -1$: $\ERisk = 1$, $\Omega = 1^2 = 1$.
+\end{itemize}
+The regularised objectives are $J_A(\lambda) = 0 + 5\lambda$ and $J_B(\lambda) = 1 + \lambda$. For $\lambda = 0.1$:
+$J_A = 0.5 < J_B = 1.1$, the interpolating parabola wins. For $\lambda = 0.5$: $J_A = 2.5 > J_B = 1.5$, the line wins.
+The preference switches at $5\lambda = 1 + \lambda$, i.e.\ $\lambda = 0.25$. The actual minimiser of $J$ over all
+quadratics is neither A nor B (it is the ridge solution of Note~8, Section~4): it moves continuously from the interpolating parabola ($\lambda \to 0$) towards a flatter
+curve as $\lambda$ grows, and reaches $J = 0.40$ at $\lambda = 0.1$ and $J = 1.13$ at $\lambda = 0.5$, below both
+candidates. Which choice generalises better is not
+decided by these four points; $\lambda$ is chosen on validation data. Because $\Omega$ adds coefficients of terms of
+different units ($x$, $x^2$), its value depends on how $x$ is scaled --- one reason to standardise features before
+regularising (Note~8). With the degree penalty instead, $J_A = 2\lambda$ and $J_B = 1 + \lambda$, and the preference
+switches at $\lambda = 1$.
+\end{worked}
 
 \begin{physics}{blind analysis}
 Particle and nuclear physicists guard against tuning an analysis towards the answer they expect by \emph{blinding}:
 the signal region, or the final numerical result, stays hidden while selection criteria and corrections are fixed
 on simulation and control regions, and is revealed only once~\cite{klein2005}. This is Algorithm~\ref{alg:selection}
-with the test set locked in a drawer --- the discipline that keeps $\ERisk(f^*, \Dtest)$ honest.
+with the test set locked in a drawer --- the discipline that keeps $\ERisk(\hat f_{\mathrm{sel}}, \Dtest)$ honest.
 \end{physics}
 
-\begin{modern}{test sets wear out}
-Benchmarks are reused by thousands of papers, so the test set slowly becomes a validation set. When ImageNet's test set
-was re-created by following the original collection process, accuracies dropped by 11--14 percentage points, although
-the ranking of models was largely preserved~\cite{recht2019}. For language models trained on much of the public web, a
-second danger is \emph{contamination}: benchmark questions and their answers may be in the training data. Fresh,
-private or time-stamped test sets are the remedy.
+\begin{modern}{how far does a benchmark number travel}
+Benchmark test sets reused by thousands of papers could slowly turn into validation sets.
+When a new ImageNet evaluation set was collected by the original procedure, accuracies fell by 11--14 percentage
+points, though the ranking of models was largely preserved; the authors traced the drop mainly to small differences
+between the old and new data, not to overfitting by reuse~\cite{recht2019}. A test number holds for the distribution
+its examples came from. For language models trained on much of the public web a further danger is
+\emph{contamination}: benchmark questions and answers may be in the training data. Fresh, private or time-stamped test
+sets guard against both.
 \end{modern}
 
 \section{Beyond the U-shaped curve}\label{sec:modern}
 
 Modern neural networks often have far more parameters than training examples and can fit even randomly labelled
 data~\cite{zhang2017}, yet they generalise well. Figure~\ref{fig:doubledescent} shows a simple model with the same behaviour: least
-squares on $p$ random nonlinear features of $n = 100$ training points. As $p$ grows the test error first follows the
+squares on $p$ random nonlinear features of $n = 100$ training points. Each feature is a fixed random function
+$\phi_j(\x) = \max(0, \vect{v}_j\T\x)$, with the direction $\vect{v}_j$ drawn once at random and never trained (a
+ReLU feature), and the model is $f(\x) = \sum_{j=1}^p w_j \phi_j(\x)$, linear in the weights $\vect{w}$. As $p$ grows the test error first follows the
 classical U, then rises sharply as $p$ approaches $n$ --- where the model can just interpolate the data and the fit is
 extremely sensitive to noise --- and then \emph{decreases again}. Beyond $p = n$ there are infinitely many interpolating
-solutions, and the algorithm returns the one of smallest norm; as $p$ grows, that implicit preference makes the fit
+solutions, and the algorithm returns the one whose weight vector has the smallest norm $\norm{\vect{w}}$; as $p$ grows, that implicit preference makes the fit
 smoother. In this example the test error at $p = 6000$ (0.134) is below the best value of the classical regime
 (0.141).
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.56\linewidth]{figures/double_descent.pdf}
 \caption{Double descent: median test error of minimum-norm least squares on $p$ random ReLU features of
@@ -295,33 +1151,152 @@ together, at roughly twenty tokens per parameter~\cite{hoffmann2022}. Learning c
 Figure~\ref{fig:learningcurve}, measured on small models, are now used to plan the training of large ones.
 
 \begin{keyidea}[Summary]
-A learning algorithm is a family, a loss and an optimiser. Training minimises empirical risk, which underestimates the
-expected risk of the result; honest estimates need data never used for any choice, via hold-out or cross-validation,
-with splits that respect groups and time. Capacity trades approximation against estimation error (bias against
-variance); hyperparameters and regularisation control it and are chosen on validation data, with the test set used
-once. Over-parameterised models add a second descent of the test error, but not a new principle.
+A learning algorithm is a family, a loss and an optimiser; the loss decides what ``best'' means, and continuous,
+convex surrogates that upper-bound the 0--1 error and have informative slopes make training possible; precision and
+recall describe rare classes better than the error rate. On data never used for any choice, the empirical risk is an
+unbiased estimate of the expected risk, with standard error $\sigma_L/\sqrt{n'}$ ($\sqrt{p(1-p)/n'}$ for an error rate);
+models are best compared pairwise on the same test set. Training minimises empirical risk, which underestimates the
+expected risk of the result. Honest estimates come from hold-out, $k$-fold, leave-one-out, sequential or nested
+validation, with splits that respect groups and time. Capacity trades approximation against estimation error, and
+bias against variance; hyperparameters and regularisation control it and are chosen on validation data --- by random
+rather than grid search when there are several --- with the test set used once. Over-parameterised models add a
+second descent of the test error, but not a new principle.
 \end{keyidea}
 
-\begin{exercises}
-\item A classifier has 8.0\% error on a test set of 500 examples and another has 7.0\%. Estimate the standard error of
-each. Are the two classifiers distinguishable? How large a test set would make a one-point difference significant at
-about two standard errors?
-\item Prove \eqref{eq:biasvar}. Start from Note~1's decomposition at fixed $\x$ and add and subtract
-$\E_D[\hat f_D(\x)]$.
-\item Explain why choosing $k$ for $k$-NN by minimising the training error always gives $k = 1$, and what the
-training error of $1$-NN is.
-\item Ten research groups each try 20 hyperparameter settings on the same public validation set and report the best.
-Why is the reported number optimistic? Simulate this with a classifier that guesses at random on a balanced binary
-problem with 200 validation examples.
-\item Reproduce Figure~\ref{fig:capacity} for $n = 20$, $100$ and $1000$ and report the degree that minimises the
-validation error in each case. Then fix degree~$12$ and $n = 20$ and add weight decay; plot validation error against
-$\lambda$.
+\begin{questions}
+\begin{conceptual}
+\item Name the three ingredients (family, loss, optimiser) of (a) the constant predictor trained with squared loss,
+(b) least-squares line fitting, (c) a 1-NN classifier (hint: 1-NN only stores the data; ask what training error it
+achieves and what, if anything, is optimised). For which of them is the ``optimiser'' trivial, and why?
+\item Why do we not train classifiers by minimising the 0--1 error directly? State two properties a good surrogate
+loss should have, and explain why the hinge loss and the cross-entropy in bits have them.
+\item Two classifiers have the same test error but different test cross-entropies. What does the difference tell
+you? Which one would you prefer for a trigger whose threshold will be tuned later, and why?
+\item True or false, with a one-line justification each: (a) the error of a fixed classifier on a fresh test set is an
+unbiased estimate of its expected error; (b) the training error of a trained classifier is an unbiased estimate of
+its expected error; (c) quadrupling the test set halves the standard error of the test error.
+\item Two classifiers are evaluated on the same test set. Why does comparing them example by example detect smaller
+differences than comparing their two error rates as if they were independent? Which test examples carry no
+information about the difference?
+\item Explain in words why the training error of a fitted model is optimistic. Use the constant predictor (the
+sample mean) as your example: why is its training error smaller on average than its error on a new point?
+\item Explain why choosing $k$ for $k$-NN by minimising the training error always favours $k = 1$ (it attains the
+smallest possible training error), and what the training error of $1$-NN is (assume no two training points share the
+same input).
+\item Compare hold-out evaluation and $k$-fold cross-validation: what does each cost, what does each waste, and when
+is hold-out perfectly adequate?
+\item Cross-validation is said to estimate the performance of a \emph{procedure}, not of a fitted function. Explain.
+Why is the $k$-fold estimate slightly pessimistic, and how does this change with $k$?
 \item Galaxy images come from 300 telescope pointings, several galaxies per pointing. Design the cross-validation
 splits, and explain what a naive random split would overestimate.
-\end{exercises}
+\item You forecast the daily output of a solar plant. Why is a random $k$-fold split wrong here? Describe sequential
+validation and say what a growing validation error along the steps would indicate.
+\item A data set is standardised (mean and standard deviation computed on all of it) before 5-fold cross-validation.
+Why is this a leak, in which direction does it usually bias the estimate, and how should the pipeline be organised?
+\item Why does model selection need a validation set \emph{and} a test set? What goes wrong when many settings are
+compared on one validation set and the best validation error is reported as the final result?
+\item Model~A has training error $0.30$ and validation error $0.32$, both flat as $n$ grows; model~B has $0.02$ and
+$0.25$, with the gap closing slowly. Diagnose each, and say whether more data, a richer family or more regularisation
+would help.
+\item Why can straight lines in the plane not separate every labelling of the four corners of a square, although they
+can for any three points not on a line? What does this say about the capacity of linear classifiers in two dimensions?
+\item What happens to the bias and to the variance of a model when (a) the polynomial degree increases, (b) the
+number of training examples increases, (c) the regularisation strength $\lambda$ increases? Explain each in a
+sentence.
+\item Define approximation error and estimation error. In the parabola example of Section~\ref{sec:decomposition},
+adding a slope to the constant predictor made things worse. Which term grew, and why did the other not shrink?
+\item Classify each item as parameter, hyperparameter or neither: the weights of a logistic regression; the
+regularisation constant $C$ of an SVM; the bin width of a histogram; the counts in its bins; the random seed of the
+train/test split; the means used to standardise features; the number of training epochs of a neural network.
+\item Explain with a picture why random search usually finds better settings than grid search for the same number
+of trials. When is a grid still a good choice?
+\item State the one-standard-error rule. Why does it prefer the simpler model, and why is that reasonable when the
+validation curve is flat near its minimum?
+\item What problem does nested cross-validation solve, and what does it cost? Why may the outer folds select
+different hyperparameters, and why is that not a problem?
+\item Does double descent contradict the bias--variance trade-off? Explain what ``capacity'' means for a
+minimum-norm interpolating model, and why validation data still decide.
+\item A selection keeps 97\% of events correctly classified on a sample in which only 6\% of the events are signal.
+Why can this accuracy be misleading? Which two numbers would you report instead, and how are they related to the
+signal efficiency and the purity of the selected sample?
+\item In sequential validation with hyperparameter selection, why is the setting chosen on block $B_t$ but the error
+reported on $B_{t+1}$? What would go wrong if the error on $B_t$ itself were reported?
+\end{conceptual}
 
-\paragraph{Further reading} Hastie, Tibshirani and Friedman~\cite{hastie2009}, chapter~7; Murphy~\cite{murphy2022},
-chapters~4--5; for double descent, Belkin \emph{et al.}~\cite{belkin2019}.
+\begin{calculations}
+\item A classifier outputs $g = 0.8, 0.4, 0.1, 0.9$ for four examples with labels $y = 1, 1, 0, 0$. Compute the
+empirical risk under the 0--1 loss (threshold $\frac12$), the squared loss $(g - y)^2$ and the cross-entropy (natural
+logarithm). Which example contributes most to the squared loss and to the cross-entropy? Why does the 0--1 loss not
+distinguish examples~2 and~4?
+\item A classifier has 8.0\% error on a test set of 500 examples and another has 7.0\%. Estimate the standard error of
+each. Are the two classifiers distinguishable if their errors are treated as independent? On the same test set, the
+first is wrong and the second right on 25 examples, and the reverse on 20. Compute the paired standard error of the
+difference. For an error rate near 10\%, how large a test set makes two standard errors of \emph{one} classifier's
+error at most one percentage point? How large must two independent test sets be to resolve a one-point difference
+between two classifiers at two standard errors?
+\item Six examples $(x, y)$: $(1, 1), (2, 3), (3, 2), (4, 5), (5, 4), (6, 6)$. Compute by hand the 3-fold
+cross-validation error (squared loss, folds $\{1, 2\}$, $\{3, 4\}$, $\{5, 6\}$ by $x$) of the constant predictor and of
+$1$-NN regression. Which would you choose?
+\item For the targets $y = 0, 1, 1, 4, 9$ find the best constant under squared loss and under absolute loss, using the
+derivative of the training objective (for the absolute loss, the sign of $J'(b)$ between data points, as in
+Section~\ref{sec:ingredients}), and compute both training risks for both constants.
+\item For the shrunk mean $a\,\bar y$ with $\mu = 1$, $\sigma^2 = 2$, $n = 2$, compute the squared bias, the variance
+and the mean squared error for $a = 1$ and $a = 0.5$. Find the optimal $a$ by setting a derivative to zero.
+\item Show by differentiation that $J(b) = \frac1n \sum_i (y_i - b)^2 + \lambda b^2$ is minimised by
+$b = \bar y/(1 + \lambda)$. Then, for the one-parameter model $f(x) = wx$ with
+$J(w) = \frac1n \sum_i (w x_i - y_i)^2 + \lambda w^2$, show that $w = \sum_i x_i y_i / (\sum_i x_i^2 + n\lambda)$ and
+evaluate it for the data $(1, 1), (2, 3)$ with $\lambda = 0$ and $\lambda = 0.5$.
+\item Nested cross-validation uses $K = 10$ outer folds, $k = 5$ inner folds and a grid of $4 \times 5$ settings; one
+training takes three minutes. How many trainings does the outer estimate need, how many more are needed to tune and
+refit the final model on all the data, and how long does everything take on one machine?
+\item With random search, how many trials are needed to have at least a 90\% chance that one trial lands in the best
+5\% of the search space? Does the answer depend on the number of hyperparameters?
+\item On $2000$ test events a classifier gives $\mathrm{TP} = 90$, $\mathrm{FP} = 30$, $\mathrm{FN} = 60$,
+$\mathrm{TN} = 1820$. Compute its accuracy, precision, recall and $F_1$. What accuracy does the rule ``always predict
+$0$'' reach on the same events?
+\item Five regularisation strengths, ordered from the strongest (simplest model) to the weakest, have cross-validation
+errors $0.30 \pm 0.02$, $0.22 \pm 0.02$, $0.20 \pm 0.01$, $0.19 \pm 0.015$ and $0.21 \pm 0.02$. Which setting has the
+smallest error, and which does the one-standard-error rule choose? Explain the difference in one sentence.
+\end{calculations}
+
+\begin{derivations}
+\item Prove the bias--variance decomposition \eqref{eq:biasvar}, justifying why each cross term vanishes. Apply it to
+$k$-NN regression at a fixed $\x$ whose $k$ neighbours (with fixed inputs) have independent noisy targets
+$y_{(j)} = f^*(\x_{(j)}) + \varepsilon_j$: show that the variance is $\sigma^2/k$ and write the squared bias.
+\item For the constant predictor fitted to $n$ i.i.d.\ targets, show that the expected training error is
+$(1 - 1/n)\sigma^2$ and the expected error on a new target is $(1 + 1/n)\sigma^2$. Then derive the leave-one-out
+identity $y_i - \bar y_{-i} = \frac{n}{n-1}(y_i - \bar y)$ and show that the expected LOO error equals
+$(1 + \frac{1}{n-1})\sigma^2$, the expected risk of a model trained on $n - 1$ points.
+\item Prove that $\E[\ERisk(\hat f, \Dtrain)] \le \Risk(f_{\F}) \le \E[\Risk(\hat f)]$ for empirical risk minimisation
+over any family $\F$, and explain where the proof uses that $f_{\F}$ does not depend on the training set.
+\item For two models evaluated on the same test set of size $n'$, show that
+$\Var(\ERisk_A - \ERisk_B) = \big(\Var L_A + \Var L_B - 2\Cov(L_A, L_B)\big)/n'$. Explain why pairing helps when the
+models tend to make the same mistakes, and recover the formula $\overline{\Delta^2} - \bar\Delta^2$ of the worked example.
+\item For the shrunk mean $a\,\bar y$, derive the optimal $a^*$ and show that the minimal mean squared error is
+$\frac{\sigma^2}{n}\cdot\frac{\mu^2}{\mu^2 + \sigma^2/n}$, which is smaller than $\sigma^2/n$ for every $\mu$.
+\end{derivations}
+
+\begin{programming}
+\item Reproduce Figure~\ref{fig:capacity} for $n = 20$, $100$ and $1000$ and report the degree that minimises the
+validation error in each case. Then fix degree~$12$ and $n = 20$ and add weight decay; plot validation error against
+$\lambda$ on a logarithmic grid.
+\item Ten research groups each try 20 hyperparameter settings on the same public validation set and report the best.
+Simulate this with classifiers that guess at random on a balanced binary problem with 200 validation examples:
+plot the distribution of the reported errors, compare it with the errors of the same classifiers on a fresh test set,
+and explain the difference.
+\item Implement \textsc{HoldOut}, \textsc{CrossValidate}, \textsc{LeaveOneOut} and \textsc{NestedCV} in numpy for
+$k$-NN regression on synthetic data $y = \sin(\pi x) + 0.3\,\varepsilon$. Check your leave-one-out code against the
+shortcut for the constant predictor, and time each protocol as $n$ grows.
+\item Tune a two-hyperparameter model (for example, polynomial degree and $\lambda$, or $k$ and the distance exponent of
+$k$-NN) with grid search and with random search using 9, 25 and 64 trials. Repeat over 50 random splits and compare
+the distributions of the best validation errors and of the test errors of the selected models.
+\end{programming}
+\end{questions}
+
+\paragraph{Further reading} Hastie, Tibshirani and Friedman~\cite{hastie2009}, chapter~7, for optimism, the
+bias--variance decomposition, cross-validation and the one-standard-error rule; Murphy~\cite{murphy2022},
+chapters~4--5; Bergstra and Bengio~\cite{bergstra2012} for random search; for double descent, Belkin
+\emph{et al.}~\cite{belkin2019}.
 
 \begin{thebibliography}{99}\small
 \bibitem{belkin2019} M.~Belkin, D.~Hsu, S.~Ma and S.~Mandal, Reconciling modern machine-learning practice and the classical bias--variance trade-off, \emph{Proc.\ Natl.\ Acad.\ Sci.\ USA} 116, 15849--15854 (2019).
@@ -332,6 +1307,7 @@ chapters~4--5; for double descent, Belkin \emph{et al.}~\cite{belkin2019}.
 \bibitem{klein2005} J.~R. Klein and A.~Roodman, Blind analysis in nuclear and particle physics, \emph{Annu.\ Rev.\ Nucl.\ Part.\ Sci.}\ 55, 141--163 (2005).
 \bibitem{murphy2022} K.~P. Murphy, \emph{Probabilistic Machine Learning: An Introduction}, MIT Press (2022).
 \bibitem{nakkiran2020} P.~Nakkiran \emph{et al.}, Deep double descent: where bigger models and more data hurt, \emph{ICLR} (2020).
+\bibitem{ouyang2022} L.~Ouyang \emph{et al.}, Training language models to follow instructions with human feedback, \emph{NeurIPS} (2022).
 \bibitem{recht2019} B.~Recht, R.~Roelofs, L.~Schmidt and V.~Shankar, Do ImageNet classifiers generalize to ImageNet?, \emph{ICML} (2019).
 \bibitem{zhang2017} C.~Zhang, S.~Bengio, M.~Hardt, B.~Recht and O.~Vinyals, Understanding deep learning requires rethinking generalization, \emph{ICLR} (2017).
 \end{thebibliography}

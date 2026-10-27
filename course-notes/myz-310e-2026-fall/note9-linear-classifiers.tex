@@ -1,61 +1,79 @@
 \documentclass[11pt]{article}
 \usepackage{myz310e-notes}
-\hypersetup{pdftitle={Linear classifiers and explicit feature maps},pdfauthor={Emre Onur Kahya},pdfsubject={MYZ 310E Machine Learning in Physics, Fall 2026, lecture note 9 (week 4)}}
+\hypersetup{pdftitle={Linear classifiers: from the perceptron to the support vector machine},pdfauthor={Emre Onur Kahya},pdfsubject={MYZ 310E Machine Learning in Physics, Fall 2026, lecture note 9 (week 4)}}
 \newcommand{\w}{\vect{w}}
 \newcommand{\xt}{\tilde{\x}}
+\newcommand{\wt}{\tilde{\w}}
+\newcommand{\Xt}{\tilde X}
+\newcommand{\sign}{\operatorname{sign}}
+\newcommand{\Hess}{\mathsf{H}}
 
 \begin{document}
-\NoteTitle{9}{4}{Linear classifiers and\\ explicit feature maps}{Linear classifiers}{%
+\NoteTitle{9}{4}{Linear classifiers:\\ from the perceptron to the support vector machine}{Linear classifiers}{%
 A linear classifier separates classes with a hyperplane. Many algorithms learn one --- nearest centroid, Gaussian
 discriminant analysis, least squares, the perceptron, logistic regression, support vector machines --- and they differ
-only in which hyperplane they choose. This note develops their geometry and their training, explains why a hyperplane
-is often not enough, and shows the oldest way around it: map the inputs non-linearly and classify linearly in the new
-space. Learning that map instead of fixing it is what a neural network does, the subject of week~5.}
+only in which hyperplane they choose. This note develops the geometry they share, then derives each algorithm step by
+step, traces it by hand on a few points, gives its pseudocode and its running time (for Gaussian discriminant analysis
+by reference to Note~6), and ends with what no hyperplane
+can do. The perceptron receives special attention: its update rule, its convergence proof and its dual form lead
+directly to the kernel methods of Note~10 and to the neurons of week~5.}
 
 \section{What makes a classifier linear}\label{sec:def}
 
 A binary classifier is \emph{linear} if its decision function has the form
 \[
-  f(\x) = \operatorname{sign}\big(g(\x)\big), \qquad g(\x) = \w\T\x + b ,
+  f(\x) = \sign\big(g(\x)\big), \qquad g(\x) = \w\T\x + b ,
 \]
-with labels $t \in \{-1, +1\}$, weight vector $\w \in \R^d$ and bias $b$. For $m$ classes, $f(\x) = \argmax_c
-(W\x + \vect{b})_c$ with a weight matrix $W \in \R^{m \times d}$ and a bias vector; for $m = 2$ the two forms agree,
-with $\w = W_{2:} - W_{1:}$ and $b = b_2 - b_1$ (Note~6, Section~1).
+with labels $t \in \{-1, +1\}$ (the $t = 2y - 1$ of Note~4, Section~2; in this note and in Note~10 the letter $t$ is the class label, while $y$ is kept for model outputs and regression targets), weight vector $\w \in \R^d$ and bias $b \in \R$; $g$ is the \emph{linear discriminant
+function} or \emph{score}. For $m$ classes, $f(\x) = \argmax_c\, g_c(\x)$ with $g_c(\x) = \w_c\T\x + b_c$, that is
+$f(\x) = \argmax_c (W\x + \vect{b})_c$ with the $\w_c\T$ as rows of $W \in \R^{m \times d}$. For $m = 2$ the two forms
+agree: class~2 wins exactly when $\w_2\T\x + b_2 > \w_1\T\x + b_1$, i.e.\ when $(\w_2 - \w_1)\T\x + (b_2 - b_1) > 0$, a
+binary rule with $\w = \w_2 - \w_1$ and $b = b_2 - b_1$. Only differences of scores matter.
 
 \paragraph{Geometry} The decision boundary $H = \{\x : \w\T\x + b = 0\}$ is a hyperplane --- a line in two dimensions, a
-plane in three. The vector $\w$ is normal to it, and the signed distance of a point to $H$ is
+plane in three. It splits $\R^d$ into the two half-spaces $\mathcal R_+ = \{\x : g(\x) > 0\}$ and $\mathcal R_- = \{\x :
+g(\x) < 0\}$, the decision regions of the two classes. Two facts are used throughout the note.
+\begin{enumerate}
+\item \emph{$\w$ is normal to $H$.} If $\x_A$ and $\x_B$ both lie on $H$, subtracting $\w\T\x_A + b = 0$ from
+$\w\T\x_B + b = 0$ gives $\w\T(\x_B - \x_A) = 0$: $\w$ is orthogonal to every direction lying inside $H$.
+\item \emph{$g$ measures distance.} Write any point as its orthogonal projection $\x_\perp$ onto $H$ plus a step $r$
+along the unit normal, $\x = \x_\perp + r\,\w/\norm{\w}$. Applying $g$ and using $g(\x_\perp) = 0$,
+$g(\x) = \w\T\x_\perp + b + r\,\w\T\w/\norm{\w} = r\norm{\w}$. Hence the signed distance of $\x$ to $H$ is
 \begin{equation}\label{eq:dist}
   r(\x) = \frac{\w\T\x + b}{\norm{\w}} ,
 \end{equation}
-so $g(\x)$ is a distance measured in units of $1/\norm{\w}$. The two decision regions are the half-spaces on either
-side. In the multiclass case each region $\{\x : g_c(\x) > g_{c'}(\x)\ \forall c' \ne c\}$ is an intersection of
-half-spaces, hence convex.
+positive on the side $\w$ points to. The origin is at signed distance $b/\norm{\w}$.
+\end{enumerate}
+Multiplying $(\w, b)$ by any $c > 0$ changes neither $H$ nor the classifier, only the scale of $g$; this freedom is
+used to define the SVM in Section~\ref{sec:svm}. In the multiclass case each region
+$\{\x : g_c(\x) > g_{c'}(\x)\ \forall c' \ne c\}$ is an intersection of half-spaces, hence convex: each condition
+$g_c(\x) > g_{c'}(\x)$ reads $(\w_c - \w_{c'})\T\x + (b_c - b_{c'}) > 0$, which is itself a half-space.
+
+\begin{worked}{distance to a line}
+For $\w = (1, 2)$, $b = -4$ (the line $x_1 + 2x_2 = 4$) and $\x = (3, 3)$: $g(\x) = 5 > 0$, class $+1$, at distance
+$5/\sqrt5 \approx 2.24$; the origin is at $-4/\sqrt5 \approx -1.79$. Doubling $(\w, b)$ doubles $g(\x)$ but not the
+distances.
+\end{worked}
+
+\paragraph{The bias trick} As in Note~8, Section~1, we often absorb the bias: with $\xt = (1, x_1, \dots, x_d)\T$ and
+$\wt = (b, w_1, \dots, w_d)\T$ we have $g(\x) = \wt\T\xt$. A hyperplane through the origin in $\R^{d+1}$ thus represents
+any hyperplane in $\R^d$, and algorithms can be written without a separate bias.
 
 \paragraph{Linear separability} A dataset is \emph{linearly separable} if some hyperplane classifies all of it
-correctly: there exist $\w, b$ with $t_i(\w\T\x_i + b) > 0$ for every $i$. Many datasets are not. The classic example is
-XOR --- the points $(0,0)$ and $(1,1)$ in one class, $(0,1)$ and $(1,0)$ in the other --- which no line separates; its
-discussion in Minsky and Papert's book of 1969 slowed research on neural networks for a decade~\cite{minsky1969}.
+correctly: there exist $\w, b$ with $t_i(\w\T\x_i + b) > 0$ for every $i$. The quantity $t_i\,g(\x_i)$, the
+\emph{margin} of example $i$, is positive exactly when the example is correctly classified, and a large negative value
+means a confidently wrong prediction; it appears in every loss of this note. Many datasets are not separable; the
+simplest one, XOR, is discussed in Section~\ref{sec:features}.
+
+\paragraph{Label conventions} Binary labels are $t \in \{-1, +1\}$ everywhere except in Section~\ref{sec:logistic}, where
+the probabilistic model is more natural with $t \in \{0, 1\}$. With $m$ classes the label is $t \in \{1, \dots, m\}$. The
+two class means are written $\vmu_+$ and $\vmu_-$ (the $\vmu_1$ and $\vmu_0$ of Note~6).
 
 \section{Many roads to a hyperplane}\label{sec:roads}
 
-The following algorithms all output a linear decision function; for the same data they choose different hyperplanes,
-which generalise differently. Figure~\ref{fig:linclass} shows five of them on one dataset.
-
-\paragraph{Nearest centroid} Store the class means $\vmu_c$ and assign $\x$ to the nearest. Since
-$\norm{\x - \vmu_c}^2 = \norm{\x}^2 - 2\vmu_c\T\x + \norm{\vmu_c}^2$ and $\norm{\x}^2$ is common to all classes, the
-rule is linear with $\w_c = 2\vmu_c$ and $b_c = -\norm{\vmu_c}^2$; for two classes the boundary is the perpendicular
-bisector of the segment between the means.
-
-\paragraph{Gaussian discriminant analysis} With Gaussian classes sharing one covariance, the Bayes classifier is
-linear, $\w = \Sigma^{-1}(\vmu_1 - \vmu_0)$ (Note~6, Section~3). It accounts for the shape of the classes, which
-nearest centroid ignores. Fisher's linear discriminant, derived differently --- the projection that best separates the
-class means relative to the spread within classes --- gives the same direction.
-
-\paragraph{Least squares on $\pm 1$ targets} Nothing prevents fitting linear regression (Note~8) to the labels $t_i$ and
-classifying by the sign of the prediction. But squared error penalises points that are correctly classified \emph{with
-a large margin}, since their prediction is far from $\pm 1$. A distant cluster of easy examples therefore pulls the
-boundary towards itself; in Figure~\ref{fig:linclass} the twelve far-away amber points tilt the least-squares line and
-triple its training error (9.8\%) compared with logistic regression (3.3\%).
+The algorithms below share the hypothesis class --- every one of them returns a linear decision function --- but not the
+loss, so on the same data each settles on its own line, and these lines perform differently on new data.
+Figure~\ref{fig:linclass} shows five of them on one dataset.
 
 \begin{figure}[h]
 \centering
@@ -64,205 +82,989 @@ triple its training error (9.8\%) compared with logistic regression (3.3\%).
 \end{minipage}\hfill
 \begin{minipage}[c]{0.37\linewidth}
 \caption{Five linear classifiers on the same 122 points. All boundaries are straight lines, but they differ.
-Training errors: nearest centroid 4.9\%, least squares 9.8\%, logistic regression, linear SVM and perceptron 3.3\%.
+Training errors: nearest centroid 4.9\%, least squares 9.8\%, logistic regression, linear SVM and perceptron 3.3\%
+(the perceptron's last iterate after 100 epochs; the data are not separable).
 The least-squares line is pulled by the distant amber cluster in the top right.}
 \label{fig:linclass}
 \end{minipage}
 \end{figure}
 
-\paragraph{Minimising the error directly} The training error rate is piecewise constant in $(\w, b)$: its
-gradient is zero almost everywhere and gradient descent (Note~7) cannot move. The remaining algorithms minimise
-surrogates (Note~4, Section~2) that do have useful gradients.
+\subsection{Nearest centroid}
+
+Store the class means $\vmu_c = \frac{1}{n_c}\sum_{i : t_i = c} \x_i$, where $n_c$ is the number of training examples of
+class~$c$, and assign $\x$ to the nearest. Expanding the
+squared distance,
+\[
+  \norm{\x - \vmu_c}^2 = \norm{\x}^2 - 2\vmu_c\T\x + \norm{\vmu_c}^2 ,
+\]
+and $\norm{\x}^2$ is the same for all classes, so minimising the distance is maximising $g_c(\x) = 2\vmu_c\T\x -
+\norm{\vmu_c}^2$: the rule is linear with $\w_c = 2\vmu_c$ and $b_c = -\norm{\vmu_c}^2$. For two classes, halving the
+difference of the two scores,
+\[
+  g(\x) = \tfrac12\big(\norm{\x - \vmu_-}^2 - \norm{\x - \vmu_+}^2\big) = (\vmu_+ - \vmu_-)\T\x
+  - \tfrac12\big(\norm{\vmu_+}^2 - \norm{\vmu_-}^2\big) ;
+\]
+the boundary is the perpendicular bisector of the segment joining the means. The method ignores the shape and spread
+of the classes, which is why it misplaces the line in Figure~\ref{fig:linclass}.
+
+\begin{worked}{nearest centroid by hand}
+Class $A$ has points $(1, 2)$, $(2, 3)$, $(3, 1)$ and class $B$ has $(5, 5)$, $(6, 4)$, $(7, 6)$. The centroids are
+$\vmu_A = (2, 2)$ and $\vmu_B = (6, 5)$, with $\norm{\vmu_A}^2 = 8$ and $\norm{\vmu_B}^2 = 61$. With $B$ as the positive
+class, $\w = \vmu_B - \vmu_A = (4, 3)$ and $b = -\frac12(61 - 8) = -26.5$, so $g(\x) = 4x_1 + 3x_2 - 26.5$. For the query
+$\x = (4, 3)$, $g = 16 + 9 - 26.5 = -1.5 < 0$: class $A$. Check: $\norm{\x - \vmu_A}^2 = 5$ and $\norm{\x - \vmu_B}^2 = 8$,
+and indeed $\frac12(5 - 8) = -1.5$. All six training points are classified correctly.
+\end{worked}
+
+\subsection{Gaussian discriminant analysis and Fisher's direction}
+
+With Gaussian classes sharing one covariance $\Sigma$, the Bayes classifier is linear, with $\w = \Sigma^{-1}(\vmu_+ -
+\vmu_-)$: this is \emph{linear discriminant analysis} (LDA, Note~6, Section~3, which also works out a two-dimensional
+example by hand). With equal priors it is nearest centroid in the Mahalanobis metric, and it reduces to plain nearest
+centroid when moreover $\Sigma \propto I$; unequal priors $P_+ \ne P_-$ shift the threshold $b$ by $\log(P_+/P_-)$ but
+leave $\w$ unchanged. If each class has its own covariance, the boundary becomes quadratic (QDA, Note~6, Section~3) and
+the classifier is no longer linear, so it falls outside this note.
+
+Fisher~\cite{fisher1936} reached the same direction without any probability model. Project the data on $\w$ and compare
+the squared distance between the projected class means, $(\w\T\Delta)^2$ with $\Delta = \vmu_+ - \vmu_-$, with the
+projected spread within the classes, $\w\T S_W\w$, where
+\[
+  S_W = \sum_{c \in \{+, -\}}\ \sum_{i : t_i = c} (\x_i - \vmu_c)(\x_i - \vmu_c)\T
+\]
+is the \emph{pooled within-class scatter matrix}; $S_W/n$ is the pooled covariance estimate $\hat\Sigma$ of
+Note~6 (dividing by $n - 2$ instead gives the unbiased version). Fisher maximises the ratio $F(\w) = (\w\T\Delta)^2/(\w\T S_W\w)$. Using $\nabla(\w\T\Delta)^2 =
+2(\w\T\Delta)\,\Delta$ and $\nabla(\w\T S_W\w) = 2S_W\w$ (as $S_W$ is symmetric), the quotient rule gives
+\[
+  \nabla F = \frac{2(\w\T\Delta)\,\Delta\,(\w\T S_W\w) - (\w\T\Delta)^2\, 2S_W\w}{(\w\T S_W\w)^2} ,
+\]
+and $\nabla F = 0$ requires the numerator to vanish, i.e.\ $S_W\w = c\,\Delta$ with the scalar $c = (\w\T S_W\w)/(\w\T\Delta)$.
+Hence $\w \propto S_W^{-1}\Delta \propto \hat\Sigma^{-1}\Delta$, the LDA direction (the length of $\w$ does not matter,
+since $F$ is unchanged by rescaling $\w$); the threshold $b$ is chosen afterwards, for example midway between the projected
+means. Computing it is the LDA fit of Note~6, Section~3 (``Fitting and cost''), where the pseudocode and the running time are given:
+$O(nd^2)$ to form $S_W$ and $O(d^3)$ to solve $S_W\w = \Delta$.
+
+\subsection{Least squares on \texorpdfstring{$\pm 1$}{plus-minus one} targets}
+
+The labels $t_i = \pm1$ are numbers, so linear regression (Note~8, Section~2) can be fitted to them directly, and the
+sign of the fitted value used as the predicted class: $\wt = (\Xt\T\Xt)^{-1}\Xt\T\vect{t}$, where $\Xt$ is the $n \times (d +
+1)$ matrix with rows $\xt_i\T$ (Note~8, Section~1) and the targets $t_i = \pm1$ --- called $y_i$ in Note~8 --- are stacked in
+$\vect{t}$. Ridge regression (Note~8, Section~4) can be used as well; it changes the closed form to $(\Xt\T\Xt +
+\lambda I)^{-1}\Xt\T\vect{t}$ but not the defect discussed next. For $m$ classes, regress the one-hot vectors and take
+the largest output. The method is fast and has a closed form, but its loss is wrong for classification. Written in terms
+of the margin $z_i = t_i\,g(\x_i)$, and using $g(\x_i) - t_i = t_i\big(t_i\,g(\x_i) - 1\big)$, which holds because $t_i^2 = 1$,
+\[
+  (g(\x_i) - t_i)^2 = t_i^2\,(t_i\,g(\x_i) - 1)^2 = (1 - z_i)^2 ,
+\]
+which grows again for $z_i > 1$: a point that is correctly classified \emph{with a large margin} is penalised as if it
+were an error (Figure~\ref{fig:losses}). A distant cluster of easy examples therefore pulls the boundary towards
+itself. In Figure~\ref{fig:linclass} the twelve far-away amber points tilt the least-squares line and triple its training
+error (9.8\%) compared with logistic regression (3.3\%); fitted without those twelve points, least squares also makes
+3.3\% errors on all 122.
+
+\begin{worked}{one easy point moves the boundary}
+In one dimension, take $x = -2, -1$ with $t = -1$ and $x = 1, 2$ with $t = +1$. By symmetry the fit $y = wx + b$ has $b = 0$,
+$w = \sum x_i t_i / \sum x_i^2 = 6/10$, and the boundary is at $x = 0$, midway between the classes. Now add one positive
+point at $x = 10$, as correct as a point can be. The normal equations (Note~8) with $n = 5$, $\sum x_i = 10$, $\sum x_i^2 =
+110$, $\sum t_i = 1$, $\sum x_i t_i = 16$ read
+\[
+  \begin{pmatrix} 5 & 10 \\ 10 & 110 \end{pmatrix}\begin{pmatrix} b \\ w \end{pmatrix} = \begin{pmatrix} 1 \\ 16 \end{pmatrix}
+  \quad\Rightarrow\quad b = -\tfrac19, \quad w = \tfrac{7}{45}, \quad \text{boundary } x = -b/w = \tfrac57 \approx 0.71 .
+\]
+The boundary moved by $0.71$ towards the positive class, because the fit tries to bring the prediction at $x = 10$
+(here $13/9 \approx 1.44$) down to $1$ by flattening the line. With ten copies of the point at $x = 10$ the boundary
+reaches $x \approx 1.03$ and the positive point at $x = 1$ becomes an error. Logistic regression and the SVM, whose losses
+vanish (or almost) for large margins, are hardly affected.
+\end{worked}
+
+\begin{algorithm}[htbp]
+\caption{Nearest centroid and the least-squares classifier.}\label{alg:centroid}
+\begin{algorithmic}[1]
+\Function{TrainCentroid}{$\{(\x_i, t_i)\}_{i=1}^n$, classes $1, \dots, m$}
+  \For{$c = 1, \dots, m$} $\vmu_c \gets$ mean of the $\x_i$ with $t_i = c$; \ $\w_c \gets 2\vmu_c$; \ $b_c \gets -\norm{\vmu_c}^2$
+  \EndFor
+  \State \Return $\{(\w_c, b_c)\}$ \Comment{predict $\argmax_c (\w_c\T\x + b_c)$}
+\EndFunction
+\Function{TrainLeastSquares}{$\Xt \in \R^{n \times (d+1)}$, targets $T$ ($\pm1$ vector, or one-hot $n \times m$)}
+  \State \Return $\tilde W \gets$ \Call{LstSq}{$\Xt$, $T$} \Comment{QR or SVD (Note~8); $\tilde W$: $(d + 1) \times m$, or $\wt$}
+  \Statex \hspace{\algorithmicindent}\textit{predict} $\sign(\wt\T\xt)$, or $\argmax_c (\tilde W\T\xt)_c$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{runtime}{nearest centroid and least-squares classifier}
+\emph{Nearest centroid}: training $O(nd)$, one pass to sum the points of each class; prediction $O(md)$ per query, one
+inner product per class; memory $O(md)$ for the centroids. It is the cheapest classifier in this note.
+\emph{Least squares}: training $O(nd^2)$ for the QR factorisation of the $n \times (d+1)$ matrix, plus $O(ndm)$ for $m$
+one-hot targets; through the normal equations it is $O(nd^2)$ to form $\Xt\T\Xt$ and $O(d^3)$ to solve, which only matters
+for $d$ in the thousands. Prediction $O(md)$; memory $O(nd)$ during training, $O(md)$ for the model.
+\end{runtime}
+
+\subsection{Why not minimise the error rate directly}\label{sec:surrogates}
+
+The training error rate $\frac1n\sum_i \ind{t_i\,g(\x_i) \le 0}$ is piecewise constant in $(\w, b)$: a small change of
+the parameters changes no prediction, so its gradient is zero almost everywhere and gradient descent (Note~7) cannot
+move; minimising it exactly is a hard combinatorial problem. The remaining algorithms minimise the \emph{surrogate}
+losses of the margin $z = t\,g(\x)$ introduced in Note~4, Section~2 --- the squared loss $(1 - z)^2$ (least squares,
+above), the hinge $\max(0, 1 - z)$ (the SVM, Section~\ref{sec:svm}) and the logistic loss $\log(1 + e^{-z})$ (logistic
+regression, Section~\ref{sec:logistic}) --- plus one more that is new here: the \emph{perceptron loss} $\max(0, -z)$
+(Section~\ref{sec:perceptron}), zero for every correct point and growing linearly with the depth of a mistake. Figure~\ref{fig:losses} adds it to the curves of Note~4: unlike the hinge it asks for no safety margin,
+and unlike the squared loss it never penalises a correct point.
+
+\begin{figure}[h]
+\centering
+\begin{minipage}[c]{0.56\linewidth}
+\includegraphics[width=\linewidth]{figures/n9_losses.pdf}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.41\linewidth}
+\caption{The surrogate losses of Note~4, Section~2, as functions of the margin $z = t\,g(\x)$, with the perceptron loss
+$\max(0, -z)$ added; $z > 0$ means a correct classification. The logistic loss is in base~2.}
+\label{fig:losses}
+\end{minipage}
+\end{figure}
 
 \section{The perceptron}\label{sec:perceptron}
 
-Rosenblatt's perceptron~\cite{rosenblatt1958}, built in hardware as the Mark~I in the late 1950s, was one of the first
-learning machines and the first artificial neuron trained from data. Starting from $\w = \vect{0}$, $b = 0$, it visits
-the examples in random order and corrects mistakes:
+Rosenblatt's perceptron~\cite{rosenblatt1958}, first simulated on a computer in 1957--58 and then built in hardware as
+the Mark~I Perceptron (publicly demonstrated in 1960), was one of the first artificial neurons trained from data.
+
+\subsection{The algorithm and its logic}
+
+The rule is: look at one example at a time; if it is classified correctly, do nothing; if not, add it to the weights (or
+subtract it, for a negative example). Algorithm~\ref{alg:perceptron} states it with the bias written separately. A score
+of exactly zero counts as a mistake, which is what gets the algorithm started from $\w = \vect{0}$.
+
+\begin{algorithm}[htbp]
+\caption{The perceptron (primal form), with the averaged and pocket variants of Section~\ref{sec:avgperc}.}\label{alg:perceptron}
+\label{alg:avgperceptron}
 \begin{algorithmic}[1]
-\Repeat
-  \For{each $(\x_i, t_i)$ in random order}
-    \If{$t_i(\w\T\x_i + b) \le 0$} $\w \gets \w + t_i\x_i$, \quad $b \gets b + t_i$ \EndIf
+\Require examples $(\x_i, t_i)$, $t_i \in \{-1, +1\}$; maximum number of epochs $E$
+\Ensure weights $\w$ and bias $b$ (or their averages $\bar{\w}$, $\bar b$, or the pocket weights)
+\State $\w \gets \vect{0}$, \ $b \gets 0$; \quad $\vect{s} \gets \vect{0}$, \ $s_b \gets 0$, \ $N \gets 0$
+\Comment{sums for the averaged variant}
+\State $\mathit{pocket} \gets (\w, b)$, \ $\mathit{best} \gets n$ \Comment{pocket variant only}
+\For{epoch $= 1, \dots, E$}
+  \State $\mathit{mistakes} \gets 0$
+  \For{each $i$, in random order} \Comment{cyclic order in the trace below}
+    \If{$t_i(\w\T\x_i + b) \le 0$} \Comment{wrong side, or on the boundary}
+      \State $\w \gets \w + t_i\x_i$, \quad $b \gets b + t_i$, \quad $\mathit{mistakes} \gets \mathit{mistakes} + 1$
+    \EndIf
+    \State $\vect{s} \gets \vect{s} + \w$, \ $s_b \gets s_b + b$, \ $N \gets N + 1$ \Comment{averaged variant only}
   \EndFor
-\Until{no mistakes in a full pass (or a maximum number of passes)}
+  \State $e \gets$ number of $i$ with $t_i(\w\T\x_i + b) \le 0$ \Comment{pocket only; one extra pass, $O(nd)$}
+  \If{$e < \mathit{best}$} $\mathit{pocket} \gets (\w, b)$, \ $\mathit{best} \gets e$ \EndIf
+  \If{$\mathit{mistakes} = 0$} \textbf{break} \Comment{all training points correct}
+  \EndIf
+\EndFor
+\State \Return $(\w, b)$; or $(\bar{\w}, \bar b) = (\vect{s}/N,\, s_b/N)$ (averaged); or $\mathit{pocket}$
 \end{algorithmic}
-This is stochastic gradient descent with step $\eta = 1$ on the \emph{perceptron criterion}
+\end{algorithm}
+
+\paragraph{What one update does} In the augmented notation the update is $\wt \gets \wt + t_i\xt_i$. The new margin of
+the example that triggered it is
+\begin{equation}\label{eq:percgain}
+  t_i\,(\wt + t_i\xt_i)\T\xt_i = t_i\,\wt\T\xt_i + t_i^2\norm{\xt_i}^2 = t_i\,\wt\T\xt_i + \norm{\x_i}^2 + 1 ,
+\end{equation}
+so every update raises the margin of the offending example by exactly $\norm{\x_i}^2 + 1 > 0$ (the $+1$ comes from the
+constant feature, i.e.\ from the bias). It moves the example towards the correct side, though not necessarily all the
+way across: one update is a correction, not a guarantee. Geometrically, for a positive example $\w$ is rotated
+\emph{towards} $\x_i$ and for a negative one away from it; the boundary, perpendicular to $\w$, turns accordingly
+(Figure~\ref{fig:perceptron}a). The price is that other examples' margins change too, by $t_j t_i\,\xt_j\T\xt_i$, which
+may be negative: an update can spoil a point that was correct.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.76\linewidth]{figures/n9_perceptron.pdf}
+\caption{(a) One perceptron update without bias: $\x_i$ (amber) is positive but $\w\T\x_i = -0.5 < 0$. Adding $\x_i$ to
+$\w$ rotates the weight vector towards it, and the new score is $-0.5 + \norm{\x_i}^2 = 4.5$. (b) The boundaries after
+each of the five updates of the trace in Table~\ref{tab:trace} (updates 1--5 happen at steps 1, 2, 4, 7, 8); the
+fifth (solid) separates the four points.}
+\label{fig:perceptron}
+\end{figure}
+
+\subsection{The perceptron criterion}
+
+The update is stochastic gradient descent (Note~7, Section~5) on the \emph{perceptron criterion}
 \[
-  J(\w, b) = \sum_{i\ \text{misclassified}} -t_i(\w\T\x_i + b),
+  J_{\mathrm p}(\w, b) = \sum_{i=1}^n \max\big(0,\, -t_i(\w\T\x_i + b)\big) = \sum_{i \in \mathcal M} -t_i(\w\T\x_i + b) ,
 \]
-which measures how far misclassified points lie on the wrong side. If the data are separable with margin $\gamma$ (some unit-norm $\w^*$ has $t_i \w^{*\mathsf{T}}\x_i \ge \gamma$)
-and $\norm{\x_i} \le R$, the perceptron makes at most $(R/\gamma)^2$ mistakes before separating them~\cite{novikoff1962}
---- a bound independent of $n$ and $d$. If the data are not separable it never stops: on the data of
-Figure~\ref{fig:linclass} it made 606 corrections in 100 passes. It also stops at \emph{any} separating hyperplane,
-however close to the data, which motivates the margin of Section~\ref{sec:svm}.
+where $\mathcal M$ is the set of misclassified examples; each term is proportional to the distance of a misclassified
+point to the boundary \eqref{eq:dist}. For $i \in \mathcal M$ the term is linear in the parameters, with derivatives
+\[
+  \frac{\partial}{\partial \w}\big[-t_i(\w\T\x_i + b)\big] = -t_i\x_i , \qquad
+  \frac{\partial}{\partial b}\big[-t_i(\w\T\x_i + b)\big] = -t_i ,
+\]
+and zero for a correct example. A stochastic gradient step on the term of one example is therefore $\w \gets \w +
+\eta\,t_i\x_i$, $b \gets b + \eta\,t_i$ if the example is wrong, and nothing otherwise. The step size does not matter: starting from zero, every iterate with step $\eta$ is $\eta$ times the
+iterate with step $1$, and the signs of all scores --- hence all decisions --- are the same. This is why the classical
+algorithm simply uses $\eta = 1$. Descending the full gradient of $J_{\mathrm p}$ instead gives the \emph{batch
+perceptron}, $\w \gets \w + \eta\sum_{i \in \mathcal M} t_i\x_i$, $b \gets b + \eta\sum_{i \in \mathcal M} t_i$, one step per
+pass over the data at $O(nd)$; restricting the sum to the misclassified points of a mini-batch gives the mini-batch version.
+Note that $J_{\mathrm p}$ is also zero at the useless point $\w = \vect{0}$, $b = 0$;
+treating a zero score as a mistake is what keeps the algorithm away from it.
+
+\subsection{A complete trace}
+
+Take the four points of Figure~\ref{fig:perceptron}b: $\x_1 = (1, 2)$ and $\x_3 = (3, 1)$ with $t = +1$, $\x_2 = (0, 0)$
+and $\x_4 = (2, 0)$ with $t = -1$. Their augmented squared norms $\norm{\x_i}^2 + 1$ are $6, 1, 11, 5$. Visiting the
+points in the order $1, 2, 3, 4, 1, 2, \dots$ from $\w = (0, 0)$, $b = 0$ gives Table~\ref{tab:trace}.
+
+\begin{table}[h]
+\centering\small
+\caption{Perceptron trace. The score $g(\x_i) = \w\T\x_i + b$ is computed with the parameters \emph{before} the step;
+$(\w, b)$ are the values \emph{after} it.}
+\label{tab:trace}
+\begin{tabular}{@{}rccrrcclr@{}}
+\toprule
+step & epoch & example & $t_i$ & $g(\x_i)$ & mistake? & update & new $\w$ & new $b$ \\
+\midrule
+1 & 1 & $\x_1 = (1, 2)$ & $+1$ & $0$ & yes & 1 & $(1, 2)$ & $1$ \\
+2 & 1 & $\x_2 = (0, 0)$ & $-1$ & $1$ & yes & 2 & $(1, 2)$ & $0$ \\
+3 & 1 & $\x_3 = (3, 1)$ & $+1$ & $5$ & no & --- & $(1, 2)$ & $0$ \\
+4 & 1 & $\x_4 = (2, 0)$ & $-1$ & $2$ & yes & 3 & $(-1, 2)$ & $-1$ \\
+5 & 2 & $\x_1$ & $+1$ & $2$ & no & --- & $(-1, 2)$ & $-1$ \\
+6 & 2 & $\x_2$ & $-1$ & $-1$ & no & --- & $(-1, 2)$ & $-1$ \\
+7 & 2 & $\x_3$ & $+1$ & $-2$ & yes & 4 & $(2, 3)$ & $0$ \\
+8 & 2 & $\x_4$ & $-1$ & $4$ & yes & 5 & $(0, 3)$ & $-1$ \\
+9--12 & 3 & $\x_1, \x_2, \x_3, \x_4$ & & $5, -1, 2, -1$ & no & --- & $(0, 3)$ & $-1$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Reading the trace} Each mistake raises the margin of its own example by $\norm{\x_i}^2 + 1$, as in
+\eqref{eq:percgain}: at step~1 from $0$ to $6$, at step~4 from $-2$ to $3$, at step~7 from $-2$ to $9$, at step~8 from
+$-4$ to $1$. At step~2 the margin of $\x_2$ rises from $-1$ to $0$ only, since $\norm{\xt_2}^2 = 1$: the point is still not
+correct, and is fixed only later, through the updates on other points. Step~4 corrects $\x_4$ but spoils $\x_3$
+(its score falls from $5$ to $-2$), which costs step~7, and step~7 in turn spoils $\x_4$. After five mistakes the third
+epoch is clean and the algorithm stops with $g(\x) = 3x_2 - 1$: the horizontal line $x_2 = 1/3$. It separates the data, but
+passes at distance $1/3$ from $\x_2$ and $\x_4$ while the positive points are far away --- the perceptron is satisfied with
+\emph{any} separating line. Another visiting order gives another line.
+
+\subsection{Convergence on separable data}
+
+\paragraph{Theorem (Novikoff~\cite{novikoff1962})} Suppose $\norm{\xt_i} \le R$ for all $i$ and the data are separable
+with margin $\gamma > 0$ in the augmented space: some unit vector $\wt^*$ has $t_i\,\wt^{*\mathsf T}\xt_i \ge \gamma$ for
+all $i$. Then the perceptron, started at zero and visiting the examples in any order, makes at most $(R/\gamma)^2$
+mistakes.
+
+\paragraph{Proof sketch} Let $\wt_k$ be the weights after $k$ mistakes, $\wt_0 = \vect{0}$, and suppose mistake $k+1$
+occurs on example $i$. Two inequalities follow from the update $\wt_{k+1} = \wt_k + t_i\xt_i$.
+\begin{enumerate}
+\item The alignment with $\wt^*$ grows linearly: $\wt^{*\mathsf T}\wt_{k+1} = \wt^{*\mathsf T}\wt_k +
+t_i\,\wt^{*\mathsf T}\xt_i \ge \wt^{*\mathsf T}\wt_k + \gamma$, hence $\wt^{*\mathsf T}\wt_k \ge k\gamma$.
+\item The length grows at most like $\sqrt{k}$: $\norm{\wt_{k+1}}^2 = \norm{\wt_k}^2 + 2t_i\,\wt_k\T\xt_i +
+\norm{\xt_i}^2 \le \norm{\wt_k}^2 + R^2$, because $t_i\,\wt_k\T\xt_i \le 0$ on a mistake. Hence $\norm{\wt_k}^2 \le kR^2$.
+\end{enumerate}
+By the Cauchy--Schwarz inequality, $k\gamma \le \wt^{*\mathsf T}\wt_k \le \norm{\wt^*}\,\norm{\wt_k} \le \sqrt{k}\,R$,
+so $\sqrt{k} \le R/\gamma$ and $k \le (R/\gamma)^2$. The intuition: the weights keep turning towards $\wt^*$ by a fixed
+amount per mistake, while their length grows more slowly; the cosine between $\wt_k$ and $\wt^*$ would exceed $1$ after
+more than $(R/\gamma)^2$ mistakes. \qed
+
+The bound depends on neither $n$ nor $d$, only on the geometry of the data. In the trace above, $R^2 = \max_i
+\norm{\xt_i}^2 = 11$, and $\wt^* = (-1, 0, 2)/\sqrt5$ (that is $b = -1$, $\w = (0, 2)$, rescaled) gives every point a
+margin of at least $\gamma = 1/\sqrt5 \approx 0.45$; the bound is $11 \times 5 = 55$ mistakes, and five were needed. Note
+that $\gamma$ is measured in the augmented space, where $(b, \w)$ is normalised as one vector, so it is not the Euclidean
+distance seen in the plot: the line $x_2 = 1/2$ of this $\wt^*$ is at distance $1/2$ from the closest points. The bound is
+loose, but it says something important: well-separated data (large $\gamma$) are learned with few mistakes.
+
+\subsection{Non-separable data: pocket and averaged perceptron}\label{sec:avgperc}
+
+If the data are not separable, some example is always misclassified and the perceptron never stops; its weights keep
+jumping, and the final iterate can be poor even when some earlier one was good. On the data of Figure~\ref{fig:linclass} it
+made 606 corrections in 100 passes. Two classical remedies return a better, more stable answer. Gallant's \emph{pocket
+algorithm}~\cite{gallant1990} keeps ``in its pocket'' the weights that survived the longest run of consecutive correct
+classifications; in its \emph{ratchet} version the pocket is replaced only if the training error is also lower.
+Algorithm~\ref{alg:perceptron} uses the simplest form of the idea: once per epoch it counts the training errors and keeps
+the best weights seen so far, at the cost of one extra pass over the data. The \emph{averaged perceptron} returns the
+average of the weight vectors over all steps (the extra lines of Algorithm~\ref{alg:perceptron}): weights that survived
+many steps without a mistake count more, and the average fluctuates far less than the last iterate. It is the practical
+approximation of the \emph{voted perceptron} of Freund and Schapire~\cite{freund1999}, which in their experiments came
+close to an SVM at the cost of a perceptron.
+
+\subsection{The dual form}\label{sec:dualperc}
+
+Since the weights start at zero and only ever add $t_i\xt_i$, after training
+\begin{equation}\label{eq:dualw}
+  \wt = \sum_{i=1}^n \alpha_i t_i\,\xt_i , \qquad \alpha_i = \text{number of mistakes made on example } i .
+\end{equation}
+In the trace, $\alpha = (1, 1, 1, 2)$ and indeed $1\cdot(1, 1, 2) - 1\cdot(1, 0, 0) + 1\cdot(1, 3, 1) - 2\cdot(1, 2, 0) =
+(-1, 0, 3)$, i.e.\ $b = -1$, $\w = (0, 3)$. The score of any point is then
+\[
+  g(\x) = \sum_{j=1}^n \alpha_j t_j\, \xt_j\T\xt ,
+\]
+so the algorithm can be run entirely on the counts $\alpha_j$ and on inner products between examples, without ever
+forming $\wt$ (Algorithm~\ref{alg:dualperc}). Examples that never caused a mistake have $\alpha_j = 0$ and drop out. Nothing
+is gained in this form for plain vectors, but it is the gateway to non-linear classification: replace every inner product
+$\xt_j\T\xt$ by a \emph{kernel} $k(\x_j, \x)$ and the same few lines become the kernel perceptron of Note~10. The SVM has
+the same structure (Section~\ref{sec:svmdual}).
+
+\begin{algorithm}[htbp]
+\caption{The perceptron in dual form.}\label{alg:dualperc}
+\begin{algorithmic}[1]
+\Require examples $(\x_i, t_i)$, epochs $E$
+\State $K_{ij} \gets \xt_i\T\xt_j$ for all $i, j$ \Comment{Gram matrix, $n \times n$}
+\State $\alpha \gets \vect{0} \in \R^n$
+\For{epoch $= 1, \dots, E$}
+  \State $\mathit{mistakes} \gets 0$
+  \For{each $i$ in random order}
+    \If{$t_i \sum_j \alpha_j t_j K_{ji} \le 0$} \Comment{the same test as in Algorithm~\ref{alg:perceptron}}
+      \State $\alpha_i \gets \alpha_i + 1$, \quad $\mathit{mistakes} \gets \mathit{mistakes} + 1$
+    \EndIf
+  \EndFor
+  \If{$\mathit{mistakes} = 0$} \textbf{break}
+  \EndIf
+\EndFor
+\State \Return $\alpha$ \Comment{predict with $\sign\big(\sum_j \alpha_j t_j\,\xt_j\T\xt\big)$}
+\end{algorithmic}
+\end{algorithm}
+
+\begin{runtime}{perceptron (primal, averaged, dual)}
+\emph{Primal}: each visit costs one inner product, $O(d)$, and an update another $O(d)$; one epoch is $O(nd)$ and $E$
+epochs $O(End)$. On separable data at most $(R/\gamma)^2$ updates happen in total, whatever $n$. Prediction $O(d)$;
+memory $O(d)$ beyond the data, which can be streamed from disk. \emph{Averaged}: the same order, $O(nd)$ per epoch, with one
+extra vector of memory (the sum can even be maintained lazily, touching only the non-zero features of sparse inputs).
+\emph{Pocket}: one error count per epoch costs another $O(nd)$, so the order stays $O(nd)$ per epoch; checking after every
+update instead would cost up to $O(n^2d)$ per epoch. Memory: one extra vector. \emph{Dual}: $O(n^2 d)$ to compute the Gram matrix and $O(n^2)$ memory to store it, then $O(n)$ per visit and $O(n^2)$ per
+epoch; prediction $O(n_\alpha d)$, with $n_\alpha$ the number of examples with $\alpha_j > 0$. The dual is worth its
+quadratic cost only when kernels are used (Note~10).
+\end{runtime}
 
 \section{Logistic regression}\label{sec:logistic}
 
-Despite its name, logistic regression~\cite{cox1958} is a classifier. With $t \in \{0, 1\}$ it models the class
-probability directly,
-\[
-  P(t = 1 \mid \x) = \sigma(\w\T\x + b), \qquad \sigma(z) = \frac{1}{1 + e^{-z}} ,
-\]
-the logistic sigmoid, a smooth version of a step function that maps the score to $(0, 1)$. It is trained by minimising
-the cross-entropy (Note~4, Section~2), the negative log-likelihood of the labels. With $y_i = \sigma(\w\T\xt_i)$ and the
-bias absorbed as in Note~8,
-\[
-  J(\w) = -\sum_{i=1}^n \big[t_i \log y_i + (1 - t_i)\log(1 - y_i)\big], \qquad
-  \nabla J = \sum_{i=1}^n (y_i - t_i)\, \xt_i .
-\]
-The gradient has the same form as for least squares --- prediction minus target, times input --- because $\sigma' =
-\sigma(1 - \sigma)$ cancels a factor. The objective is convex, but $\nabla J = \vect{0}$ has no closed-form solution; it is
-minimised by gradient descent, by mini-batch SGD for large data, or by Newton's method (Note~7), which converges in a few
-iterations. Two practical points: if the data are separable, $\norm{\w}$ grows without bound because sharper sigmoids keep
-lowering the loss, so a ridge penalty (Note~8) is added; and with $m$ classes the sigmoid becomes the \emph{softmax},
-$P(t = c \mid \x) = e^{g_c(\x)}/\sum_{c'} e^{g_{c'}(\x)}$, trained with the categorical cross-entropy.
+Logistic regression~\cite{cox1958} fits a model of a probability, but it is used as a classifier. It is the discriminative counterpart of the Gaussian
+classifiers of Note~6: instead of modelling the classes and applying Bayes' rule, it models the class probability
+directly. In this section the labels are $t \in \{0, 1\}$.
 
-Since $\sigma(z) > \frac12$ exactly when $z > 0$, predicting the most probable class is still $\operatorname{sign}(\w\T\x +
-b)$: the boundary is a hyperplane. What logistic regression adds is a calibrated probability, and a loss that, unlike
-squared error, does not punish confident correct predictions. In neural terms it is a single neuron with a sigmoid
-activation.
+\subsection{The model}
+
+For two classes Bayes' rule can always be written as $P(t = 1 \mid \x) = p(\x \mid 1)P_1 / [p(\x \mid 1)P_1 +
+p(\x \mid 0)P_0] = 1/(1 + e^{-a(\x)})$, with the priors $P_c = P(t = c)$ and the log-odds $a(\x) = \log[p(\x \mid
+1)P_1/p(\x \mid 0)P_0]$. Under the LDA
+assumptions $a(\x)$ is exactly linear (Note~6, Section~3). Logistic regression keeps this form and drops the assumptions:
+it postulates
+\[
+  P(t = 1 \mid \x) = \sigma(\w\T\x + b) = \sigma(\wt\T\xt), \qquad \sigma(z) = \frac{1}{1 + e^{-z}} ,
+\]
+so that the log-odds are linear in $\x$: solving $P = \sigma(a)$ for $a$ gives $a = \operatorname{logit}(P) = \log[P/(1 -
+P)]$. The sigmoid is thus the inverse of the \emph{logit link}, which makes logistic regression a \emph{generalised linear
+model}: a linear predictor passed through a fixed link to the mean of the label. The logistic sigmoid maps $\R$ to $(0, 1)$, is a smooth version of a step function, and has two properties used below:
+\[
+  1 - \sigma(z) = \frac{e^{-z}}{1 + e^{-z}} = \sigma(-z), \qquad
+  \sigma'(z) = \frac{e^{-z}}{(1 + e^{-z})^2} = \sigma(z)\,\frac{e^{-z}}{1 + e^{-z}} = \sigma(z)\big(1 - \sigma(z)\big) .
+\]
+Since $\sigma(z) > \frac12$ exactly when $z > 0$, predicting the more probable class is still $\sign(\w\T\x + b)$: the
+boundary is a hyperplane. What logistic regression adds is a probability, and a loss that does not punish confident
+correct predictions. In neural terms it is a single neuron with a sigmoid activation: the sigmoid is a differentiable
+stand-in for the perceptron's step, and a rough model of how a biological neuron's firing rate saturates as its input
+grows (week~5 builds networks of such units).
+
+\subsection{Maximum likelihood and the gradient, step by step}
+
+\emph{A warning on notation.} In Note~8 the letter $y_i$ was the regression target; in this note (as in Bishop's
+book~\cite{bishop2006}) targets are always $t_i$, and $y_i$ is the model's output. Write $y_i = \sigma(a_i)$ with $a_i =
+\wt\T\xt_i$ for the predicted probability (the $g$ of Note~4, Section~2). The probability of label $t_i$ is $y_i^{t_i}(1 - y_i)^{1 - t_i}$, and the
+negative log-likelihood of independent labels (Note~2, Section~2) is the cross-entropy (Note~4, Section~2)
+\[
+  J(\wt) = \sum_{i=1}^n J_i, \qquad J_i = -\big[t_i \log y_i + (1 - t_i)\log(1 - y_i)\big] .
+\]
+In terms of the $\pm1$ margin $z_i = (2t_i - 1)a_i$ this is $J_i = \log(1 + e^{-z_i})$, the logistic curve of
+Figure~\ref{fig:losses}. Indeed, for $t_i = 1$, $J_i = -\log\sigma(a_i) = \log(1 + e^{-a_i})$, and for $t_i = 0$, $J_i =
+-\log(1 - \sigma(a_i)) = -\log\sigma(-a_i) = \log(1 + e^{a_i})$; both read $\log(1 + e^{-z_i})$, with $z_i = a_i$ and
+$z_i = -a_i$ respectively. The gradient follows from the chain rule $J_i \to y_i \to a_i \to \wt$:
+\[
+  \frac{\partial J_i}{\partial y_i} = -\frac{t_i}{y_i} + \frac{1 - t_i}{1 - y_i} = \frac{y_i - t_i}{y_i(1 - y_i)} , \qquad
+  \frac{\partial y_i}{\partial a_i} = y_i(1 - y_i) , \qquad
+  \frac{\partial a_i}{\partial \wt} = \xt_i .
+\]
+The factor $y_i(1 - y_i)$ cancels, and
+\begin{equation}\label{eq:loggrad}
+  \nabla J = \sum_{i=1}^n (y_i - t_i)\,\xt_i = \Xt\T(\vect{y} - \vect{t}) .
+\end{equation}
+This has the same form as the least-squares gradient of Note~8 (with Note~8's target $y_i$ renamed $t_i$),
+\emph{prediction minus target, times input}, but now the prediction is a probability. Each example pushes $\wt$ in proportion to how wrong its probability is: a confidently correct point
+($y_i \approx t_i$) contributes almost nothing, which is why distant easy points do not pull the boundary.
+
+\begin{worked}{one gradient step}
+Six points on a line, $x = -2, -1, -1, 1, 1, 2$ with labels $t = 0, 0, 1, 0, 1, 1$; the classes overlap, since one
+positive sits at $x = -1$ and one negative at $x = 1$. Start from $\wt = (b, w) = (0, 0)$: every $y_i = \sigma(0) = \frac12$
+and $J = 6\log 2 \approx 4.159$. The residuals $y_i - t_i$ are $\frac12, \frac12, -\frac12, \frac12, -\frac12, -\frac12$, so
+by \eqref{eq:loggrad}
+\[
+  \frac{\partial J}{\partial b} = \textstyle\sum_i (y_i - t_i) = 0, \qquad
+  \frac{\partial J}{\partial w} = \textstyle\sum_i (y_i - t_i)x_i = -1 - \tfrac12 + \tfrac12 + \tfrac12 - \tfrac12 - 1 = -2 .
+\]
+A gradient step with $\eta = 0.25$ gives $w = 0 - 0.25 \times (-2) = 0.5$, $b = 0$, and the loss drops to $3.523$. The
+bias stays zero at every step here because the data are symmetric under $x \to -x$, $t \to 1 - t$; the boundary is at
+$x = 0$ and only the steepness of the sigmoid is being learned.
+\end{worked}
+
+\subsection{Training: gradient descent and Newton's method}
+
+The Hessian follows by differentiating \eqref{eq:loggrad} once more. In the term $(y_i - t_i)\,\xt_i$ only $y_i$ depends on
+$\wt$, with $\partial y_i/\partial\wt = y_i(1 - y_i)\,\xt_i$, so its derivative is the outer product $\xt_i\,(\partial
+y_i/\partial\wt)\T = y_i(1 - y_i)\,\xt_i\xt_i\T$, and
+\[
+  \Hess = \nabla^2 J = \sum_{i=1}^n y_i(1 - y_i)\,\xt_i\xt_i\T = \Xt\T S\,\Xt, \qquad S = \operatorname{diag}\big(y_i(1 - y_i)\big) .
+\]
+(We write the Hessian as $\Hess$ to keep $H$ for the decision boundary.) For any vector $\vect{v}$, $\vect{v}\T \Hess\vect{v}
+= \sum_i y_i(1 - y_i)(\vect{v}\T\xt_i)^2 \ge 0$: $J$ is convex (Note~7, Section~4), so every local minimum is global. But
+$\nabla J = \vect{0}$ is non-linear in $\wt$ and has no closed-form solution, so the minimum is found iteratively. Gradient
+descent (Algorithm~\ref{alg:logreg}) uses $\wt \gets \wt - \eta\,\Xt\T(\vect{y} - \vect{t})$, or the same with mini-batches
+for large $n$ (Note~7, Section~5). Newton's method (Note~7, Section~6) uses the curvature: $\wt \gets \wt - \Hess^{-1}\nabla
+J$. Writing $\wt = \Hess^{-1}\Hess\wt$, inserting $S S^{-1} = I$ in the gradient and factoring out $\Xt\T S$,
+\[
+  \wt - \Hess^{-1}\nabla J = \Hess^{-1}\big(\Xt\T S\Xt\,\wt - \Xt\T S\,S^{-1}(\vect{y} - \vect{t})\big)
+  = \Hess^{-1}\Xt\T S\big(\Xt\wt - S^{-1}(\vect{y} - \vect{t})\big) = (\Xt\T S\Xt)^{-1}\Xt\T S\,\vect{u} ,
+\]
+with the \emph{working targets} $\vect{u} = \Xt\wt - S^{-1}(\vect{y} - \vect{t})$. Compare with \emph{weighted} least
+squares: minimising $\sum_i s_i(\wt\T\xt_i - u_i)^2 = (\Xt\wt - \vect{u})\T S(\Xt\wt - \vect{u})$ and setting the gradient
+to zero gives $\Xt\T S\Xt\,\wt = \Xt\T S\,\vect{u}$, the normal equations of Note~8 with row $i$ weighted by $s_i$. So each
+Newton step is a weighted least-squares fit to the working targets $\vect{u}$ with weights $s_i = y_i(1 - y_i)$, hence the
+name \emph{iteratively reweighted least squares} (IRLS). Points whose probability is already close to 0 or 1 receive little
+weight. Methods between the two extremes, such as conjugate gradient and quasi-Newton methods like L-BFGS, are named in
+Note~7, Section~6, and work equally well here.
+
+\begin{worked}{Newton against gradient descent}
+For the six points above, at $\wt = \vect{0}$ all weights are $\frac14$, so $\Hess = \frac14\sum_i \xt_i\xt_i\T =
+\frac14\begin{pmatrix} 6 & \sum x_i \\ \sum x_i & \sum x_i^2\end{pmatrix} = \begin{pmatrix} 1.5 & 0 \\ 0 & 3\end{pmatrix}$, and
+the first Newton step is $\wt = -\Hess^{-1}\nabla J = -(0/1.5,\ -2/3) = (0,\ 0.667)$. Iterating,
+\begin{center}\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+iteration $k$ & 0 & 1 & 2 & 3 & 10 \\
+\midrule
+Newton: $w$, $J$ & $0$, $4.159$ & $0.667$, $3.459$ & $0.753$, $3.450$ & $0.756$, $3.450$ & --- \\
+gradient descent ($\eta = 0.25$): $w$, $J$ & $0$, $4.159$ & $0.500$, $3.523$ & $0.646$, $3.463$ & $0.706$, $3.453$ &
+$0.756$, $3.450$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Newton reaches the minimum $w^* = 0.756$ to three digits in three steps; gradient descent needs about ten
+($w_9 = 0.7557$, $w_{10} = 0.7560$). The fitted model says
+$P(t = 1 \mid x = 2) = \sigma(1.51) = 0.82$ and $P(t = 1 \mid x = 1) = 0.68$: the overlap of the classes near $x = \pm1$ is
+reflected in moderate probabilities.
+\end{worked}
+
+\begin{algorithm}[htbp]
+\caption{Logistic regression (gradient descent and Newton/IRLS) and softmax regression.}\label{alg:logreg}
+\begin{algorithmic}[1]
+\Require $\Xt \in \R^{n \times (d+1)}$, $\vect{t} \in \{0, 1\}^n$, ridge $\lambda \ge 0$ (see below), step $\eta$ (GD), tolerance $\epsilon$
+\State $\wt \gets \vect{0}$; \ $D \gets \operatorname{diag}(0, 1, \dots, 1)$ \Comment{the bias is not penalised}
+\Repeat
+  \State $\vect{y} \gets \sigma(\Xt\wt)$ \Comment{element-wise}
+  \State $\vect{g} \gets \Xt\T(\vect{y} - \vect{t}) + \lambda D\wt$
+  \If{gradient descent} $\wt \gets \wt - \eta\,\vect{g}$
+  \Else \ $S \gets \operatorname{diag}(y_i(1 - y_i))$; \ $\Hess \gets \Xt\T S\Xt + \lambda D$; \ $\wt \gets \wt - \Hess^{-1}\vect{g}$
+  \Comment{Newton: solve, do not invert}
+  \EndIf
+\Until{$\norm{\vect{g}} < \epsilon$}
+\State \Return $\wt$ \Comment{predict $\sigma(\wt\T\xt)$, class $\ind{\wt\T\xt > 0}$}
+\Statex
+\Function{Softmax}{$\Xt$, one-hot $T \in \{0, 1\}^{n \times m}$, $\lambda$, $\eta$, $\epsilon$} \Comment{$m$ classes, Section~\ref{sec:softmax}}
+  \State $\tilde W \gets \vect{0} \in \R^{(d+1) \times m}$ \Comment{column $c$ is $\wt_c$}
+  \Repeat
+    \State $A \gets \Xt\tilde W$; \ $Y_{ic} \gets e^{A_{ic}} / \sum_k e^{A_{ik}}$ \Comment{row-wise softmax; subtract $\max_k A_{ik}$ first}
+    \State $G \gets \Xt\T(Y - T) + \lambda D\tilde W$; \ $\tilde W \gets \tilde W - \eta\,G$
+  \Until{$\norm{G} < \epsilon$}
+  \State \Return $\tilde W$ \Comment{predict $\argmax_c (\tilde W\T\xt)_c$}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Separable data and regularisation} If the classes are separable, every margin can be made positive, and
+multiplying $\wt$ by any $c > 1$ then lowers every term $\log(1 + e^{-z_i})$. The loss has no minimiser: $\norm{\wt}$ grows
+without bound and the sigmoid tends to a step, with probabilities of exactly 0 and 1 --- overconfidence. Adding a ridge
+penalty $\frac{\lambda}{2}\norm{\w}^2$ (Note~8, Section~4), as in Algorithm~\ref{alg:logreg}, restores a unique finite
+solution; $\lambda$ is a hyperparameter chosen by validation (Note~4).
+
+\subsection{More than two classes: softmax regression}\label{sec:softmax}
+
+With $m$ classes, give each class a score $a_c = \wt_c\T\xt$ and turn the scores into probabilities with the
+\emph{softmax}
+\[
+  y_c = P(t = c \mid \x) = \frac{e^{a_c}}{\sum_{k=1}^m e^{a_k}} .
+\]
+With a one-hot target vector $\vect{t}$ the cross-entropy of one example is $J = -\sum_c t_c \log y_c = -a_{\mathrm{true}} +
+\log\sum_k e^{a_k}$. Differentiating with respect to the score $a_k$,
+\[
+  \frac{\partial J}{\partial a_k} = -t_k + \frac{e^{a_k}}{\sum_{k'} e^{a_{k'}}} = y_k - t_k , \qquad
+  \nabla_{\wt_k} J = (y_k - t_k)\,\xt ,
+\]
+the same ``prediction minus target'' form as before. A gradient step raises the score of the true class and lowers every
+other score in proportion to the probability it wrongly received. For $m = 2$ the softmax reduces to the sigmoid of the
+score difference, $y_2 = e^{a_2}/(e^{a_1} + e^{a_2}) = \sigma(a_2 - a_1)$, so softmax regression generalises logistic regression; since adding the same
+vector to every $\wt_c$ leaves all probabilities unchanged, one class can be fixed at zero, or a ridge penalty used.
+
+\begin{worked}{softmax and its gradient}
+Scores $\vect{a} = (2, 1, 0)$ give $e^{\vect a} = (7.389, 2.718, 1)$, sum $11.107$, so $\vect{y} = (0.665, 0.245, 0.090)$.
+If the true class is the second, the loss is $-\log 0.245 = 1.41$ and $\vect{y} - \vect{t} = (0.665, -0.755, 0.090)$: the
+step mostly lowers class~1 and raises class~2; class~3, already improbable, is barely touched. Concretely, if these
+scores come from the input $\xt = (1, 2)$ (bias feature and one coordinate), a step with $\eta = 0.2$ changes each column
+by $\Delta\wt_k = -\eta\,(y_k - t_k)\,\xt$ and hence each score by $-\eta\,(y_k - t_k)\norm{\xt}^2 = -(y_k - t_k)$: the new
+scores are $(1.335, 1.755, -0.090)$, and the true class now has the highest.
+\end{worked}
+
+\begin{runtime}{logistic and softmax regression}
+\emph{Gradient descent}: each iteration computes $\Xt\wt$ and $\Xt\T(\vect{y} - \vect{t})$, two matrix--vector products,
+$O(nd)$; $T$ iterations cost $O(Tnd)$, with $T$ from tens to thousands depending on the conditioning (Note~7). Mini-batch
+SGD with mini-batch size $n'$ costs $O(n'd)$ per step and suits data that do not fit in memory. \emph{Newton/IRLS}: forming
+$\Xt\T S\Xt$ costs $O(nd^2)$ and solving the system $O(d^3)$ per iteration; typically 5 to 10 iterations suffice. Newton is
+the method of choice up to $d$ of a few thousand; beyond, gradient methods or L-BFGS (a quasi-Newton method that
+approximates the inverse Hessian from the last few gradients, Note~7). \emph{Softmax}: $O(ndm)$ per gradient
+iteration (the product $\Xt\tilde W$), and $O(nm)$ for the softmax itself. Prediction is $O(d)$ ($O(dm)$ for softmax), and
+all of it vectorises well on GPUs. \emph{Memory} beyond the data: $O(d)$ for gradient descent ($O(dm)$ for softmax) plus
+$O(n)$ for $\vect{y}$, or $O(n'd)$ for a mini-batch when the data are streamed; Newton needs $O(d^2)$ for the Hessian, which is
+what rules it out for very large $d$.
+\end{runtime}
 
 \begin{modern}{every neural classifier ends in logistic regression}
 The last layer of an image classifier or a language model is a linear map followed by a softmax: multiclass logistic
-regression on features computed by the layers below. Conversely, training only a logistic regression on the frozen
-features of a pre-trained network --- a \emph{linear probe} --- is the standard way to measure what those features
-contain~\cite{alain2017}; CLIP, for instance, was evaluated with linear probes on 27 datasets~\cite{radford2021}. Everything
-in this note therefore applies on top of the most modern representations.
+regression on features computed by the layers below, trained with exactly the gradient $\vect{y} - \vect{t}$ derived
+above. Conversely, training only a logistic regression on the frozen features of a pre-trained network --- a \emph{linear
+probe} --- is a standard way to measure what those features contain~\cite{alain2017}; CLIP, for instance, was evaluated
+with linear probes on 27 datasets~\cite{radford2021}. Everything in this section therefore applies on top of the most
+modern representations.
 \end{modern}
 
 \section{Support vector machines}\label{sec:svm}
 
-Among all separating hyperplanes, the \emph{maximum-margin} one stays as far as possible from the closest training
-points. The \emph{functional margin} of an example is $t_i g(\x_i)$ --- positive if it is correctly classified, large if
-confidently so --- and its \emph{geometric margin} is $t_i g(\x_i)/\norm{\w}$, its signed distance to the boundary by
-\eqref{eq:dist}. Since rescaling $(\w, b)$ does not move the hyperplane, we may fix the smallest functional margin to one;
-maximising the geometric margin $1/\norm{\w}$ then becomes the \emph{hard-margin SVM}:
+The perceptron stops at any separating hyperplane; Table~\ref{tab:trace} ended with a line that nearly touches two
+points. Among all separating hyperplanes, the \emph{maximum-margin} one stays as far as possible from the closest training
+points, so that small perturbations of the data --- noise, a slightly different test point --- do not cross it. Support
+vector machines compute this hyperplane. The maximum-margin hyperplane goes back to Vapnik and
+Lerner's ``generalized portrait'' of 1963~\cite{vapnik1963}; the modern algorithm is that of Boser, Guyon and
+Vapnik~\cite{boser1992}, in the soft-margin form of Cortes and Vapnik~\cite{cortes1995}. Labels are again $t \in \{-1, +1\}$.
+
+\subsection{Margins and the hard-margin SVM}
+
+The \emph{functional margin} of an example is $t_i\,g(\x_i)$: positive if it is correctly classified, large if
+confidently so. Its \emph{geometric margin} $t_i\,g(\x_i)/\norm{\w}$ is its signed distance to the boundary
+\eqref{eq:dist}; the margin of the classifier is the smallest of these. Rescaling $(\w, b)$ by $c > 0$ multiplies
+functional margins by $c$ but leaves geometric margins unchanged. We may therefore fix the scale so that the closest points have functional margin exactly one,
+$\min_i t_i\,g(\x_i) = 1$. These points lie on the two hyperplanes $g(\x) = \pm1$, which by \eqref{eq:dist} are at
+distance $1/\norm{\w}$ on either side of $H$. To keep the words apart: the \emph{margin} of the classifier is
+$1/\norm{\w}$, the distance from $H$ to the closest points, and the empty band between the two hyperplanes has
+\emph{width} $2/\norm{\w}$.
+
+\paragraph{The hard-margin SVM} Maximising the margin $\max_{\w, b}\min_i t_i\,g(\x_i)/\norm{\w}$ thus becomes, after fixing the scale, maximising
+$1/\norm{\w}$ subject to all functional margins being at least one --- equivalently minimising $\frac12\norm{\w}^2$:
+\begin{equation}\label{eq:hardsvm}
+  \min_{\w, b}\ \tfrac12 \norm{\w}^2 \quad \text{subject to} \quad t_i(\w\T\x_i + b) \ge 1, \quad i = 1, \dots, n .
+\end{equation}
+Replacing the normalisation $\min_i t_i\,g(\x_i) = 1$ by the constraints $t_i\,g(\x_i) \ge 1$ for all $i$ changes
+nothing at the optimum: if every constraint held strictly, $t_i\,g(\x_i) > 1$, we could shrink $(\w, b)$ by a factor
+slightly below one, stay feasible and reduce $\norm{\w}$; so at the optimum at least one constraint is active, which is
+the normalisation we wanted. Fixing the scale by $\norm{\w} = 1$ instead gives a third equivalent problem, maximising the
+smallest functional margin over unit vectors $\w$. All three formulations give the same hyperplane $H$ and differ only in
+the length of $\w$.
+
+This is a \emph{quadratic programme}: a convex quadratic objective with linear constraints (Note~7, Section~6), with a
+unique solution if the data are separable.
+
+\subsection{Lagrange multipliers, the dual and support vectors}\label{sec:svmdual}
+
+The constraints of \eqref{eq:hardsvm} are inequalities, not the equalities of the Lagrange multipliers met in calculus,
+so the method needs one more idea. Attach a multiplier $\alpha_i \ge 0$ to each constraint (we reuse the letter $\alpha$
+of the dual perceptron \eqref{eq:dualw} on purpose: the two play the same role) and form the Lagrangian
 \[
-  \min_{\w, b} \tfrac12 \norm{\w}^2 \quad \text{subject to} \quad t_i(\w\T\x_i + b) \ge 1, \quad i = 1, \dots, n,
+  L(\w, b, \alpha) = \tfrac12\norm{\w}^2 - \sum_{i=1}^n \alpha_i\big[t_i(\w\T\x_i + b) - 1\big] .
 \]
-a quadratic programme with linear constraints~\cite{cortes1995}. For data that are not separable, \emph{slack} variables
-$\xi_i \ge 0$ allow violations at a price: minimise $\frac12\norm{\w}^2 + C\sum_i \xi_i$ subject to $t_i(\w\T\x_i + b)
-\ge 1 - \xi_i$. Eliminating the slacks gives an unconstrained form,
+For a feasible $(\w, b)$ every bracket is $\ge 0$, so with $\alpha_i \ge 0$ we have $L \le \frac12\norm{\w}^2$. Hence, for
+every $\alpha \ge 0$, the minimum of $L$ over \emph{all} $(\w, b)$ is a lower bound on the optimal value of
+\eqref{eq:hardsvm}; the \emph{dual problem} asks for the largest such bound, which is why it is a maximisation over
+$\alpha$. For a convex quadratic programme like this one the best bound is attained: dual and primal optima are equal.
+The minimum over $(\w, b)$ is where the derivatives vanish,
 \[
-  \min_{\w, b} \; \sum_{i=1}^n \max\big(0,\, 1 - t_i(\w\T\x_i + b)\big) + \frac{1}{2C}\norm{\w}^2 ,
+  \frac{\partial L}{\partial \w} = \w - \sum_i \alpha_i t_i\x_i = \vect{0} \;\Rightarrow\; \w = \sum_{i=1}^n \alpha_i t_i\,\x_i ,
+  \qquad \frac{\partial L}{\partial b} = -\sum_i \alpha_i t_i = 0 .
 \]
-the hinge loss of Note~4 plus a ridge penalty. The hyperparameter $C$ trades margin against training errors; $C \to \infty$
-recovers the hard margin.
+To substitute back, use $\sum_i \alpha_i t_i\,\w\T\x_i = \w\T\big(\sum_i \alpha_i t_i\x_i\big) = \w\T\w$ and
+$\sum_i \alpha_i t_i\,b = 0$:
+\[
+  L = \tfrac12\w\T\w - \w\T\w - 0 + \sum_i \alpha_i = \sum_i \alpha_i - \tfrac12\Big\|\sum_i \alpha_i t_i\x_i\Big\|^2 ,
+\]
+and expanding the squared norm gives the \emph{dual problem}
+\begin{equation}\label{eq:svmdual}
+  \max_{\alpha}\ \sum_{i=1}^n \alpha_i - \frac12\sum_{i=1}^n\sum_{j=1}^n \alpha_i\alpha_j t_i t_j\,\x_i\T\x_j
+  \quad\text{subject to}\quad \alpha_i \ge 0, \quad \sum_i \alpha_i t_i = 0 .
+\end{equation}
+At the optimum, the Karush--Kuhn--Tucker (KKT) conditions add \emph{complementary slackness},
+\[
+  \alpha_i\,\big[t_i\,g(\x_i) - 1\big] = 0 \qquad \text{for every } i .
+\]
+It follows from the equality of the two optima: at the solution $L = \frac12\norm{\w}^2 - \sum_i
+\alpha_i[t_i\,g(\x_i) - 1]$ must equal $\frac12\norm{\w}^2$, so the sum vanishes, and since each of its terms is $\ge 0$,
+each term vanishes. Either an example lies exactly on the margin ($t_i\,g(\x_i) = 1$) or its multiplier vanishes: a
+constraint that is not tight could be removed without changing the solution, so it exerts no ``force'' on it. The examples
+with $\alpha_i > 0$ are the \emph{support vectors}: $\w$ is a combination of them alone, and moving any other point,
+without crossing the margin, changes nothing. The bias follows from any support vector $s$: multiplying $t_s(\w\T\x_s + b) = 1$ by $t_s$ gives $b = t_s - \w\T\x_s$.
+Like the dual perceptron \eqref{eq:dualw}, the dual SVM needs the data only through inner products $\x_i\T\x_j$, which is
+what makes the kernel SVM of Note~10, Section~7, possible. In practice the $\alpha_i$ are found numerically: the
+dual-coordinate-ascent algorithm given there also works with the linear kernel $k(\x, \vect{z}) = \x\T\vect{z}$, for the
+slightly modified problem in which the bias is absorbed and penalised, so that the constraint $\sum_i\alpha_it_i = 0$ drops
+out (see also the running-time box below). Here we find them by hand, by guessing the support vectors and checking.
+
+\begin{worked}{the maximum-margin line by hand}
+Take the four points of the perceptron trace: positives $\x_1 = (1, 2)$, $\x_3 = (3, 1)$; negatives $\x_2 = (0, 0)$,
+$\x_4 = (2, 0)$.\\[0.3em]
+\emph{0. A first guess that fails.} The closest pair of opposite points is $\x_3, \x_4$. With only them on the margin,
+$\w$ is parallel to $\x_3 - \x_4 = (1, 1)$, say $\w = k(1, 1)$, and $g(\x_3) = 4k + b = 1$, $g(\x_4) = 2k + b = -1$ give
+$k = 1$, $b = -3$. But then $g(\x_1) = 1 + 2 - 3 = 0 < 1$: the constraint of $\x_1$ is violated, so $\x_1$ must be on the
+margin too.\\[0.3em]
+\emph{1. Guess the support vectors.} The closest point of the negative class to the segment joining the positives is
+$\x_4$; we guess that $\x_1$ and $\x_3$ lie on $g = +1$ and $\x_4$ on $g = -1$.\\[0.3em]
+\emph{2. Solve.} Since $\x_1$ and $\x_3$ are both on $g = +1$, $\w$ is perpendicular to $\x_3 - \x_1 = (2, -1)$, so
+$\w = k(1, 2)$. The conditions $g(\x_1) = 5k + b = 1$ and $g(\x_4) = 2k + b = -1$ give $k = \frac23$, $b = -\frac73$:
+\[
+  \w = \big(\tfrac23, \tfrac43\big), \qquad b = -\tfrac73, \qquad g(\x) = \tfrac13(2x_1 + 4x_2 - 7) .
+\]
+\emph{3. Check feasibility.} $g(\x_3) = \frac13(6 + 4 - 7) = 1$ and $t_2\,g(\x_2) = \frac73 \ge 1$: all constraints hold,
+and $\x_2$ is not on the margin.\\[0.3em]
+\emph{4. Check optimality.} Solve $\w = \sum_i \alpha_i t_i\x_i$ and $\sum_i \alpha_i t_i = 0$ with $\alpha_2 = 0$:
+$\alpha_1 + \alpha_3 = \alpha_4$ and $\alpha_1(1, 2) + \alpha_3(3, 1) - \alpha_4(2, 0) = (\frac23, \frac43)$ give
+$\alpha_1 = \frac29$, $\alpha_3 = \frac89$, $\alpha_4 = \frac{10}{9}$. All are positive, so the KKT conditions hold and the
+guess was right; a negative $\alpha$ would have told us to drop that point from the guess.\\[0.3em]
+\emph{Result.} $\norm{\w} = \frac{2\sqrt5}{3}$, the margin is $1/\norm{\w} \approx 0.67$ and the band width $2/\norm{\w} =
+3/\sqrt5 \approx 1.34$; the dual
+objective $\sum\alpha_i - \frac12\norm{\w}^2 = \frac{20}{9} - \frac{10}{9}$ equals the primal $\frac12\norm{\w}^2 = \frac{10}{9}$.
+The perceptron's line $x_2 = 1/3$ kept only $1/3$ from the nearest points; the SVM keeps $0.67$ on each side
+(Figure~\ref{fig:margin}).
+\end{worked}
 
 \begin{figure}[h]
 \centering
-\begin{minipage}[c]{0.4\linewidth}
-\includegraphics[width=\linewidth]{figures/margin.pdf}
+\begin{minipage}[c]{0.42\linewidth}
+\includegraphics[width=\linewidth]{figures/n9_svm_example.pdf}
 \end{minipage}\hfill
-\begin{minipage}[c]{0.56\linewidth}
-\caption{A maximum-margin classifier. The dashed lines are $g(\x) = \pm 1$; the margin between them has width
-$2/\norm{\w}$. Only the two circled points --- the support vectors --- determine the solution: moving any other point,
-without crossing the dashed lines, changes nothing.}
+\begin{minipage}[c]{0.54\linewidth}
+\caption{The maximum-margin line for the four points of Table~\ref{tab:trace}. The dashed lines are $g(\x) = \pm 1$; the
+band between them has width $2/\norm{\w} = 3/\sqrt5$. The three circled points are the support vectors; $\x_2$ could move
+anywhere on or below the lower dashed line ($2x_1 + 4x_2 \le 4$) without changing the solution. The dash-dotted line is where the perceptron stopped.}
 \label{fig:margin}
 \end{minipage}
 \end{figure}
 
-\paragraph{Support vectors} The solution has the form $\w = \sum_i \alpha_i t_i \x_i$ with $\alpha_i \ge 0$, and only
-points on or inside the margin have $\alpha_i > 0$ (Figure~\ref{fig:margin}). These \emph{support vectors} are usually a
-small fraction of the data. Because $\w$ is a combination of training inputs, the problem can be rewritten in terms of the
-$\alpha_i$ and inner products $\x_i\T\x_j$ alone --- the dual formulation, which opens the way to the kernel trick of
-Section~\ref{sec:features}. Soft-margin SVMs, linear or kernelised, were among the most widely used classifiers of the
-2000s: good accuracy, a convex problem and few hyperparameters.
+\subsection{Soft margin and the hinge loss}
 
-\paragraph{More than two classes} Binary classifiers extend in two standard ways: \emph{one-against-all}, with $m$
-classifiers each separating one class from the rest and the highest score winning; and \emph{one-against-one}, with
-$m(m-1)/2$ pairwise classifiers and a vote. Taking the highest score, rather than the raw yes/no answers, avoids the
-ambiguous regions where several or no classifiers claim a point.
-
-\section{Beyond linear: explicit feature maps}\label{sec:features}
-
-Whatever the algorithm, a linear classifier draws a hyperplane, and its capacity is limited. The oldest remedy keeps
-the linear algorithm and changes the space: apply a fixed non-linear \emph{feature map} $\phi : \R^d \to \R^D$ and learn a
-linear classifier on $\phi(\x)$,
+For data that are not separable \eqref{eq:hardsvm} has no solution. \emph{Slack} variables $\xi_i \ge 0$ allow violations
+at a price:
 \[
-  f(\x) = \operatorname{sign}\big(\w\T\phi(\x) + b\big) .
+  \min_{\w, b, \xi}\ \tfrac12\norm{\w}^2 + C\sum_{i=1}^n \xi_i \quad\text{subject to}\quad t_i(\w\T\x_i + b) \ge 1 - \xi_i,
+  \quad \xi_i \ge 0 .
 \]
-The boundary is a hyperplane in the new space and a curved surface in the original one. For two inputs, the quadratic
-map $\phi(x_1, x_2) = (x_1^2, x_2^2, x_1x_2, x_1, x_2)$ makes $\w\T\phi(\x) + b$ an arbitrary second-degree polynomial,
-so the boundary can be any conic. In Figure~\ref{fig:fmap} a class that surrounds the other defeats logistic regression
-on $\x$ (49\% training error, chance level), while the same algorithm on $\phi(\x)$ separates the classes perfectly
-with a circle.
+An example with $0 < \xi_i < 1$ is inside the margin but correct, one with $\xi_i = 1$ lies on the boundary, and one with
+$\xi_i > 1$ is misclassified. For fixed
+$(\w, b)$ the best slack is the smallest allowed one, $\xi_i = \max\big(0, 1 - t_i\,g(\x_i)\big)$. Substituting it and
+dividing by $C$ gives an unconstrained problem,
+\begin{equation}\label{eq:softsvm}
+  \min_{\w, b}\ \sum_{i=1}^n \max\big(0,\, 1 - t_i(\w\T\x_i + b)\big) + \frac{1}{2C}\norm{\w}^2 ,
+\end{equation}
+the hinge loss of Note~4 plus a ridge penalty: the SVM is regularised empirical risk minimisation, like everything else in
+this course. The hyperparameter $C$ trades margin against training errors: small $C$ means strong regularisation, a wide
+margin and many support vectors; large $C$ fits the training data harder; $C \to \infty$ recovers the hard margin. In the
+dual, the only change is the box constraint $0 \le \alpha_i \le C$. Support vectors are now all points with
+$t_i\,g(\x_i) \le 1$: those on the margin ($0 \le \alpha_i \le C$) and those inside it or misclassified ($\alpha_i = C$),
+however far on the wrong side. The bias is computed from a support vector with $0 < \alpha_s < C$, which lies exactly on
+the margin. Soft-margin SVMs, linear or kernelised, were among the most widely used
+classifiers of the 2000s. They also extend to regression, with an $\varepsilon$-insensitive loss that ignores errors
+smaller than $\varepsilon$ (support vector regression, Note~10, Section~8).
 
-\begin{figure}[h]
+\begin{worked}{slacks and the role of $C$}
+Keep the four points of the hand-solved example and add $\x_a = (1.5, 1.5)$ with $t_a = +1$ and $\x_b = (0, 3)$ with $t_b =
+-1$. For the line found there, $g(\x) = \frac13(2x_1 + 4x_2 - 7)$, the functional margins $t_i\,g(\x_i)$ and slacks
+$\xi_i = \max(0, 1 - t_i\,g(\x_i))$ are
+\begin{center}\small\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+point & $\x_1$ & $\x_2$ & $\x_3$ & $\x_4$ & $\x_a$ & $\x_b$ \\
+\midrule
+$t_i\,g(\x_i)$ & $1$ & $\frac73$ & $1$ & $1$ & $\frac23$ & $-\frac53$ \\
+$\xi_i$ & $0$ & $0$ & $0$ & $0$ & $\frac13$ & $\frac83$ \\
+status & on margin & beyond & on margin & on margin & inside, correct & misclassified \\
+\bottomrule
+\end{tabular}
+\end{center}
+so $\sum_i\xi_i = 3$ and, with $\frac12\norm{\w}^2 = \frac{10}{9}$, the objective is $\frac{10}{9} + 3C$. Halving $(\w, b)$
+keeps the same line but doubles the band: $\frac12\norm{\w}^2$ drops to $\frac{5}{18}$, while all margins halve, the slacks
+become $\frac12, 0, \frac12, \frac12, \frac23, \frac{11}{6}$ and their sum grows to $4$, giving $\frac{5}{18} + 4C$. The
+wide band is better when $C < \frac56$ (at $C = 0.1$: $0.68$ against $1.41$) and the narrow one when $C > \frac56$ (at $C =
+10$: $31.1$ against $40.3$): small $C$ buys a wide margin at the price of slack, large $C$ does the opposite.
+\end{worked}
+
+\subsection{Training by subgradient descent}
+
+The objective \eqref{eq:softsvm} is convex but has a kink where $t_i\,g(\x_i) = 1$, where no gradient exists. A
+\emph{subgradient} of a convex function $J$ at $\w$ is any vector $\vect{v}$ with $J(\w') \ge J(\w) + \vect{v}\T(\w'
+- \w)$ for all $\w'$: the plane with slope $\vect{v}$ touches the graph at $\w$ and stays below it. Where $J$ is
+differentiable the only subgradient is the gradient; at the kink of the hinge any convex combination of the gradients of
+the two pieces qualifies, and we pick the flat piece's. Gradient descent with subgradients still converges if the step
+size decreases. To keep the algorithm short we use the bias trick, $\wt = (b, \w)$ and $\xt_i = (1, \x_i)$, and write the
+objective as $\frac{\lambda}{2}\norm{\wt}^2 + \frac1n\sum_i \max(0, 1 - t_i\,\wt\T\xt_i)$ with $\lambda = 1/(nC)$. This
+also penalises the bias slightly, a simple option discussed in the Pegasos paper; with a large separate step on an unpenalised bias the
+iterates drift and converge very slowly. A subgradient of the term of example $i$ is
+\[
+  \lambda\wt - \ind{t_i\,\wt\T\xt_i < 1}\, t_i\xt_i .
+\]
+Points beyond the margin contribute only the shrinkage $\lambda\wt$; a point inside the margin or misclassified also pulls
+$\wt$ towards $t_i\xt_i$ --- a perceptron update that fires already when $t_i\,g(\x_i) < 1$ instead of $\le 0$.
+Algorithm~\ref{alg:pegasos} is the stochastic version, known as Pegasos~\cite{shalevshwartz2007}, with the step
+$\eta_k = 1/(\lambda k)$.
+
+\begin{algorithm}[htbp]
+\caption{Soft-margin linear SVM by stochastic subgradient descent (Pegasos-style).}\label{alg:pegasos}
+\begin{algorithmic}[1]
+\Require augmented examples $(\xt_i, t_i)$, $\xt_i = (1, \x_i)$, $t_i \in \{-1, +1\}$; $\lambda = 1/(nC)$; number of steps $T$
+\State $\wt \gets \vect{0}$ \Comment{$\wt = (b, \w)$: the bias is shrunk like the weights}
+\For{$k = 1, \dots, T$}
+  \State pick $i$ uniformly at random; \ $\eta \gets 1/(\lambda k)$
+  \If{$t_i\,\wt\T\xt_i < 1$} \Comment{inside the margin or wrong}
+    \State $\wt \gets (1 - \eta\lambda)\,\wt + \eta\,t_i\xt_i$
+  \Else
+    \State $\wt \gets (1 - \eta\lambda)\,\wt$ \Comment{only the ridge shrinkage}
+  \EndIf
+\EndFor
+\State \Return $\wt$ \Comment{in practice, often the average of the last iterates}
+\end{algorithmic}
+\end{algorithm}
+
+At $k = 1$ the shrinkage factor $1 - \eta\lambda$ is zero, so the first step simply sets $\wt = \eta\,t_i\xt_i$ whatever
+the example; this is expected, not an error. (The basic Pegasos algorithm has no bias term; absorbing it with the bias trick is
+the simplest way to add one.)
+
+\begin{worked}{two Pegasos steps}
+On the four points of the perceptron trace take $\lambda = 1$ (large, to keep the numbers simple). Step $k = 1$, $\eta = 1$,
+visits $\x_1$, $\xt_1 = (1, 1, 2)$: its margin is $0 < 1$, so $\wt = (1 - 1)\,\vect{0} + 1 \cdot \xt_1 = (1, 1, 2)$, i.e.\
+$b = 1$, $\w = (1, 2)$. Step $k = 2$, $\eta = \frac12$, visits $\x_4$, $\xt_4 = (1, 2, 0)$, $t_4 = -1$: its margin is
+$-(1 + 2) = -3 < 1$, so $\wt = \frac12(1, 1, 2) - \frac12(1, 2, 0) = (0, -0.5, 1)$, i.e.\ $b = 0$, $\w = (-0.5, 1)$. The
+first factor $(1 - \eta\lambda)$ shrinks the old weights, the second term is a perceptron-like push; with the steps
+shrinking like $1/k$, later examples move $\wt$ less and less.
+\end{worked}
+
+\subsection{More than two classes}
+
+Binary classifiers extend in two standard ways (Algorithm~\ref{alg:multiclass}). \emph{One-versus-rest} (OvR) trains $m$
+classifiers, each separating one class from all the others, and predicts the class with the highest score.
+\emph{One-versus-one} (OvO) trains $m(m-1)/2$ classifiers, one for each pair of classes on the data of those two classes
+only, and lets them vote. With raw yes/no answers there are \emph{ambiguous regions}, where several or no classifiers
+claim a point. Taking the highest OvR score removes them (up to exact ties). OvO voting shrinks them but can still tie:
+``1 beats 2, 2 beats 3, 3 beats 1'' gives every class one vote; such ties are usually broken by summing the pairwise
+scores. Figure~\ref{fig:ovr} shows the regions for three classes. Softmax regression (Section~\ref{sec:logistic}) needs
+neither scheme: it is multiclass from the start. The same is true of the multiclass SVM of Crammer and
+Singer~\cite{crammer2001}, which trains all $m$ score functions jointly by minimising the multiclass hinge loss
+$\max\big(0, 1 + \max_{k \ne t} g_k(\x) - g_t(\x)\big)$ of Note~4, Section~2, plus a ridge penalty.
+
+\begin{figure}[htbp]
 \centering
-\includegraphics[width=\linewidth]{figures/feature_map.pdf}
-\caption{Left: logistic regression on the raw inputs. Centre: two of the five quadratic features, in which the classes
-are separated by a straight line. Right: logistic regression on all five quadratic features, with the boundary drawn in
-the original coordinates.}
-\label{fig:fmap}
+\includegraphics[width=0.78\linewidth]{figures/n9_ovr.pdf}
+\caption{Three classes, one-versus-rest with linear scores $g_c$. (a) Read as yes/no answers, the three lines $g_c = 0$
+leave dark regions claimed by two classes and a central triangle claimed by none. (b) Taking the highest score assigns every
+point to exactly one class; the boundaries are where two scores are equal.}
+\label{fig:ovr}
 \end{figure}
 
-\paragraph{The cost of explicit maps} All monomials of degree at most $p$ in $d$ variables number $\binom{d+p}{p}$:
-21 for $d = 2, p = 2$, but $176\,851$ for $d = 100, p = 3$. The capacity grows accordingly, and with it the need for
-regularisation and data (Note~4) --- the curse of dimensionality in a new form (Note~3). There are three ways to obtain a
-non-linear feature map:
-\begin{enumerate}
-\item \textbf{Choose it explicitly}, a priori, as above: polynomials, physically motivated variables, or random
-non-linear features --- the random ReLU features of Note~4, Section~8, are an example, and random Fourier features
-approximate kernel machines at large scale~\cite{rahimi2007}.
-\item \textbf{Choose it implicitly} through a kernel $k(\x, \x') = \phi(\x)\T\phi(\x')$: algorithms that need only inner
-products, like the dual SVM, can work in very high or even infinite-dimensional feature spaces without ever computing
-$\phi$ (kernel SVM, kernel logistic regression).
-\item \textbf{Learn it}: let $\phi$ have its own parameters and fit them together with $\w$. A multilayer perceptron
-does exactly this, $f(\x) = \w\T a(V\x + \vect{c}) + b$, with a learned matrix $V$ and an element-wise non-linearity
-$a$: a linear classifier on features that are themselves trained by gradient descent (Note~7). This is where week~5
-begins.
-\end{enumerate}
+\begin{worked}{the two schemes can disagree}
+With $m = 3$, a point gets OvR scores $g_1 = 0.8$, $g_2 = 0.3$, $g_3 = -1.1$: as yes/no answers classifiers 1 and 2 both
+claim it (an ambiguous region), but the highest score picks class~1. The OvO scores $g_{12} = +0.2$ (1 beats 2),
+$g_{13} = -0.4$ (3 beats 1), $g_{23} = -0.5$ (3 beats 2) give class~3 two votes: the schemes, trained on different data,
+need not agree.
+\end{worked}
+
+\begin{algorithm}[htbp]
+\caption{One-versus-rest and one-versus-one.}\label{alg:multiclass}
+\begin{algorithmic}[1]
+\Require data $\{(\x_i, t_i)\}$ with classes $1, \dots, m$; a binary learner \textsc{Bin} returning a score function
+\Function{TrainOvR}{data} \Comment{predict $\argmax_c g_c(\x)$}
+  \For{$c = 1, \dots, m$}
+    \State $g_c \gets$ \Call{Bin}{all $\x_i$, label $+1$ if $t_i = c$, else $-1$}
+  \EndFor
+  \State \Return $\{g_c\}$
+\EndFunction
+\Function{TrainOvO}{data}
+  \For{each pair $c < c'$}
+    \State $g_{cc'} \gets$ \Call{Bin}{only the $\x_i$ of class $c$ (label $+1$) and $c'$ (label $-1$)}
+  \EndFor
+  \State \Return $\{g_{cc'}\}$
+\EndFunction
+\Function{PredictOvO}{$\x$}
+  \State $v_c \gets$ number of pairs won by $c$ \Comment{$g_{cc'}(\x) > 0$: a win for $c$, else for $c'$}
+  \State \Return $\argmax_c v_c$ \Comment{ties: largest sum of pairwise scores}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{runtime}{linear SVM and multiclass schemes}
+\emph{Subgradient SVM (Pegasos)}: $O(d)$ per step, independent of $n$. For a fixed regularisation strength $\lambda$,
+reaching accuracy $\epsilon$ on the objective takes about $1/(\lambda\epsilon)$ steps up to logarithmic
+factors~\cite{shalevshwartz2007}, a cost $O(d/(\lambda\epsilon))$ that does not depend on $n$; with $\lambda = 1/(nC)$ at fixed
+$C$ it is $O(dnC/\epsilon)$, linear in $n$ and with no $n \times n$ matrix. Memory $O(d)$; prediction $O(d)$. \emph{Dual
+solvers}: generic quadratic-programming solvers form the $n \times n$ matrix of inner products, $O(n^2 d)$ time and
+$O(n^2)$ memory; decomposition methods such as SMO compute its rows on demand with a cache and take between $O(n^2)$ and
+$O(n^3)$ time in practice --- fine for $n$ up to some $10^4$--$10^5$, impractical for millions. Kernel SVMs (Note~10) must
+work this way, but a \emph{linear} SVM need not: dual coordinate descent keeps $\w = \sum_i \alpha_i t_i\x_i$ up to date
+at $O(nd)$ per epoch with no Gram matrix (the method behind the LIBLINEAR library). \emph{OvR}: $m$ binary trainings on all
+$n$ points, prediction $O(md)$, memory $O(md)$. \emph{OvO}: $m(m-1)/2$ trainings on about $2n/m$ points each, prediction
+$O(m^2 d)$, memory $O(m^2 d)$. For a learner linear in $n$, both total about $mn$ example visits; for a learner quadratic in
+$n$, such as a dual QP solver, OvO's smaller problems make it the cheaper scheme.
+\end{runtime}
+
+\section{Limits of linear classifiers}\label{sec:features}\label{sec:limits}
+
+Whatever the algorithm, a linear classifier draws a hyperplane, and some problems have no good hyperplane at all. The
+classic example is the XOR pattern: the points $(0, 0)$ and $(1, 1)$, with equal coordinates, in class $t = +1$, and
+$(0, 1)$ and $(1, 0)$ in class $t = -1$ (the same convention as Note~10, Section~1). Suppose
+$g(\x) = w_1x_1 + w_2x_2 + b$ separated them, positive on the first pair and negative on the second:
+\[
+  b > 0, \qquad w_1 + w_2 + b > 0, \qquad w_2 + b < 0, \qquad w_1 + b < 0 .
+\]
+Adding the first two inequalities gives $w_1 + w_2 + 2b > 0$, adding the last two gives $w_1 + w_2 + 2b < 0$: a
+contradiction. No line separates XOR, and no amount of training --- perceptron, logistic or SVM --- will change that; the
+perceptron simply never stops. Minsky and Papert's 1969 analysis of what single-layer perceptrons cannot compute (XOR is
+the simplest case of their parity results) is often credited with contributing to a decline of neural-network research
+in the 1970s~\cite{minsky1969}. Real data show the same defect in less obvious forms --- a signal region surrounded by
+background, a class split into two islands, a curved boundary: the capacity of the hyperplane family (Note~4, Section~5)
+is too small and the classifier underfits, however much data it is given.
+
+The remedy keeps the losses, the optimisation and the margins, and changes the space in which the hyperplane is drawn:
+adding a single product feature makes XOR separable (Note~10, Section~1), and Question~B7 asks for another such
+feature. Such features can be chosen
+explicitly (from physics, or as polynomials), implicitly through a kernel that replaces the inner products of the dual
+forms of Sections~\ref{sec:dualperc} and~\ref{sec:svmdual}, or learned with the classifier, as in a neural network.
+Explicit feature maps and the kernel trick are the subject of Note~10; learned features are where week~5 begins.
 
 \begin{physics}{feature engineering, the physicist's way}
-The invariant mass of a pair of photons, $m_{\gamma\gamma}^2 = 2E_1E_2(1 - \cos\theta_{12})$, is a non-linear feature map of
-the measured energies and angles. In it, a Higgs boson decaying to two photons is a narrow peak, and a simple window
-separates much of the signal --- something no hyperplane in the raw measurements could do. Physics has always supplied such
+The invariant mass of a pair of photons, $m_{\gamma\gamma}^2 = 2E_1E_2(1 - \cos\theta_{12})$, is a non-linear function of
+the measured energies and angles. In it, the signal of a Higgs boson decaying to two photons becomes a narrow peak on a
+smooth background, so a mass window keeps most of the signal while removing most of the background --- something no single
+hyperplane in the raw energies and angles could do. Physics has always supplied such
 features. When deep networks were given only low-level detector quantities in benchmark searches for new particles, they
 matched or exceeded the performance obtained with the best hand-engineered variables, having learned equivalent features
 themselves~\cite{baldi2014}.
 \end{physics}
 
 \begin{keyidea}[Summary]
-A linear classifier predicts $\operatorname{sign}(\w\T\x + b)$; its boundary is a hyperplane normal to $\w$, and
-$g(\x)/\norm{\w}$ is a signed distance. Nearest centroid, LDA, least squares, the perceptron, logistic regression and
-the SVM all learn hyperplanes, chosen by different criteria: least squares is pulled by distant points, the perceptron
-stops at any separator, logistic regression gives calibrated probabilities with a convex loss, and the SVM maximises the
-margin and depends only on its support vectors. A non-linear feature map makes linear methods non-linear: chosen
-explicitly, implicitly through kernels, or learned, as in a neural network.
+A linear classifier predicts $\sign(\w\T\x + b)$; its boundary is a hyperplane normal to $\w$, $g(\x)/\norm{\w}$ is a
+signed distance, and $t\,g(\x)$ is the margin of an example. All the algorithms of this note learn hyperplanes, chosen by different
+losses of the margin; least squares is pulled by distant easy points. The perceptron adds misclassified examples to $\w$, each update raising that example's
+margin by $\norm{\x_i}^2 + 1$; it converges after at most $(R/\gamma)^2$ mistakes on separable data, stops at any separator,
+and in dual form needs only inner products. Logistic regression gives probabilities, with gradient $\sum(y_i - t_i)\xt_i$
+and a convex loss minimised by gradient descent or Newton/IRLS; softmax extends it to $m$ classes. The SVM maximises the
+margin $1/\norm{\w}$ (band width $2/\norm{\w}$), depends only on its support vectors, and in soft-margin form is hinge loss plus ridge. No hyperplane
+solves XOR: non-linear features are needed (Note~10).
 \end{keyidea}
 
-\begin{exercises}
-\item Show that $\w$ is normal to the hyperplane $\w\T\x + b = 0$ and derive the distance formula \eqref{eq:dist}. What is
-the distance from the origin to the hyperplane?
-\item Show that the XOR points are not linearly separable, and find a single extra feature $\phi_3(\x)$ such that they
-become separable in $(x_1, x_2, \phi_3)$.
+\begin{questions}
+\begin{conceptual}
+\item What does it mean geometrically that $\w$ is normal to the decision boundary? What happens to the boundary when $b$
+is increased with $\w$ fixed, and what happens to the classifier when both $\w$ and $b$ are multiplied by $3$? By $-1$?
+\item Nearest centroid and LDA both give linear boundaries. What information about the classes does LDA use that nearest
+centroid ignores, and when do the two coincide?
+\item Explain, using the shape of the squared loss as a function of the margin, why a cluster of far-away but correctly
+classified points can make the least-squares classifier worse. Why are logistic regression and the SVM much less
+affected?
+\item Why can the training error rate not be minimised by gradient descent? What is a surrogate loss, and which surrogate
+does each of the perceptron, logistic regression and the SVM use?
+\item True or false, with a justification: ``after a perceptron update on example $i$, example $i$ is always classified
+correctly.'' What does always hold after the update?
+\item Describe in words and with a sketch what a perceptron update does to $\w$ and to the decision boundary when a
+positive example is misclassified. Why can an update spoil a point that was previously correct?
+\item On separable data the perceptron stops. Is the hyperplane it returns unique? Does it depend on the order in which
+the examples are visited? Why might it generalise poorly?
+\item What happens when the perceptron is run on non-separable data? Describe two remedies and what each returns.
+\item In the dual form of the perceptron, what does $\alpha_i$ count, which examples have $\alpha_i = 0$, and why is this
+form the starting point of kernel methods?
+\item Logistic regression has ``regression'' in its name. In what sense does it regress, and why is it nevertheless a
+linear classifier?
+\item Why do the weights of an unregularised logistic regression grow without bound on separable data? What is wrong with
+the resulting probabilities, and how is it fixed?
+\item Compare gradient descent and Newton's method for logistic regression: cost per iteration, number of iterations, and
+when you would choose each.
+\item What are support vectors? Explain why the soft-margin SVM solution does not change when a correctly classified point
+outside the margin is moved, as long as it stays outside the margin. Which group of points in
+Figure~\ref{fig:linclass} (think of the distant amber cluster) has no influence on the linear SVM, and why does the same
+group change the least-squares line?
+\item What is the role of $C$ in the soft-margin SVM? Describe the solution for very small and very large $C$. The
+perceptron criterion and the hinge loss are both zero for some correct examples: what does the ``1'' in $\max(0, 1 - z)$
+change?
+\item With $m = 10$ classes, how many binary classifiers do one-versus-rest and one-versus-one train, and on how many
+examples each? What is an ambiguous region? How does each scheme resolve it, and can OvO voting still end in a tie?
+\item Explain why no linear classifier can solve XOR, and why training longer, or with a different linear algorithm, does
+not help. Name the three ways of obtaining non-linear features.
+\item Why does Algorithm~\ref{alg:pegasos} use the bias trick instead of updating an unpenalised bias $b$ with the same
+step $\eta_k = 1/(\lambda k)$? How large is that step in the first iterations when $\lambda = 1/(nC)$?
+\end{conceptual}
+
+\begin{calculations}
+\item For $\w = (3, -4)$ and $b = 5$: classify $\x = (2, 1)$, compute its distance to the decision boundary, and the
+distance of the origin to the boundary. Give another $(\w, b)$ that defines the same classifier.
+\item Class $-1$ has points $(0, 0)$, $(2, 0)$, $(1, 3)$ and class $+1$ has $(4, 4)$, $(6, 2)$, $(5, 6)$. Compute the
+centroids, the nearest-centroid $\w$ and $b$, and classify $(4, 2)$. Verify your answer by computing both distances.
+\item Run the perceptron by hand, from $\w = (0, 0)$, $b = 0$, in the cyclic order $1, 2, 3, 4$, on $\x_1 = (1, 1)$,
+$t_1 = +1$; $\x_2 = (2, -1)$, $t_2 = -1$; $\x_3 = (2, 2)$, $t_3 = +1$; $\x_4 = (3, 0)$, $t_4 = -1$. Give a table as in
+Table~\ref{tab:trace} until a full epoch has no mistake, check that each update raises the margin of its example by
+$\norm{\x_i}^2 + 1$, and give the final $\alpha_i$ of the dual form.
+\item Show that $\sigma'(z) = \sigma(z)(1 - \sigma(z))$ and evaluate it at $z = 0$ and $z = 2$. For the three points
+$x = 0, 1, 2$ with labels $t = 0, 1, 1$ and $\wt = (b, w) = (0, 0)$, compute the gradient \eqref{eq:loggrad} and the
+parameters after one gradient step with $\eta = 0.5$.
+\item A three-class softmax gives scores $\vect{a} = (2, 0, -1)$. Compute the probabilities, the cross-entropy if the true
+class is the first, and the gradient of the loss with respect to the three scores. What happens to the probabilities if
+$5$ is added to every score?
+\item For the SVM of the worked example in Section~\ref{sec:svmdual}, $g(\x) = \frac13(2x_1 + 4x_2 - 7)$, add the
+negative point $\x_5 = (2, 1)$. With respect to this $g$, compute the functional and geometric margins of $\x_5$ and the
+slack $\xi_5 = \max(0, 1 - t_5\,g(\x_5))$ it would need. Does the old $(\w, b)$ remain a valid hard-margin solution once
+$\x_5$ is added? Using the definition of support vectors, explain why $\x_5$ must be a support vector of the new
+soft-margin solution when $C \ge 2$ (for such $C$ the soft-margin solution of the four original points is the hard-margin
+one, since all its $\alpha_i \le 10/9$).
+\item For the XOR points of Section~\ref{sec:limits} (class $+1$ at $(0, 0)$ and $(1, 1)$, class $-1$ at $(0, 1)$ and
+$(1, 0)$), add the feature $\phi_3 = (x_1 - x_2)^2$. Tabulate $\phi_3$ on the four points and find $(w_1, w_2, w_3, b)$ such
+that $g = w_1x_1 + w_2x_2 + w_3\phi_3 + b$ is positive on class $+1$ and negative on class $-1$. Then explain why adding $\phi_3 = x_1 + x_2$ or $\phi_3 = x_1^2$ instead does not help.
+\item Continue the worked example ``two Pegasos steps'' (Section~\ref{sec:svm}) with steps $k = 3$ and $k = 4$ of
+Algorithm~\ref{alg:pegasos}, $\lambda = 1$, visiting $\x_3 = (3, 1)$, $t_3 = +1$, and then $\x_2 = (0, 0)$, $t_2 = -1$.
+Which of the four points are on the correct side of the resulting boundary?
+\end{calculations}
+
+\begin{derivations}
+\item Show that $\w$ is normal to the hyperplane $\w\T\x + b = 0$ and derive the distance formula \eqref{eq:dist}.
+Deduce the distance of the origin to the hyperplane and the width $2/\norm{\w}$ of the band between $g(\x) = -1$ and
+$g(\x) = +1$.
 \item Derive $\nabla J$ for logistic regression using $\sigma' = \sigma(1 - \sigma)$, and the Hessian
-$\sum_i y_i(1 - y_i)\,\xt_i\xt_i\T$. Conclude that $J$ is convex. Why does $\norm{\w}$ diverge on separable data?
-\item Implement the perceptron and run it on separable data with margin $\gamma$ and radius $R$ of your choice. Compare
-the number of mistakes with the bound $(R/\gamma)^2$.
-\item Explain why the solution of the soft-margin SVM does not change when a correctly classified point outside the
-margin is moved, as long as it stays outside the margin. Which points of Figure~\ref{fig:linclass} would a linear SVM
-ignore?
-\item How many features does the full polynomial map of degree~3 produce for $28 \times 28$ images? Estimate the memory
-needed to store them for $60\,000$ images in 32-bit floats, and suggest an alternative.
-\end{exercises}
+$\sum_i y_i(1 - y_i)\,\xt_i\xt_i\T$. Conclude that $J$ is convex, show that the Newton step is a weighted least-squares
+problem, and prove that $\norm{\wt}$ diverges on separable data.
+\item Prove the perceptron convergence theorem. Then show that the bound $(R/\gamma)^2$ does not change when all inputs
+are multiplied by the same constant, if the bias is absent.
+\item Derive the dual \eqref{eq:svmdual} of the hard-margin SVM from its Lagrangian. For the soft-margin problem, show
+that the dual is the same with the extra constraint $\alpha_i \le C$.
+\end{derivations}
+
+\begin{programming}
+\item Implement the primal, averaged and dual perceptrons in numpy. On separable data of chosen $\gamma$ and $R$ compare
+the number of mistakes with $(R/\gamma)^2$; on non-separable data compare the last iterate with the average.
+\item Implement Algorithm~\ref{alg:logreg} in both variants. With $n = 10^4$, time both to a given loss as $d$ grows from
+10 to 1000, and explain the cross-over.
+\item Apply Algorithm~\ref{alg:pegasos} and least squares to two Gaussian classes plus a growing far-away cluster of
+correct points. Plot boundaries and errors; count the points with $t_i\,g(\x_i) \le 1$ for $C = 0.01, 1, 100$.
+\end{programming}
+\end{questions}
 
 \paragraph{Further reading} Bishop~\cite{bishop2006}, chapter~4 and section~7.1; Hastie, Tibshirani and
-Friedman~\cite{hastie2009}, sections~4.4--4.5 and~12.2--12.3; for the history of the perceptron, Rosenblatt~\cite{rosenblatt1958}.
+Friedman~\cite{hastie2009}, sections~4.3--4.5 and~12.2--12.3; for the history of the perceptron,
+Rosenblatt~\cite{rosenblatt1958}.
 
 \begin{thebibliography}{99}\small
 \bibitem{alain2017} G.~Alain and Y.~Bengio, Understanding intermediate layers using linear classifier probes, \emph{ICLR Workshop} (2017).
 \bibitem{baldi2014} P.~Baldi, P.~Sadowski and D.~Whiteson, Searching for exotic particles in high-energy physics with deep learning, \emph{Nat.\ Commun.}\ 5, 4308 (2014).
 \bibitem{bishop2006} C.~M. Bishop, \emph{Pattern Recognition and Machine Learning}, Springer (2006).
+\bibitem{boser1992} B.~E. Boser, I.~M. Guyon and V.~N. Vapnik, A training algorithm for optimal margin classifiers, \emph{Proc.\ 5th Annual Workshop on Computational Learning Theory (COLT)}, 144--152 (1992).
 \bibitem{cortes1995} C.~Cortes and V.~Vapnik, Support-vector networks, \emph{Mach.\ Learn.}\ 20, 273--297 (1995).
 \bibitem{cox1958} D.~R. Cox, The regression analysis of binary sequences, \emph{J.\ R.\ Stat.\ Soc.\ B} 20, 215--242 (1958).
+\bibitem{crammer2001} K.~Crammer and Y.~Singer, On the algorithmic implementation of multiclass kernel-based vector machines, \emph{J.\ Mach.\ Learn.\ Res.}\ 2, 265--292 (2001).
+\bibitem{fisher1936} R.~A. Fisher, The use of multiple measurements in taxonomic problems, \emph{Ann.\ Eugen.}\ 7, 179--188 (1936).
+\bibitem{freund1999} Y.~Freund and R.~E. Schapire, Large margin classification using the perceptron algorithm, \emph{Mach.\ Learn.}\ 37, 277--296 (1999).
+\bibitem{gallant1990} S.~I. Gallant, Perceptron-based learning algorithms, \emph{IEEE Trans.\ Neural Netw.}\ 1, 179--191 (1990).
 \bibitem{hastie2009} T.~Hastie, R.~Tibshirani and J.~Friedman, \emph{The Elements of Statistical Learning}, 2nd ed., Springer (2009).
 \bibitem{minsky1969} M.~Minsky and S.~Papert, \emph{Perceptrons}, MIT Press (1969).
 \bibitem{novikoff1962} A.~B.~J. Novikoff, On convergence proofs on perceptrons, \emph{Proc.\ Symposium on the Mathematical Theory of Automata} 12, 615--622 (1962).
 \bibitem{radford2021} A.~Radford \emph{et al.}, Learning transferable visual models from natural language supervision, \emph{ICML} (2021).
-\bibitem{rahimi2007} A.~Rahimi and B.~Recht, Random features for large-scale kernel machines, \emph{NeurIPS} (2007).
 \bibitem{rosenblatt1958} F.~Rosenblatt, The perceptron: a probabilistic model for information storage and organization in the brain, \emph{Psychol.\ Rev.}\ 65, 386--408 (1958).
+\bibitem{shalevshwartz2007} S.~Shalev-Shwartz, Y.~Singer and N.~Srebro, Pegasos: primal estimated sub-gradient solver for SVM, \emph{ICML} (2007).
+\bibitem{vapnik1963} V.~Vapnik and A.~Lerner, Pattern recognition using generalized portrait method, \emph{Automat.\ Remote Control} 24, 774--780 (1963).
 \end{thebibliography}
 
 \SourceNote

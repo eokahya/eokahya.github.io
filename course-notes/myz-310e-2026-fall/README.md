@@ -1,6 +1,6 @@
 # MYZ 310E lecture notes, weeks 1–4 (Fall 2026)
 
-LaTeX sources of the nine lecture notes published on the course page
+LaTeX sources of the ten lecture notes published on the course page
 (`/teaching/myz-310e/2026-fall/#lecture-notes`).
 
 | Source | Published PDF | Week |
@@ -13,17 +13,24 @@ LaTeX sources of the nine lecture notes published on the course page
 | `note6-bayes-classifiers.tex` | `week-04--bayes-classifier-and-naive-bayes.pdf` | 4 |
 | `note7-optimisation.tex` | `week-04--gradient-descent-and-optimisation.pdf` | 4 |
 | `note8-linear-regression.tex` | `week-04--least-squares-ridge-and-lasso.pdf` | 4 |
-| `note9-linear-classifiers.tex` | `week-04--linear-classifiers-and-feature-maps.pdf` | 4 |
+| `note9-linear-classifiers.tex` | `week-04--linear-classifiers.pdf` | 4 |
+| `note10-kernels.tex` | `week-04--nonlinear-feature-maps-and-kernels.pdf` | 4 |
 
 The choice and order of topics follow IFT 6390 at Université de Montréal (Ioannis Mitliagkas;
 slides by Pascal Vincent). The text, examples, exercises and figures are original. Every figure is
-computed from synthetic data with fixed random seeds by `figures.py`.
+computed from synthetic data with fixed random seeds by `figures.py` and the per-note scripts
+`figures_noteN.py`.
+
+Every note shows derivations step by step, works examples with numbers, gives pseudocode and the
+running time of each algorithm, and ends with questions sorted into A (conceptual), B (short
+calculations), C (derivations) and D (programming); A and B are midterm-style.
 
 To avoid repetition, each idea has one home: notation and the task/loss table are in Note 1, the
 Gaussian in Note 2, the curse of dimensionality in Note 3, capacity, validation and the
 hyperparameter table in Note 4, nearest neighbours, kernels and distances in Note 5, generative
 classifiers and LDA in Note 6, gradients and optimisers in Note 7, least squares and the ridge/lasso
-penalties in Note 8, and linear classifiers, margins and feature maps in Note 9. Later notes refer
+penalties in Note 8, linear classifiers, the perceptron and margins in Note 9, and feature maps and
+the kernel trick in Note 10. Later notes refer
 back instead of restating.
 
 ## Rebuild
