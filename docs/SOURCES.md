@@ -107,7 +107,8 @@ All profile and course resource URLs returned HTTP 200 in the direct link check 
 - `course.readingList` (ders sayfası, "Reading list: mechanistic interpretability"): 48 kaynak, altı grup. Goodfire yazısı (https://www.goodfire.com/blog/accelerating-interpretability; paylaşılan bağlantıdaki `utm_*` izleme parametreleri kaldırıldı; T. McGrath ve M. Papillon, 26 Ekim 2026) eğitmenin isteğiyle eklendi.
 - Her başlık, yazar listesi, tarih ve yayın yeri kaynağın kendi sayfasında (transformer-circuits.pub, arXiv özet sayfası, Distill, NeurIPS proceedings, ACL Anthology, OpenReview) kontrol edildi; açıklamalar özgün kısa özetlerdir, kaynak metinden alıntı yoktur.
 - Atıf sayıları Semantic Scholar Graph API'den 27 Ekim 2026'da alındı (arXiv kimliğiyle sorgu). Amnesic Probing için TACL kaydı, Vig ve ark. için NeurIPS kaydı kullanıldı. Semantic Scholar'ın yıl alanı yanlış olduğunda (ör. Scaling Monosemanticity 2024, Belinkov 2022) yayın yeri yılı esas alındı. Atıf sayısı alınamayan veya araç/rehber olan maddelerde sayı gösterilmez; tahmin yapılmadı.
-- Yayın yerleri: emin olunamayan durumda yalnızca arXiv yazıldı (Open Problems, Persona Vectors).
+- Yayın yerleri: Open Problems için TMLR 2025 (TMLR sürümünün başlığı ve MLAnthology); Persona Vectors için arXiv 2025, NeurIPS 2026 poster sayfası (neurips.cc) nedeniyle "to appear at NeurIPS 2026".
+- Yayından sonra 48 maddenin tamamı kaynak sayfalarına karşı bağımsız olarak yeniden denetlendi; dört düzeltme yapıldı (Open Problems yayın yeri, Circuit Tracing açıklaması — transcoder ve atıf grafiği fikirleri önceki çalışmalara dayanır, Persona Vectors yayın yeri, Transformer Circuits güncellemelerinin aylık değil düzensiz olması).
 - 52 ders bağlantısının tamamı (okuma listesi + kaynaklar) 2026-10-27'de HTTP 200 döndürdü.
 
 ---
