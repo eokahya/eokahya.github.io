@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rebuild the MYZ 310E lecture notes for weeks 1-4 and copy the PDFs into the website.
+# Rebuild the MYZ 310E lecture notes for weeks 1-5 and copy the PDFs into the website.
 # Requires python3 with numpy and matplotlib, and Tectonic (https://tectonic-typesetting.github.io).
 # Usage: ./build.sh            (from any directory)
 set -euo pipefail
@@ -18,6 +18,9 @@ pairs=(
   "note8-linear-regression:week-04--least-squares-ridge-and-lasso"
   "note9-linear-classifiers:week-04--linear-classifiers"
   "note10-kernels:week-04--nonlinear-feature-maps-and-kernels"
+  "note11-neural-networks:week-05--multilayer-perceptrons"
+  "note12-training-networks:week-05--neural-network-training"
+  "note13-convnets:week-05--translation-symmetry-and-convolutional-networks"
 )
 
 python3 figures.py

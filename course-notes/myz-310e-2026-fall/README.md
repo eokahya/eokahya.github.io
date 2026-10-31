@@ -1,6 +1,6 @@
-# MYZ 310E lecture notes, weeks 1–4 (Fall 2026)
+# MYZ 310E lecture notes, weeks 1–5 (Fall 2026)
 
-LaTeX sources of the ten lecture notes published on the course page
+LaTeX sources of the thirteen lecture notes published on the course page
 (`/teaching/myz-310e/2026-fall/#lecture-notes`).
 
 | Source | Published PDF | Week |
@@ -15,9 +15,12 @@ LaTeX sources of the ten lecture notes published on the course page
 | `note8-linear-regression.tex` | `week-04--least-squares-ridge-and-lasso.pdf` | 4 |
 | `note9-linear-classifiers.tex` | `week-04--linear-classifiers.pdf` | 4 |
 | `note10-kernels.tex` | `week-04--nonlinear-feature-maps-and-kernels.pdf` | 4 |
+| `note11-neural-networks.tex` | `week-05--multilayer-perceptrons.pdf` | 5 |
+| `note12-training-networks.tex` | `week-05--neural-network-training.pdf` | 5 |
+| `note13-convnets.tex` | `week-05--translation-symmetry-and-convolutional-networks.pdf` | 5 |
 
 The choice and order of topics follow IFT 6390 at Université de Montréal (Ioannis Mitliagkas;
-slides by Pascal Vincent). The text, examples, exercises and figures are original. Every figure is
+slides by Pascal Vincent, and by Hugo Larochelle for neural-network training and convolutional networks). The text, examples, exercises and figures are original. Every figure is
 computed from synthetic data with fixed random seeds by `figures.py` and the per-note scripts
 `figures_noteN.py`.
 
@@ -29,8 +32,10 @@ To avoid repetition, each idea has one home: notation and the task/loss table ar
 Gaussian in Note 2, the curse of dimensionality in Note 3, capacity, validation and the
 hyperparameter table in Note 4, nearest neighbours, kernels and distances in Note 5, generative
 classifiers and LDA in Note 6, gradients and optimisers in Note 7, least squares and the ridge/lasso
-penalties in Note 8, linear classifiers, the perceptron and margins in Note 9, and feature maps and
-the kernel trick in Note 10. Later notes refer
+penalties in Note 8, linear classifiers, the perceptron and margins in Note 9, feature maps and
+the kernel trick in Note 10, neurons, activations and the multilayer perceptron in Note 11,
+backpropagation, regularisation, initialisation and training practice in Note 12, and
+convolutions, pooling and convolution arithmetic in Note 13. Later notes refer
 back instead of restating.
 
 ## Rebuild
