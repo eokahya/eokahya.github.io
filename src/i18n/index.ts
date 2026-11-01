@@ -9,6 +9,7 @@ export const langs: readonly Lang[] = ['en', 'tr'];
 export const routes = {
   home: { en: '/', tr: '/tr/' },
   research: { en: '/research/', tr: '/tr/arastirma/' },
+  projects: { en: '/projects/', tr: '/tr/projeler/' },
   publications: { en: '/publications/', tr: '/tr/yayinlar/' },
   teaching: { en: '/teaching/', tr: '/tr/ogretim/' },
   outreach: { en: '/outreach/', tr: '/tr/bilim-iletisimi/' },
@@ -18,7 +19,7 @@ export const routes = {
 
 export type RouteId = keyof typeof routes;
 export type NavId = Exclude<RouteId, 'home'>;
-export const navOrder: readonly NavId[] = ['research', 'publications', 'teaching', 'outreach', 'about', 'contact'];
+export const navOrder: readonly NavId[] = ['research', 'projects', 'publications', 'teaching', 'outreach', 'about', 'contact'];
 
 export const href = (lang: Lang, id: RouteId, hash = '') => `${routes[id][lang]}${hash ? `#${hash}` : ''}`;
 

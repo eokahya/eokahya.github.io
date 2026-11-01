@@ -176,6 +176,12 @@ Kaynaklar, 2 Ekim 2026'da tarayıcıda ve kamuya açık YouTube izleme sayfalar�
 - **YouTube (121 video, izleme sayfaları):** Teke Tek Bilim 7.222.686; kişisel kanal 27.054; diğer kanallar 1.707.925 → YouTube toplamı **8.957.665**. Hiçbir sayı bir önceki ölçümden düşük değil.
 - **Instagram (kullanıcının bildirdiği):** `Dd_hKMlO3Zm` 768K → **804K**; `DdyJ3LbO8RP` **1M** olarak kalır. Instagram toplamı 2.097.900. Genel toplam 11.055.565 → sitede aşağı yuvarlanarak **"11 milyon+"**.
 
+## Projeler sayfası — 1 Kasım 2026
+
+- `src/data/projects.ts` (`/projects/`, `/tr/projeler/`): beş açık depo — `eokahya/claude-audits-quantum-gravity`, `claude-audits-conformal-scalar`, `moe-transformation-supervision-mnist-pilot`, `split-or-enrich-kronecker-expert-selection`, `gpt2-spectral-mean-causal-audit`.
+- Her cümle ve sayı ilgili deponun README/README_TR ve bulgu/sonuç dosyalarına karşı iki bağımsız ajanla (çıkarım + şüpheci doğrulama) ve ayrıca içerik QA'sıyla denetlendi. Eğitmen incelemesiyle üç düzeltme yapıldı: split-or-enrich için "eşdeğerlik" ima eden ifadeler kaldırıldı (önceden konan ek fayda koşulu sağlanamadı); GPT-2 ana SVD karşılaştırmasında iki vekilin de büyük hata bıraktığı (RMS 1,275 / 1,301; özgün yanıt RMS 1,758, README tablosu) açıkça yazıldı ve PCA + ortalama ikincil kolu ayrı tutuldu; %13,8 / %15,3 yanıt vektörünün bağıl hatasıdır, işlevin kaybolan yüzdesi değildir; fizik özetleri sadeleştirildi, teknik ayrıntı "Ayrıntılar" bölümüne alındı.
+- Parçacık animasyonları şematiktir (veri grafiği değildir); her projede düğme, şemayı varsayılan görünümden karşılaştırma görünümüne geçirir. Sonucu her zaman metin söyler.
+
 ## Özgeçmişler (CV) — 2 Ekim 2026
 
 Kullanıcının kendi özgeçmiş dosyaları bu sürümün birincil kaynağıdır ve sitede **olduğu gibi** yayımlanır:

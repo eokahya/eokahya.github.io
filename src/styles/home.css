@@ -30,7 +30,7 @@
 .plate-label__name { font-family: var(--font-display); font-style: italic; font-size: 1.05rem; letter-spacing: 0; color: var(--text); }
 .hud-button {
   pointer-events: auto; display: inline-flex; align-items: center; gap: 0.5rem; min-height: 40px; padding: 0.4rem 0.95rem 0.4rem 0.8rem;
-  border-radius: 999px; border: 1px solid var(--line-2); background: rgba(var(--scrim), 0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border-radius: 999px; border: 1px solid var(--line-2); background: rgba(var(--scrim), 0.55); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
   font-size: 0.82rem; font-weight: 500; color: var(--text-2);
 }
 .hud-button:hover { color: var(--text); border-color: var(--accent); }
@@ -151,7 +151,7 @@ html:not(.js) .act--right .act__plate, .no-webgl .act--right .act__plate { right
   .act { min-height: auto; padding: 46vh var(--gutter) 10vh; align-items: start; }
   .act--hero { min-height: 100svh; padding-top: 52vh; padding-bottom: 12vh; align-items: end; }
   .act__content, .act--right .act__content, .act--left .act__content { justify-self: stretch; width: 100%; margin: 0; }
-  .act__content::before { inset: -2rem -1.2rem; background: linear-gradient(to bottom, transparent, rgba(var(--scrim), 0.86) 3rem, rgba(var(--scrim), 0.86) calc(100% - 3rem), transparent); filter: none; }
+  .act__content::before, [data-theme='light'] .act__content::before { inset: -2rem -1.2rem; background: linear-gradient(to bottom, transparent, rgba(var(--scrim), 0.86) 3rem, rgba(var(--scrim), 0.86) calc(100% - 3rem), transparent); filter: none; }
   .act--hero .act__content::before { inset: -3rem -1.2rem -1rem; }
   .act__eq { font-size: 0.92rem; }
   .journey-hud { padding: 1.4rem 16px max(14px, env(safe-area-inset-bottom)); justify-content: flex-end; background: none; }

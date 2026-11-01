@@ -10,14 +10,15 @@ const site = 'https://eokahya.github.io';
 const pairs = [
   ['/', '/tr/'],
   ['/research/', '/tr/arastirma/'],
+  ['/projects/', '/tr/projeler/'],
   ['/publications/', '/tr/yayinlar/'],
   ['/teaching/', '/tr/ogretim/'],
   ['/outreach/', '/tr/bilim-iletisimi/'],
   ['/about/', '/tr/hakkinda/'],
   ['/contact/', '/tr/iletisim/'],
 ];
-const englishNav = ['Research', 'Publications', 'Teaching', 'Outreach', 'About', 'Contact'];
-const turkishNav = ['Araştırma', 'Yayınlar', 'Öğretim', 'Bilim iletişimi', 'Hakkında', 'İletişim'];
+const englishNav = ['Research', 'Projects', 'Publications', 'Teaching', 'Outreach', 'About', 'Contact'];
+const turkishNav = ['Araştırma', 'Projeler', 'Yayınlar', 'Öğretim', 'Bilim iletişimi', 'Hakkında', 'İletişim'];
 const errors = [];
 const fail = (route, message) => errors.push(`${route}: ${message}`);
 const read = (route) => readFile(join(root, route, 'index.html'), 'utf8');

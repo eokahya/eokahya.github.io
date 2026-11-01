@@ -10,7 +10,7 @@ const server = await startStaticServer('dist');
 const output = path.resolve('artifacts/lighthouse');
 await mkdir(output, { recursive: true });
 const chrome = await launch({ chromePath: chromium.executablePath(), chromeFlags: ['--headless=new'] });
-const routes = [['home', '/'], ['research', '/research/'], ['publications', '/publications/'], ['outreach', '/outreach/'], ['course', '/teaching/myz-310e/2026-fall/'], ['tr-home', '/tr/'], ['tr-about', '/tr/hakkinda/'], ['tr-outreach', '/tr/bilim-iletisimi/'], ['about', '/about/'], ['tr-research', '/tr/arastirma/']];
+const routes = [['home', '/'], ['research', '/research/'], ['projects', '/projects/'], ['tr-projects', '/tr/projeler/'], ['publications', '/publications/'], ['outreach', '/outreach/'], ['course', '/teaching/myz-310e/2026-fall/'], ['tr-home', '/tr/'], ['tr-about', '/tr/hakkinda/'], ['tr-outreach', '/tr/bilim-iletisimi/'], ['about', '/about/'], ['tr-research', '/tr/arastirma/']];
 const summary = [];
 try {
   for (const [name, route] of routes) {

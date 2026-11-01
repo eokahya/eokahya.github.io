@@ -84,6 +84,7 @@ const newTab = u.newTab;
         </div>
         <ul class="hero-quick" role="list">
           <li><a href={href(lang, 'research')}>{c.quick.research}</a></li>
+          <li><a href={href(lang, 'projects')}>{c.quick.projects}</a></li>
           <li><a href={href(lang, 'publications')}>{c.quick.publications}</a></li>
           <li><a href={href(lang, 'outreach')}>{c.quick.outreach}</a></li>
         </ul>
@@ -116,7 +117,7 @@ const newTab = u.newTab;
         <ul class="paper-list" role="list">
           {learningPapers.map((p) => <li><a href={p.link} lang="en"><span class="paper-list__title">{p.title}</span><span class="paper-list__venue">{venueText(p)} · {p.year}</span></a></li>)}
         </ul>
-        <p class="act__links"><a class="text-link" href={href(lang, 'research', 'machine-learning')}>{c.links.ml} <Icon name="arrow-right" size={16} /></a></p>
+        <p class="act__links"><a class="text-link" href={href(lang, 'research', 'machine-learning')}>{c.links.ml} <Icon name="arrow-right" size={16} /></a><a class="text-link" href={href(lang, 'projects')}>{c.links.projects} <Icon name="arrow-right" size={16} /></a></p>
       </div>
     </section>
 

@@ -3,10 +3,10 @@ import type { Lang } from './index';
 
 const en = {
   skip: 'Skip to content',
-  brandHome: 'Emre Onur Kahya — home',
+  brandHome: 'Emre Onur Kahya, Physics · İTÜ — home',
   brandRole: 'Physics · İTÜ',
   navMain: 'Main',
-  nav: { research: 'Research', publications: 'Publications', teaching: 'Teaching', outreach: 'Outreach', about: 'About', contact: 'Contact' },
+  nav: { research: 'Research', projects: 'Projects', publications: 'Publications', teaching: 'Teaching', outreach: 'Outreach', about: 'About', contact: 'Contact' },
   themeToLight: 'Switch to light theme',
   themeToDark: 'Switch to dark theme',
   themeTitle: 'Switch theme',
@@ -55,10 +55,10 @@ export type UI = typeof en;
 
 const tr: UI = {
   skip: 'İçeriğe geç',
-  brandHome: 'Emre Onur Kahya — ana sayfa',
+  brandHome: 'Emre Onur Kahya, Fizik · İTÜ — ana sayfa',
   brandRole: 'Fizik · İTÜ',
   navMain: 'Ana menü',
-  nav: { research: 'Araştırma', publications: 'Yayınlar', teaching: 'Öğretim', outreach: 'Bilim iletişimi', about: 'Hakkında', contact: 'İletişim' },
+  nav: { research: 'Araştırma', projects: 'Projeler', publications: 'Yayınlar', teaching: 'Öğretim', outreach: 'Bilim iletişimi', about: 'Hakkında', contact: 'İletişim' },
   themeToLight: 'Açık temaya geç',
   themeToDark: 'Koyu temaya geç',
   themeTitle: 'Temayı değiştir',

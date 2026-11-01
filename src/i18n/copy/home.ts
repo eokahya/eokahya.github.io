@@ -6,7 +6,7 @@ const en = {
   heroKicker: 'Theoretical physics · Machine learning · Science communication',
   heroLead: 'I study quantum fields, gravitation and cosmology — and, increasingly, what learning machines compute on the inside.',
   begin: 'Begin the journey',
-  quick: { research: 'Research', publications: 'Publications', outreach: 'Teke Tek Bilim & videos' },
+  quick: { research: 'Research', projects: 'Projects', publications: 'Publications', outreach: 'Teke Tek Bilim & videos' },
   acts: [
     { id: 'spacetime', numeral: 'I', name: 'Spacetime' },
     { id: 'fields', numeral: 'II', name: 'Fields & cosmos' },
@@ -65,6 +65,7 @@ const en = {
     cosmology: 'Cosmology & modified gravity',
     ml: 'Machine learning for physics',
     interp: 'Mechanistic interpretability & reliable AI',
+    projects: 'Five open projects: audits and experiments',
   },
   teaching: {
     kicker: (term: string) => `Teaching · ${term}`,
@@ -92,7 +93,7 @@ const tr: HomeCopy = {
   heroKicker: 'Kuramsal fizik · Makine öğrenmesi · Bilim iletişimi',
   heroLead: 'Kuantum alanları, kütleçekimi ve kozmolojiyi; giderek artan biçimde de öğrenen makinelerin içeride ne hesapladığını çalışıyorum.',
   begin: 'Yolculuğa başla',
-  quick: { research: 'Araştırma', publications: 'Yayınlar', outreach: 'Teke Tek Bilim ve videolar' },
+  quick: { research: 'Araştırma', projects: 'Projeler', publications: 'Yayınlar', outreach: 'Teke Tek Bilim ve videolar' },
   acts: [
     { id: 'spacetime', numeral: 'I', name: 'Uzay-zaman' },
     { id: 'fields', numeral: 'II', name: 'Alanlar ve evren' },
@@ -151,6 +152,7 @@ const tr: HomeCopy = {
     cosmology: 'Kozmoloji ve değiştirilmiş kütleçekim',
     ml: 'Fizik için makine öğrenmesi',
     interp: 'Mekanistik yorumlanabilirlik ve güvenilir yapay zekâ',
+    projects: 'Beş açık proje: denetimler ve deneyler',
   },
   teaching: {
     kicker: (term: string) => `Öğretim · ${term.replace('Fall', 'Güz')}`,

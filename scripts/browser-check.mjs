@@ -19,12 +19,12 @@ const record = (engine, name, ok, detail = '') => {
 };
 
 const pages = [
-  '/', '/research/', '/publications/', '/teaching/', '/teaching/myz-310e/', '/teaching/myz-310e/2026-fall/', '/teaching/myz-310e/2026-fall/syllabus/', '/outreach/', '/about/', '/contact/',
-  '/tr/', '/tr/arastirma/', '/tr/yayinlar/', '/tr/ogretim/', '/tr/bilim-iletisimi/', '/tr/hakkinda/', '/tr/iletisim/',
+  '/', '/research/', '/projects/', '/publications/', '/teaching/', '/teaching/myz-310e/', '/teaching/myz-310e/2026-fall/', '/teaching/myz-310e/2026-fall/syllabus/', '/outreach/', '/about/', '/contact/',
+  '/tr/', '/tr/arastirma/', '/tr/projeler/', '/tr/yayinlar/', '/tr/ogretim/', '/tr/bilim-iletisimi/', '/tr/hakkinda/', '/tr/iletisim/',
 ];
 const langFor = (path) => (path.startsWith('/tr/') ? 'tr' : 'en');
 const widths = [375, 768, 1440];
-const quiet = (text) => /favicon|ERR_ABORTED|Journey scene disabled/.test(text);
+const quiet = (text) => /favicon|ERR_ABORTED|Journey scene disabled|Atlas scene disabled/.test(text);
 
 async function contextFor(browser, { width = 1440, height = 900, theme = 'dark', reduced = false, js = true, mobile = false, presetTheme = true } = {}) {
   const context = await browser.newContext({
@@ -158,7 +158,7 @@ for (const name of engines) {
       plates: Array.from(document.querySelectorAll('.act__plate')).filter((el) => getComputedStyle(el).display !== 'none' && getComputedStyle(el).backgroundImage.includes('plates/')).length,
       nav: Array.from(document.querySelectorAll('.site-nav a')).filter((a) => a.getBoundingClientRect().width > 0).length,
     }));
-    record(name, 'no-JS: home content, plates and navigation', info.h1?.includes('Kahya') && info.acts === 5 && info.plates === 5 && info.nav === 6, JSON.stringify(info));
+    record(name, 'no-JS: home content, plates and navigation', info.h1?.includes('Kahya') && info.acts === 5 && info.plates === 5 && info.nav === 7, JSON.stringify(info));
     await page.goto(base + '/tr/', { waitUntil: 'load' });
     const trActs = await page.evaluate(() => Array.from(document.querySelectorAll('.act__content')).filter((el) => getComputedStyle(el).opacity === '1' && el.getBoundingClientRect().height > 50).length);
     record(name, 'no-JS: Turkish home content is readable', trActs === 5, `${trActs}`);

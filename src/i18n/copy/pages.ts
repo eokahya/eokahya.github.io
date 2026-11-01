@@ -2,6 +2,29 @@
 import type { Lang } from '../index';
 
 const en = {
+  projects: {
+    metaTitle: 'Projects',
+    description: 'Five open research projects by Emre Onur Kahya: two step-by-step audits of published quantum gravity calculations and three pre-registered machine-learning experiments, with code and derivations on GitHub.',
+    kicker: 'Projects · 2026',
+    title: ['Questions put ', 'to the test'],
+    lead: 'Two audits of published quantum gravity calculations and three pre-registered machine-learning experiments. Each asks one precise question and reports the answer as it came out, negative results included.',
+    method: 'The work was done with AI models, mainly Claude, as working tools. Derivations, code, protocols and limitations are open on GitHub.',
+    begin: 'Start with the first project',
+    indexLabel: 'The five projects',
+    railLabel: 'Project navigation',
+    plate: 'Project',
+    schematic: 'schematic illustration',
+    pause: 'Pause animation',
+    resume: 'Resume animation',
+    question: 'Question',
+    result: 'Result',
+    verdict: 'Verdict',
+    repo: 'Repository on GitHub',
+    outroKicker: 'On reading these results',
+    outroTitle: ['A clear “no” ', 'is a result'],
+    outroText: 'All three experiments end in a no, and one of the two audits finds that a published claim does not survive. Pre-registration fixes the test and the decision rule before the data arrive, so a negative answer is a finding rather than a failure; the audits report what survives as plainly as what does not.',
+    allRepos: 'All repositories on GitHub',
+  },
   research: {
     metaTitle: 'Research',
     description: 'Research of Emre Onur Kahya: quantum fields and gravitation, cosmology and modified gravity, machine learning for physics, and — as a current direction — mechanistic interpretability and reliable AI.',
@@ -143,6 +166,29 @@ const en = {
 export type PagesCopy = typeof en;
 
 const tr: PagesCopy = {
+  projects: {
+    metaTitle: 'Projeler',
+    description: 'Emre Onur Kahya’nın açık araştırma projeleri: yayımlanmış kuantum kütleçekimi hesaplarının adım adım iki denetimi ve önceden kayda geçirilmiş üç makine öğrenmesi deneyi; kod ve türetmeler GitHub’da.',
+    kicker: 'Projeler · 2026',
+    title: ['Sınamaya konan ', 'sorular'],
+    lead: 'Yayımlanmış kuantum kütleçekimi hesaplarının iki denetimi ve önceden kayda geçirilmiş üç makine öğrenmesi deneyi. Her biri tek ve net bir soru soruyor; cevabı, olumsuz sonuçlar dâhil, çıktığı gibi bildiriyor.',
+    method: 'Çalışmalarda başta Claude olmak üzere yapay zekâ modelleri çalışma aracı olarak kullanıldı. Türetmeler, kod, protokoller ve sınırlılıklar GitHub’da açık.',
+    begin: 'İlk projeden başla',
+    indexLabel: 'Beş proje',
+    railLabel: 'Proje gezintisi',
+    plate: 'Proje',
+    schematic: 'şematik çizim',
+    pause: 'Animasyonu duraklat',
+    resume: 'Animasyonu sürdür',
+    question: 'Soru',
+    result: 'Sonuç',
+    verdict: 'Karar',
+    repo: 'GitHub’daki depo',
+    outroKicker: 'Bu sonuçları okurken',
+    outroTitle: ['Net bir “hayır” ', 'da bir sonuçtur'],
+    outroText: 'Üç deneyin üçü de “hayır” ile bitiyor; iki denetimden biri de yayımlanmış bir iddianın ayakta kalmadığını gösteriyor. Önkayıt, sınamayı ve karar kuralını veriler gelmeden sabitler; bu yüzden olumsuz bir cevap başarısızlık değil, bir bulgudur. Denetimler de ayakta kalanı, kalmayanla aynı açıklıkta bildiriyor.',
+    allRepos: 'Tüm depolar GitHub’da',
+  },
   research: {
     metaTitle: 'Araştırma',
     description: 'Emre Onur Kahya\'nın araştırmaları: kuantum alanlar ve kütleçekim, kozmoloji ve değiştirilmiş kütleçekim, fizik için makine öğrenmesi ve güncel bir yönelim olarak mekanistik yorumlanabilirlik ve güvenilir yapay zekâ.',

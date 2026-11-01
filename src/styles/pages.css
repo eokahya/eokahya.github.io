@@ -71,7 +71,7 @@
 .chart-legend li { display: inline-flex; align-items: center; gap: 0.4rem; }
 .chart-legend li::before { content: ''; width: 9px; height: 9px; border-radius: 3px; background: var(--c); }
 @media (max-width: 900px) { .pub-summary { grid-template-columns: 1fr; } }
-.pub-tools { position: sticky; top: var(--header-h); z-index: 20; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-block: 1px solid var(--line); }
+.pub-tools { position: sticky; top: var(--header-h); z-index: 20; background: color-mix(in srgb, var(--bg) 92%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-block: 1px solid var(--line); }
 .pub-tools__inner { width: var(--wrap); margin-inline: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem 1.4rem; padding-block: 0.8rem; }
 .filter-group { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; border: 0; margin: 0; padding: 0; }
 .filter-group legend { float: left; margin-right: 0.5rem; font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }

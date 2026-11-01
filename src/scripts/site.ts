@@ -42,7 +42,7 @@ if (header && menuButton && navPanel) {
   addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && menuButton.getAttribute('aria-expanded') === 'true') setOpen(false, true);
   });
-  matchMedia('(min-width: 961px)').addEventListener('change', (event) => { if (event.matches) setOpen(false); });
+  matchMedia('(min-width: 1081px)').addEventListener('change', (event) => { if (event.matches) setOpen(false); });
 }
 
 // ---- header background once the page scrolls -----------------------------------------
