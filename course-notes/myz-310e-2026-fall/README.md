@@ -1,6 +1,6 @@
-# MYZ 310E lecture notes, weeks 1–5 (Fall 2026)
+# MYZ 310E lecture notes, weeks 1–6 (Fall 2026)
 
-LaTeX sources of the thirteen lecture notes published on the course page
+LaTeX sources of the fifteen lecture notes published on the course page
 (`/teaching/myz-310e/2026-fall/#lecture-notes`).
 
 | Source | Published PDF | Week |
@@ -18,6 +18,8 @@ LaTeX sources of the thirteen lecture notes published on the course page
 | `note11-neural-networks.tex` | `week-05--multilayer-perceptrons.pdf` | 5 |
 | `note12-training-networks.tex` | `week-05--neural-network-training.pdf` | 5 |
 | `note13-convnets.tex` | `week-05--translation-symmetry-and-convolutional-networks.pdf` | 5 |
+| `note14-recurrent-networks.tex` | `week-06--recurrent-neural-networks.pdf` | 6 |
+| `note15-attention-transformers.tex` | `week-06--soft-attention-and-transformers.pdf` | 6 |
 
 The choice and order of topics follow IFT 6390 at Université de Montréal (Ioannis Mitliagkas;
 slides by Pascal Vincent, and by Hugo Larochelle for neural-network training and convolutional networks). The text, examples, exercises and figures are original. Every figure is
@@ -35,7 +37,8 @@ classifiers and LDA in Note 6, gradients and optimisers in Note 7, least squares
 penalties in Note 8, linear classifiers, the perceptron and margins in Note 9, feature maps and
 the kernel trick in Note 10, neurons, activations and the multilayer perceptron in Note 11,
 backpropagation, regularisation, initialisation and training practice in Note 12, and
-convolutions, pooling and convolution arithmetic in Note 13. Later notes refer
+convolutions, pooling and convolution arithmetic in Note 13, recurrent networks, BPTT, LSTM/GRU and
+sequence-to-sequence learning in Note 14, and attention, the Transformer and a first look inside it in Note 15. Later notes refer
 back instead of restating.
 
 ## Rebuild

@@ -176,6 +176,11 @@ Kaynaklar, 2 Ekim 2026'da tarayıcıda ve kamuya açık YouTube izleme sayfalar�
 - **YouTube (121 video, izleme sayfaları):** Teke Tek Bilim 7.222.686; kişisel kanal 27.054; diğer kanallar 1.707.925 → YouTube toplamı **8.957.665**. Hiçbir sayı bir önceki ölçümden düşük değil.
 - **Instagram (kullanıcının bildirdiği):** `Dd_hKMlO3Zm` 768K → **804K**; `DdyJ3LbO8RP` **1M** olarak kalır. Instagram toplamı 2.097.900. Genel toplam 11.055.565 → sitede aşağı yuvarlanarak **"11 milyon+"**.
 
+### Güncelleme — 10 Kasım 2026
+
+- **YouTube (121 video, izleme sayfaları):** Teke Tek Bilim 7.641.910; kişisel kanal 27.069; diğer kanallar 1.727.213 → YouTube toplamı **9.396.192**. Hiçbir sayı bir önceki ölçümden düşük değil.
+- **Instagram (kullanıcının bildirdiği):** `Dd_hKMlO3Zm` 804K → **822K**; `DdyJ3LbO8RP` **1M** olarak kalır. Instagram toplamı 2.115.900. Genel toplam 11.512.092 → sitede aşağı yuvarlanarak **"11,5 milyon+"**.
+
 ## Projeler sayfası — 1 Kasım 2026
 
 - `src/data/projects.ts` (`/projects/`, `/tr/projeler/`): beş açık depo — `eokahya/claude-audits-quantum-gravity`, `claude-audits-conformal-scalar`, `moe-transformation-supervision-mnist-pilot`, `split-or-enrich-kronecker-expert-selection`, `gpt2-spectral-mean-causal-audit`.
